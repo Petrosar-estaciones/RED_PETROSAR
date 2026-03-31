@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>⛽ Planta Combustible a Granel</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{background:#f0ebe3;font-family:'Barlow',sans-serif}
+  input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+  input:focus,select:focus{outline:2px solid #c8530a;outline-offset:1px}
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-track{background:#e8e1d8}
+  ::-webkit-scrollbar-thumb{background:#c0b0a0;border-radius:3px}
+  .rh:hover{background:rgba(200,83,10,0.05)!important}
+  .ba{transition:opacity .15s,transform .15s;cursor:pointer}
+  .ba:hover{opacity:.75;transform:scale(1.08)}
+  .tp{transition:all .2s;cursor:pointer}
+  .tp:hover{background:rgba(200,83,10,0.1)!important}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .spin{animation:spin 1s linear infinite;display:inline-block}
+  @keyframes fu{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .fu{animation:fu .35s ease forwards;opacity:0}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+
+/* ── GOOGLE SHEETS CONFIG ────────────────────────────────────────────────── */
+// Planta Granel
+const GAS_URL_PLANTA="https://script.google.com/macros/s/AKfycbxi0XUb_Bj_09iqf6qxwMhKcfeKRBU7Ct_UeVPr0SnggHWfLOe-w_-_rhQh-9AakpMw/exec";
+// Base CR — reemplazá con la URL del script de Base CR
+const GAS_URL_BASECR="https://script.google.com/macros/s/AKfycbxMs9CQYLVS1GhAiU_RViaYksMMSNuUKfo0fzYr1qcwGHslZPdevD_zIqIdm2o2eAl6/exec";
+
+/* ── LISTADO DE VEHÍCULOS (Interno → Patente) ─────────────────────────────── */
+const VEHICULOS = [
+  {interno:"14",patente:"GBS010"},{interno:"17",patente:"RGV349"},{interno:"18",patente:"FMO203"},
+  {interno:"549",patente:"FZD463"},{interno:"606",patente:"HAP800"},{interno:"612",patente:"HCQ115"},
+  {interno:"639",patente:"HHL220"},{interno:"642",patente:"HLX557"},{interno:"644",patente:"HLX558"},
+  {interno:"661",patente:"HMO791"},{interno:"666",patente:"HNF752"},{interno:"667",patente:"HMO819"},
+  {interno:"673",patente:"HOY445"},{interno:"678",patente:"HQD469"},{interno:"682",patente:"FMU690"},
+  {interno:"697",patente:"FLB244"},{interno:"717",patente:"LBT116"},{interno:"719",patente:"LBT123"},
+  {interno:"723",patente:"LCS513"},{interno:"725",patente:"LBT118"},{interno:"726",patente:"LBT120"},
+  {interno:"739",patente:"LHV467"},{interno:"741",patente:"LRS766"},{interno:"742",patente:"LRX408"},
+  {interno:"746",patente:"MIO712"},{interno:"747",patente:"MIO711"},{interno:"748",patente:"MIO713"},
+  {interno:"749",patente:"MIO710"},{interno:"752",patente:"MJP353"},{interno:"755",patente:"MJP356"},
+  {interno:"757",patente:"757"},{interno:"760",patente:"MKU443"},{interno:"761",patente:"MKU445"},
+  {interno:"762",patente:"MKU446"},{interno:"763",patente:"MKU447"},{interno:"765",patente:"MNS001"},
+  {interno:"769",patente:"769"},{interno:"770",patente:"MSV883"},{interno:"771",patente:"MSV884"},
+  {interno:"775",patente:"MOO698"},{interno:"777",patente:"MOO701"},{interno:"782",patente:"MUO365"},
+  {interno:"783",patente:"MUO373"},{interno:"784",patente:"NSP193"},{interno:"785",patente:"NUK674"},
+  {interno:"786",patente:"NTT689"},{interno:"787",patente:"NSP189"},{interno:"788",patente:"NUK676"},
+  {interno:"794",patente:"NJS794"},{interno:"795",patente:"MGH003"},{interno:"800",patente:"OFU993"},
+  {interno:"801",patente:"OFU994"},{interno:"802",patente:"OFU996"},{interno:"803",patente:"OIO502"},
+  {interno:"804",patente:"OIO544"},{interno:"805",patente:"OIO545"},{interno:"806",patente:"OIO546"},
+  {interno:"807",patente:"OIO547"},{interno:"808",patente:"OIO548"},{interno:"810",patente:"OIW821"},
+  {interno:"811",patente:"OIW822"},{interno:"812",patente:"OIW823"},{interno:"813",patente:"OIW824"},
+  {interno:"814",patente:"OIW825"},{interno:"815",patente:"OIW826"},{interno:"816",patente:"OIW827"},
+  {interno:"817",patente:"OIW828"},{interno:"818",patente:"OIW829"},{interno:"819",patente:"OIW830"},
+  {interno:"820",patente:"OIW831"},{interno:"821",patente:"OIW832"},{interno:"822",patente:"OIW833"},
+  {interno:"823",patente:"OIW848"},{interno:"824",patente:"OIW849"},{interno:"825",patente:"OKD420"},
+  {interno:"826",patente:"OKD421"},{interno:"827",patente:"OKW570"},{interno:"828",patente:"OKW578"},
+  {interno:"829",patente:"OME744"},{interno:"830",patente:"OLU130"},{interno:"831",patente:"OKW609"},
+  {interno:"832",patente:"OME740"},{interno:"833",patente:"OME739"},{interno:"834",patente:"FJJ130"},
+  {interno:"836",patente:"PQL622"},{interno:"837",patente:"PQL624"},{interno:"838",patente:"PQL623"},
+  {interno:"839",patente:"POB667"},{interno:"840",patente:"AA160QS"},{interno:"841",patente:"AA772GL"},
+  {interno:"842",patente:"AA772GJ"},{interno:"843",patente:"AA772GT"},{interno:"844",patente:"AA772GV"},
+  {interno:"845",patente:"AA815HG"},{interno:"846",patente:"AA772GS"},{interno:"847",patente:"AA815HO"},
+  {interno:"848",patente:"AA772GU"},{interno:"849",patente:"AA772GI"},{interno:"850",patente:"AA772GQ"},
+  {interno:"851",patente:"AA772GM"},{interno:"852",patente:"AA772GW"},{interno:"853",patente:"AA772GX"},
+  {interno:"854",patente:"AA772HW"},{interno:"855",patente:"AA815HB"},{interno:"856",patente:"AA772HY"},
+  {interno:"857",patente:"AA815HE"},{interno:"858",patente:"PHO575"},{interno:"859",patente:"PMP770"},
+  {interno:"861",patente:"OOV139"},{interno:"862",patente:"AB064FD"},{interno:"863",patente:"AB064FE"},
+  {interno:"864",patente:"AB064FF"},{interno:"865",patente:"AB064FH"},{interno:"866",patente:"AB039PZ"},
+  {interno:"867",patente:"AB039PX"},{interno:"868",patente:"AB039PU"},{interno:"869",patente:"AB039PY"},
+  {interno:"870",patente:"AB064FC"},{interno:"871",patente:"AB039PW"},{interno:"873",patente:"PLG-843"},
+  {interno:"874",patente:"AB601NL"},{interno:"875",patente:"AB601NI"},{interno:"876",patente:"AB601NJ"},
+  {interno:"877",patente:"AB601NG"},{interno:"878",patente:"AB601NM"},{interno:"879",patente:"AB601NK"},
+  {interno:"880",patente:"AB601NF"},{interno:"881",patente:"AB601NN"},{interno:"882",patente:"AB601NH"},
+  {interno:"883",patente:"AB462XO"},{interno:"884",patente:"AB462XT"},{interno:"885",patente:"AB462XZ"},
+  {interno:"886",patente:"AB493YA"},{interno:"887",patente:"AB462XY"},{interno:"888",patente:"AC468TQ"},
+  {interno:"889",patente:"AC448IT"},{interno:"890",patente:"AC448IS"},{interno:"891",patente:"AC468TP"},
+  {interno:"893",patente:"PLG-842"},{interno:"894",patente:"PLG-844"},{interno:"895",patente:"AB888VV"},
+  {interno:"896",patente:"AC172FB"},{interno:"897",patente:"AC172FO"},{interno:"898",patente:"AC172EX"},
+  {interno:"899",patente:"AC172FN"},{interno:"900",patente:"AC172EV"},{interno:"901",patente:"AC172FC"},
+  {interno:"902",patente:"AC172FF"},{interno:"903",patente:"AC172FK"},{interno:"904",patente:"AC172FL"},
+  {interno:"905",patente:"AC172EZ"},{interno:"907",patente:"AD641EJ"},{interno:"908",patente:"AD641EN"},
+  {interno:"909",patente:"AD641EZ"},{interno:"913",patente:"AD723HE"},{interno:"914",patente:"AD723HF"},
+  {interno:"915",patente:"AD848RF"},{interno:"916",patente:"AD848RG"},{interno:"917",patente:"AD848RE"},
+  {interno:"918",patente:"AD848RD"},{interno:"919",patente:"AE015GB"},{interno:"920",patente:"AE074BA"},
+  {interno:"921",patente:"AE074BB"},{interno:"922",patente:"AE193NF"},{interno:"923",patente:"AE193NG"},
+  {interno:"924",patente:"AE193NH"},{interno:"925",patente:"AE193NJ"},{interno:"926",patente:"AE193NI"},
+  {interno:"927",patente:"AE193NL"},{interno:"928",patente:"AE193NM"},{interno:"929",patente:"AE174RH"},
+  {interno:"930",patente:"AE174RJ"},{interno:"931",patente:"AE174RF"},{interno:"932",patente:"AE174RS"},
+  {interno:"933",patente:"AE174RN"},{interno:"934",patente:"AE174RG"},{interno:"935",patente:"AE174RR"},
+  {interno:"936",patente:"AE174RK"},{interno:"937",patente:"AE174RC"},{interno:"938",patente:"AE174RL"},
+  {interno:"939",patente:"AE174RE"},{interno:"940",patente:"AE174RB"},{interno:"941",patente:"AE174RQ"},
+  {interno:"942",patente:"AE174RD"},{interno:"943",patente:"AE174RP"},{interno:"944",patente:"AE174RM"},
+  {interno:"945",patente:"AE193NX"},{interno:"946",patente:"AE350BI"},{interno:"947",patente:"AE428RA"},
+  {interno:"948",patente:"AE428RB"},{interno:"949",patente:"AE428RH"},{interno:"950",patente:"AE428RG"},
+  {interno:"951",patente:"AE350BZ"},{interno:"952",patente:"AE473BR"},{interno:"953",patente:"AE473BQ"},
+  {interno:"954",patente:"AE502UF"},{interno:"955",patente:"AE502UE"},{interno:"956",patente:"AE502UC"},
+  {interno:"957",patente:"AE502UA"},{interno:"958",patente:"AE502UD"},{interno:"959",patente:"AE473BZ"},
+  {interno:"960",patente:"AE502UB"},{interno:"961",patente:"AE686XG"},{interno:"962",patente:"AE686XM"},
+  {interno:"963",patente:"AE814BD"},{interno:"964",patente:"AE814BE"},{interno:"965",patente:"AE814BF"},
+  {interno:"966",patente:"AE814BG"},{interno:"967",patente:"AE944SK"},{interno:"968",patente:"AE863MW"},
+  {interno:"969",patente:"AE944SG"},{interno:"970",patente:"AE944SL"},{interno:"971",patente:"AE944SH"},
+  {interno:"972",patente:"AE944SS"},{interno:"973",patente:"AE944ST"},{interno:"974",patente:"AF056VA"},
+  {interno:"975",patente:"AF056VB"},{interno:"976",patente:"AF056VP"},{interno:"977",patente:"AF056VO"},
+  {interno:"978",patente:"AF056VV"},{interno:"979",patente:"AF085ML"},{interno:"980",patente:"AF085MK"},
+  {interno:"981",patente:"AF085MD"},{interno:"982",patente:"AF117PW"},{interno:"983",patente:"AE318KX"},
+  {interno:"984",patente:"AF177VZ"},{interno:"985",patente:"AF353DH"},{interno:"986",patente:"AF485QX"},
+  {interno:"987",patente:"AF485QY"},{interno:"988",patente:"AF485QP"},{interno:"989",patente:"AF485QS"},
+  {interno:"990",patente:"AF485QQ"},{interno:"991",patente:"AF485QR"},{interno:"992",patente:"AF353DI"},
+  {interno:"993",patente:"AF485QC"},{interno:"994",patente:"AF485QA"},{interno:"995",patente:"AF485QB"},
+  {interno:"996",patente:"AF485QD"},{interno:"997",patente:"AF423ZL"},{interno:"998",patente:"AF423ZS"},
+  {interno:"999",patente:"AF537FJ"},{interno:"1000",patente:"AF537FQ"},{interno:"1001",patente:"AF537FP"},
+  {interno:"1002",patente:"AF537FK"},{interno:"1003",patente:"AF537FE"},{interno:"1004",patente:"AF537FD"},
+  {interno:"1005",patente:"AF537FL"},{interno:"1006",patente:"AF537FH"},{interno:"1007",patente:"AF537FM"},
+  {interno:"1008",patente:"AF440EU"},{interno:"1009",patente:"AF537FT"},{interno:"1010",patente:"AF527TG"},
+  {interno:"1011",patente:"AF614SK"},{interno:"1012",patente:"AF614SI"},{interno:"1013",patente:"AF614SL"},
+  {interno:"1014",patente:"AF614SH"},{interno:"1015",patente:"AF668OC"},{interno:"1016",patente:"AF668OA"},
+  {interno:"1017",patente:"AF668OB"},{interno:"1018",patente:"AF668OI"},{interno:"1019",patente:"AF668OK"},
+  {interno:"1020",patente:"AF668OP"},{interno:"1021",patente:"AF668ON"},{interno:"1022",patente:"AF668OQ"},
+  {interno:"1023",patente:"AF668OO"},{interno:"1024",patente:"AF668OR"},{interno:"1025",patente:"AF668OY"},
+  {interno:"1026",patente:"AF668OS"},{interno:"1028",patente:"AF668OT"},{interno:"1029",patente:"AF668OU"},
+  {interno:"1030",patente:"AF732ZP"},{interno:"1033",patente:"AF891YQ"},{interno:"1034",patente:"AF949KJ"},
+  {interno:"1035",patente:"AF949KK"},{interno:"1036",patente:"AF949KI"},{interno:"1037",patente:"AF949KN"},
+  {interno:"1038",patente:"AF949KM"},{interno:"1039",patente:"AF949KG"},{interno:"1040",patente:"AF949KH"},
+  {interno:"1041",patente:"AF949KQ"},{interno:"1042",patente:"AF949KP"},{interno:"1043",patente:"AF949KX"},
+  {interno:"1044",patente:"AF949KY"},{interno:"1045",patente:"AG043YU"},{interno:"1046",patente:"AG043YV"},
+  {interno:"1047",patente:"AG098QB"},{interno:"1048",patente:"AG043YZ"},{interno:"1049",patente:"AG098QW"},
+  {interno:"1050",patente:"AG098QV"},{interno:"1051",patente:"AG174JI"},{interno:"1052",patente:"AG174JJ"},
+  {interno:"1053",patente:"AG264SE"},{interno:"1054",patente:"AG264SD"},{interno:"1055",patente:"AG264SG"},
+  {interno:"1056",patente:"AG264SV"},{interno:"1057",patente:"AG264SU"},{interno:"1058",patente:"AG351OF"},
+  {interno:"1059",patente:"AG351OE"},{interno:"1060",patente:"AG351OD"},{interno:"1061",patente:"AG118QJ"},
+  {interno:"1062",patente:"AG351OG"},{interno:"1063",patente:"AG297HP"},{interno:"1064",patente:"AG351OR"},
+  {interno:"1065",patente:"AG316VO"},{interno:"1066",patente:"AG459IA"},{interno:"1067",patente:"AG459IC"},
+  {interno:"1068",patente:"AG351OZ"},{interno:"1069",patente:"AG512XV"},{interno:"1070",patente:"AG586GB"},
+  {interno:"1071",patente:"AG586GC"},{interno:"1072",patente:"AG512XW"},{interno:"1073",patente:"AG712XA"},
+  {interno:"1074",patente:"AG631ZU"},{interno:"1075",patente:"AG712XL"},{interno:"1076",patente:"AG712XB"},
+  {interno:"1077",patente:"AG631ZX"},{interno:"1078",patente:"AG712XH"},{interno:"1079",patente:"AG712XC"},
+  {interno:"1080",patente:"AG712XM"},{interno:"1081",patente:"AG712XK"},{interno:"1082",patente:"AG712XO"},
+  {interno:"1083",patente:"AG631ZG"},{interno:"1084",patente:"AG631ZS"},{interno:"1085",patente:"AG763LZ"},
+  {interno:"1086",patente:"AG944JX"},{interno:"1088",patente:"AF563HZ"},{interno:"1089",patente:"AH289JF"},
+  {interno:"1090",patente:"AH289JE"},{interno:"1091",patente:"AH248DZ"},{interno:"1093",patente:"AH385HX"},
+  {interno:"1094",patente:"AG293YO"},{interno:"1110",patente:"AH683IK"},{interno:"1111",patente:"AH893NH"},
+  {interno:"1112",patente:"AH893NX"},{interno:"1113",patente:"AH893MQ"},{interno:"1114",patente:"AH893NV"},
+  {interno:"1115",patente:"AH893NG"},{interno:"1116",patente:"AH893NW"},{interno:"1117",patente:"AH174RH"},
+  {interno:"1118",patente:"AH893NK"},{interno:"1119",patente:"AH893NF"},{interno:"1120",patente:"AH893NP"},
+  {interno:"1121",patente:"AH893NH"},{interno:"1122",patente:"AH893NM"},{interno:"1123",patente:"AH893NL"},
+  {interno:"1124",patente:"AH893NS"},{interno:"1125",patente:"AH893NY"},{interno:"1126",patente:"AH893MO"},
+  {interno:"1127",patente:"AH893NR"},{interno:"1128",patente:"AH893NN"},{interno:"1129",patente:"AH893NO"},
+  {interno:"1130",patente:"AH983NI"},{interno:"100006",patente:"OLB342"},{interno:"100010",patente:"AC678CJ"},
+  {interno:"100016",patente:"AH237BG"},{interno:"100017",patente:"AD773RQ"},{interno:"100018",patente:"AH893NQ"},
+  {interno:"100246",patente:"AG378CN"},{interno:"100247",patente:"AF152IE"},{interno:"100248",patente:"AH410ZP"},
+  {interno:"100249",patente:"AG529EX"},{interno:"100250",patente:"AG400EO"},{interno:"100251",patente:"AH258PM"},
+  {interno:"100252",patente:"AF983IT"},{interno:"100255",patente:"KEM095"},{interno:"100256",patente:"GWF471"},
+  {interno:"100370",patente:"AC422GH"},{interno:"100015",patente:"AG958TJ"},{interno:"100260",patente:"AH921TE"},
+  {interno:"100261",patente:"AH276XQ"},{interno:"100999",patente:"AF009MA"},
+  {interno:"DELEGADO",patente:"NFQ-225"},{interno:"ESTANCIA TP",patente:"ESTANCIA TP"},
+  {interno:"H-63",patente:"H-63"},{interno:"H-64",patente:"H-64"},{interno:"H-65",patente:"H-65"},
+  {interno:"H-69",patente:"H-69"},{interno:"HIDRO BASE",patente:"HIDRO BASE"},
+  {interno:"S-39",patente:"S-39"},{interno:"S-41",patente:"S-41"},{interno:"S-43",patente:"S-43"},
+  {interno:"S-44",patente:"S-44"},{interno:"S-45",patente:"S-45"},{interno:"S-47",patente:"S-47"},
+  {interno:"SINDICATO",patente:"AG378CN"},
+];
+
+// Mapa rápido interno→patente
+const INTERNO_MAP = {};
+VEHICULOS.forEach(v=>{ INTERNO_MAP[v.interno]=v.patente; });
+
+// Mapa destino → tanques disponibles (para selector en formulario)
+const DESTINO_TANQUES={
+  "REMOTA VH":         [{id:"tk1",label:"Euro Tk1"},{id:"tk2",label:"Euro Tk2"}],
+  "REMOTA TP":         [{id:"tk1",label:"Euro Tk1"},{id:"tk2",label:"Euro Tk2"},{id:"tk3",label:"Euro Tk3"}],
+  "REMOTA AG":         [{id:"tk1",label:"Gasoil Tk1"},{id:"tk2",label:"Gasoil Tk2"}],
+  "ANTICLINAL GRANDE": [{id:"tk1",label:"Gasoil Tk1"},{id:"tk2",label:"Gasoil Tk2"}],
+  "ESTACION CD":       [{id:"tk1",label:"Euro Tk1"},{id:"tk2",label:"Euro Tk2"},{id:"tk3",label:"Gasoil Tk3"}],
+  "BASE CR":           [{id:"tk1",label:"Euro Tk1"}],
+  "RESERO":            [{id:"tk1",label:"Euro Tk1"}],
+  "LATITUD 45":        [{id:"tk1",label:"Tanque único"}],
+};
+
+/* ── LISTAS PREDETERMINADAS ─────────────────────────────────────────────── */
+const DEFAULT_LISTAS={
+  CLIENTES:["ESTACION CD","REMOTA VH","REMOTA TP","REMOTA AG","LATITUD 45","PAE","PECOM","PEALCO","EXTRABERRIES","RESERO","BASE CR","MANPETROL","VARIOS"],
+  DESTINOS:["ESTACION CD","REMOTA VH","REMOTA TP","REMOTA AG","LATITUD 45","PAE","PECOM","PEALCO","EXTRABERRIES","RESERO","BASE CR","VARIOS"],
+  CHOFERES:["POLAK EDUARDO","MUÑOZ PABLO"],
+  INTERNOS:["836","742","794"],
+};
+
+/* ── API HELPERS ──────────────────────────────────────────────────────────── */
+async function gasPost(url,payload){
+  try{ await fetch(url,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify(payload)}); }
+  catch(e){console.warn("GAS POST error",e);}
+}
+async function gasGet(url){
+  const res=await fetch(url+"?action=getAll&nocache="+Date.now());
+  if(!res.ok) throw new Error("HTTP "+res.status);
+  return res.json();
+}
+
+function rowToMov(row){
+  if(!row||!row[0]) return null;
+  // Sheet: col10=Factura, col11=Tk1, col12=Tk2, col13=Tk3, col18=TanqueDestino
+  const fechaRaw=String(row[1]||"");
+  const fecha=fechaRaw.includes("T")?fechaRaw.slice(0,10):fechaRaw;
+  return {id:String(row[0]),fecha,ref:String(row[2]||""),comp:String(row[3]||""),pedido:String(row[4]||""),proveedor:String(row[5]||""),receptor:String(row[6]||""),destino:String(row[7]||""),interno:String(row[8]||""),chofer:String(row[9]||""),factura:String(row[10]||""),tk1:String(row[11]||""),tk2:String(row[12]||""),tk3:String(row[13]||""),tanqueDestino:String(row[18]||"")};
+}
+
+function rowToMovCR(row, idx){
+  if(!row||!row[0]) return null;
+  // Sheet Base CR: A=Fecha, B=Interno, C=Patente, D=Chofer, E=Litros, F=Producto, G=Observaciones
+  const fechaRaw=String(row[0]||"");
+  const fecha=fechaRaw.includes("T")?fechaRaw.slice(0,10):fechaRaw;
+  const litros=String(row[4]||"");
+  return {id:"cr_"+idx+"_"+fecha,fecha,interno:String(row[1]||""),patente:String(row[2]||""),chofer:String(row[3]||""),litros,producto:String(row[5]||""),observaciones:String(row[6]||"")};
+}
+
+const {useState,useMemo,useEffect,useCallback}=React;
+const P={bg:"#f0ebe3",bg2:"#e8e0d4",surface:"#faf7f2",card:"#fff",border:"#ddd4c4",
+  accent:"#c8530a",accentL:"#e87030",amber:"#d49010",green:"#2a7a4a",
+  red:"#c02828",ink:"#1e1610",inkM:"#5a4a3c",inkL:"#8a7a6c",blue:"#1a5890",
+  teal:"#0a6870"};
+const fmt=n=>Number(n||0).toLocaleString("es-AR");
+const toDay=()=>new Date().toISOString().slice(0,10);
+const TANKS=["Tk1","Tk2","Tk3"];
+const TANK_LABELS={"Tk1":"Gasoil Tk1","Tk2":"Euro Tk2","Tk3":"Euro Tk3"};
+const TIPOS=[{val:"RTO",label:"RTO — Remito"},{val:"FAC",label:"FAC — Factura"},{val:"PS",label:"PS  — Despacho"}];
+
+/* ══ COMPONENTES COMUNES ══════════════════════════════════════════════════ */
+const inp={background:"#faf7f2",border:"1px solid #ddd4c4",borderRadius:5,color:"#1e1610",padding:"8px 11px",fontSize:13,fontFamily:"'Barlow',sans-serif",width:"100%"};
+const lbl={fontSize:10,color:"#8a7a6c",letterSpacing:1.5,marginBottom:4,display:"block",fontFamily:"'Barlow Condensed'",fontWeight:700,textTransform:"uppercase"};
+
+function Toast({msg,type}){
+  if(!msg) return null;
+  const bg=type==="ok"?"#2a7a4a":type==="err"?"#c02828":"#1a5890";
+  return(
+    <div style={{position:"fixed",bottom:24,right:24,background:bg,color:"#fff",padding:"12px 20px",borderRadius:10,fontFamily:"'Barlow Condensed'",fontSize:14,fontWeight:700,letterSpacing:1,boxShadow:"0 4px 20px rgba(0,0,0,0.25)",zIndex:9999,display:"flex",alignItems:"center",gap:8,maxWidth:360}}>
+      {type==="loading"&&<span className="spin" style={{marginRight:4}}>⟳</span>}
+      {msg}
+    </div>
+  );
+}
+
+function Badge({tipo}){
+  const m={RTO:{bg:"#e6f2ff",c:"#1a5890",b:"#a8ccee"},FAC:{bg:"#e6f2ff",c:"#1a5890",b:"#a8ccee"},PS:{bg:"#fff0e6",c:P.accent,b:"#eebb99"}}[tipo]||{bg:P.bg2,c:P.inkL,b:P.border};
+  return <span style={{background:m.bg,color:m.c,border:`1px solid ${m.b}`,fontSize:10,fontWeight:700,letterSpacing:1.5,padding:"2px 8px",borderRadius:3,fontFamily:"'Barlow Condensed'"}}>{tipo}</span>;
+}
+
+function Gauge({name,stock,cap,idx}){
+  const pct=cap>0?Math.min(1,Math.max(0,(stock||0)/cap)):0;
+  const r=46,circ=2*Math.PI*r;
+  const color=pct>0.6?P.green:pct>0.25?P.amber:P.red;
+  return(
+    <div className="fu" style={{animationDelay:`${idx*0.12}s`,flex:1,minWidth:155,background:P.card,border:`1px solid ${P.border}`,borderRadius:14,padding:"18px 14px 16px",display:"flex",flexDirection:"column",alignItems:"center",boxShadow:"0 2px 14px rgba(0,0,0,.07)",position:"relative",overflow:"hidden"}}>
+      <div style={{position:"absolute",top:0,left:0,right:0,height:3,background:`linear-gradient(90deg,${color}cc,${color}44)`}}/>
+      <div style={{fontFamily:"'Barlow Condensed'",fontSize:12,fontWeight:700,letterSpacing:3,color:P.inkL,textTransform:"uppercase",marginBottom:12}}>{TANK_LABELS[name]||name}</div>
+      <div style={{position:"relative",width:108,height:108}}>
+        <svg width={108} height={108} style={{transform:"rotate(-90deg)"}}>
+          <circle cx={54} cy={54} r={r} fill="none" stroke={P.bg2} strokeWidth={9}/>
+          <circle cx={54} cy={54} r={r} fill="none" stroke={color} strokeWidth={9} strokeLinecap="round" strokeDasharray={`${pct*circ} ${circ}`} style={{transition:"stroke-dasharray .5s ease,stroke .3s"}}/>
+        </svg>
+        <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <div style={{fontFamily:"'Barlow Condensed'",fontSize:22,fontWeight:900,color:P.ink}}>{Math.round(pct*100)}%</div>
+        </div>
+      </div>
+      <div style={{marginTop:10,textAlign:"center"}}>
+        <div style={{fontFamily:"'Barlow Condensed'",fontSize:20,fontWeight:700,color}}>{fmt(Math.round(stock||0))} <span style={{fontSize:11,color:P.inkL,fontWeight:400}}>L</span></div>
+        <div style={{fontSize:11,color:P.inkL,marginTop:2}}>Cap: {fmt(cap)} L</div>
+      </div>
+    </div>
+  );
+}
+
+function Stat({label,value,unit="L",color,idx=0}){
+  return(
+    <div className="fu" style={{animationDelay:`${idx*0.08}s`,flex:1,minWidth:130,background:P.card,border:`1px solid ${P.border}`,borderRadius:10,padding:"16px 18px",boxShadow:"0 2px 8px rgba(0,0,0,.05)",borderTop:`3px solid ${color}`}}>
+      <div style={{...lbl,marginBottom:6}}>{label}</div>
+      <div style={{fontFamily:"'Barlow Condensed'",fontSize:28,fontWeight:900,color,lineHeight:1}}>
+        {fmt(value)} <span style={{fontSize:13,fontWeight:400,color:P.inkL}}>{unit}</span>
+      </div>
+    </div>
+  );
+}
+
+/* ══ MÓDULO PLANTA GRANEL ════════════════════════════════════════════════ */
+function PlantaGranel({showToast}){
+  const [caps,setCaps]=useState({Tk1:100000,Tk2:100000,Tk3:100000});
+  const [listas,setListas]=useState(DEFAULT_LISTAS);
+  const [editLista,setEditLista]=useState(null);
+  const [initStock,setInitStock]=useState({Tk1:26000,Tk2:24000,Tk3:8100});
+  const [movs,setMovs]=useState([]);
+  const [tab,setTab]=useState("movs");
+  const [fMes,setFMes]=useState("");
+  const [fTipo,setFTipo]=useState("");
+  const [fQ,setFQ]=useState("");
+  const [editId,setEditId]=useState(null);
+  const [syncing,setSyncing]=useState(false);
+
+  useEffect(()=>{
+    setSyncing(true);
+    Promise.all([
+      fetch(GAS_URL_PLANTA+"?action=getAll&nocache="+Date.now()).then(r=>r.json()),
+      fetch(GAS_URL_PLANTA+"?action=getRow2&nocache="+Date.now()).then(r=>r.json()).catch(()=>null),
+    ])
+      .then(([rows,row2])=>{
+        if(Array.isArray(rows)) setMovs(rows.map(rowToMov).filter(Boolean));
+        if(row2&&(row2.Tk1||row2.Tk2||row2.Tk3)) setInitStock({Tk1:row2.Tk1||0,Tk2:row2.Tk2||0,Tk3:row2.Tk3||0});
+        if(row2&&row2.caps) setCaps(row2.caps);
+        showToast("✓ Datos Planta Granel cargados","ok");
+      })
+      .catch(()=>showToast("Sin conexión a Sheets","err",5000))
+      .finally(()=>setSyncing(false));
+  },[]);
+
+  const sincronizar=()=>{
+    setSyncing(true);
+    showToast("Sincronizando…","loading",30000);
+    gasGet(GAS_URL_PLANTA)
+      .then(rows=>{ setMovs(rows.map(rowToMov).filter(Boolean)); showToast("✓ Sincronizado","ok"); })
+      .catch(()=>showToast("Error al sincronizar","err",4000))
+      .finally(()=>setSyncing(false));
+  };
+
+  const ef=()=>({fecha:toDay(),ref:"PS",comp:"",pedido:"",proveedor:"",receptor:"",destino:"",distribucion:{},interno:"",chofer:"",tk1:"",tk2:"",tk3:"",factura:""});
+  const [form,setForm]=useState(ef());
+
+  const stocks=useMemo(()=>{
+    const st={...initStock};
+    movs.forEach(m=>{const sg=["RTO","FAC"].includes(m.ref)?1:-1;TANKS.forEach(tk=>{st[tk]=(st[tk]||0)+sg*(parseFloat(m[tk.toLowerCase()])||0);});});
+    return st;
+  },[movs,initStock]);
+  const stockTotal=TANKS.reduce((a,tk)=>a+(stocks[tk]||0),0);
+
+  const displayed=useMemo(()=>[...movs]
+    .filter(m=>!fMes||m.fecha.slice(0,7)===fMes)
+    .filter(m=>!fTipo||m.ref===fTipo)
+    .filter(m=>{if(!fQ)return true;const q=fQ.toLowerCase();return(m.receptor||"").toLowerCase().includes(q)||(m.proveedor||"").toLowerCase().includes(q)||(m.destino||"").toLowerCase().includes(q)||(m.comp||"").toLowerCase().includes(q);})
+    .sort((a,b)=>b.fecha.localeCompare(a.fecha))
+  ,[movs,fMes,fTipo,fQ]);
+
+  const mesMovs=useMemo(()=>fMes?movs.filter(m=>m.fecha.slice(0,7)===fMes):movs,[movs,fMes]);
+  const litros=tipo=>mesMovs.filter(m=>tipo==="in"?["RTO","FAC"].includes(m.ref):m.ref==="PS").reduce((a,m)=>a+TANKS.reduce((b,tk)=>b+(parseFloat(m[tk.toLowerCase()])||0),0),0);
+  const resumen=useMemo(()=>{
+    const d={};
+    mesMovs.forEach(m=>{const k=m.receptor||m.proveedor||"—";if(!d[k])d[k]={ing:0,eg:0,n:0};const t=TANKS.reduce((a,tk)=>a+(parseFloat(m[tk.toLowerCase()])||0),0);if(["RTO","FAC"].includes(m.ref))d[k].ing+=t;else d[k].eg+=t;d[k].n++;});
+    return Object.entries(d).sort((a,b)=>b[1].eg-a[1].eg);
+  },[mesMovs]);
+
+  const submit=async()=>{
+    if(!form.fecha||(!parseFloat(form.tk1)&&!parseFloat(form.tk2)&&!parseFloat(form.tk3))){
+      showToast("Completá la fecha y al menos un tanque con litros.","err"); return;
+    }
+    const id=editId||String(Date.now());
+    // Serializar distribucion como JSON para guardar en sheet (col 18)
+    const distStr=Object.keys(form.distribucion||{}).length>0?JSON.stringify(form.distribucion):"";
+    const payload={...form,id,tanqueDestino:distStr};
+    setMovs(p=>editId?p.map(m=>m.id===id?payload:m):[...p,payload]);
+    setEditId(null);setForm(ef());
+    try{
+      await gasPost(GAS_URL_PLANTA,{action:editId?"update":"add",...payload});
+      showToast(editId?"✓ Movimiento actualizado":"✓ Guardado en Google Sheets","ok");
+    }catch(e){ showToast("Guardado localmente — verificar conexión","err",4000); }
+
+    // AUTO-SYNC BASE CR: si el receptor/destino es BASE CR y hay litros Euro (Tk2+Tk3)
+    const esBaseCR = (payload.receptor||"").toUpperCase().includes("BASE CR") || (payload.destino||"").toUpperCase().includes("BASE CR");
+    const litrosEuro = (parseFloat(payload.tk2)||0) + (parseFloat(payload.tk3)||0);
+    if(!editId && esBaseCR && litrosEuro > 0){
+      try{
+        const ingresoBaseCR = {
+          action: "add",
+          id: String(Date.now()+1),
+          fecha: payload.fecha,
+          interno: payload.interno||"",
+          patente: INTERNO_MAP[payload.interno]||"",
+          chofer: payload.chofer||"",
+          litros: litrosEuro,  // positivo = ingreso desde Planta a Base CR
+          producto: "Euro",
+          observaciones: "Ingreso automático desde Planta Granel (N°"+payload.comp+")"
+        };
+        await gasPost(GAS_URL_BASECR, ingresoBaseCR);
+        showToast("✓ Guardado + ingreso automático en Base CR 🚛","ok",4000);
+      }catch(e){ showToast("✓ Planta OK — verificar sync Base CR","err",5000); }
+    }
+  };
+
+  const esI=["RTO","FAC"].includes(form.ref);
+  const fTot=(parseFloat(form.tk1)||0)+(parseFloat(form.tk2)||0)+(parseFloat(form.tk3)||0);
+  const TABS=[{k:"movs",label:"Movimientos"},{k:"resumen",label:"Resumen"},{k:"config",label:"Configuración"}];
+
+  return(
+    <div>
+      {/* Mini header de planta */}
+      <div style={{display:"flex",gap:20,alignItems:"center",padding:"8px 0",borderBottom:`1px solid ${P.border}`,marginBottom:18,flexWrap:"wrap"}}>
+        {TANKS.map(tk=>{
+          const pct=caps[tk]>0?Math.min(100,Math.max(0,(stocks[tk]||0)/caps[tk]*100)):0;
+          const c=pct>60?"#3de07a":pct>25?"#f0b030":"#f05050";
+          return(
+            <div key={tk} style={{display:"flex",flexDirection:"column",alignItems:"center"}}>
+              <div style={{fontSize:9,color:P.inkL,letterSpacing:2,fontFamily:"'Barlow Condensed'",textTransform:"uppercase"}}>{TANK_LABELS[tk]}</div>
+              <div style={{width:80,height:4,background:P.bg2,borderRadius:2,margin:"4px 0"}}>
+                <div style={{width:`${pct}%`,height:"100%",background:c,borderRadius:2,transition:"width .5s"}}/>
+              </div>
+              <div style={{fontFamily:"'Barlow Condensed'",fontSize:16,fontWeight:700,color:P.ink}}>{fmt(Math.round(stocks[tk]||0))} L</div>
+            </div>
+          );
+        })}
+        <div style={{marginLeft:"auto",display:"flex",gap:8}}>
+          <button onClick={sincronizar} disabled={syncing} style={{background:P.bg2,border:`1px solid ${P.border}`,borderRadius:7,color:P.inkM,fontFamily:"'Barlow Condensed'",fontWeight:700,fontSize:11,letterSpacing:2,padding:"8px 14px",cursor:"pointer",opacity:syncing?.6:1}}>
+            {syncing?<span className="spin">⟳</span>:"↻"} Sincronizar
+          </button>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={{display:"flex",gap:4,marginBottom:18,borderBottom:`2px solid ${P.border}`}}>
+        {TABS.map(t=>(
+          <button key={t.k} onClick={()=>setTab(t.k)} style={{background:"transparent",border:"none",fontFamily:"'Barlow Condensed'",fontWeight:700,fontSize:12,letterSpacing:2,textTransform:"uppercase",color:tab===t.k?P.accent:P.inkL,padding:"9px 18px 11px",cursor:"pointer",borderBottom:tab===t.k?`2px solid ${P.accent}`:"2px solid transparent",marginBottom:-2}}>{t.label}</button>
+        ))}
+      </div>
+
+      {tab==="movs"&&(
+        <div style={{display:"flex",gap:18,alignItems:"flex-start",flexWrap:"wrap"}}>
+          {/* FORMULARIO */}
+          <div style={{width:300,flexShrink:0,background:P.card,border:`1px solid ${P.border}`,borderRadius:14,overflow:"hidden",boxShadow:"0 2px 16px rgba(0,0,0,.08)"}}>
+            <div style={{background:esI?"linear-gradient(135deg,#1a4878,#0c2444)":`linear-gradient(135deg,${P.accent},#882c04)`,padding:"14px 20px",display:"flex",alignItems:"center",gap:10}}>
+              <span style={{fontSize:20}}>{esI?"📥":"🚛"}</span>
+              <div>
+                <div style={{fontFamily:"'Barlow Condensed'",fontWeight:900,fontSize:16,color:"#fff",letterSpacing:1}}>{editId?"EDITAR":"NUEVO"} MOVIMIENTO</div>
+                <div style={{fontSize:10,color:"rgba(255,255,255,.55)",letterSpacing:1}}>{esI?"INGRESO A TANQUE":"DESPACHO / SALIDA"}</div>
+              </div>
+            </div>
+            <div style={{padding:18,display:"grid",gap:11}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9}}>
+                <div><label style={lbl}>Fecha</label><input style={inp} type="date" value={form.fecha} onChange={e=>setForm({...form,fecha:e.target.value})}/></div>
+                <div><label style={lbl}>Tipo</label>
+                  <select style={inp} value={form.ref} onChange={e=>setForm({...form,ref:e.target.value})}>
+                    {TIPOS.map(t=><option key={t.val} value={t.val}>{t.val}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9}}>
+                <div><label style={lbl}>Comprobante</label><input style={inp} placeholder="N°" value={form.comp} onChange={e=>setForm({...form,comp:e.target.value})}/></div>
+                <div><label style={lbl}>N° Pedido</label><input style={inp} placeholder="—" value={form.pedido} onChange={e=>setForm({...form,pedido:e.target.value})}/></div>
+              </div>
+              {esI?(
+                <div><label style={lbl}>Proveedor</label>
+                  <select style={inp} value={form.proveedor} onChange={e=>setForm({...form,proveedor:e.target.value})}>
+                    <option value="">— seleccionar —</option>
+                    {listas.CLIENTES.map(c=><option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+              ):(
+                <React.Fragment>
+                  <div><label style={lbl}>Receptor / Cliente</label>
+                    <select style={inp} value={form.receptor} onChange={e=>setForm({...form,receptor:e.target.value})}>
+                      <option value="">— seleccionar —</option>
+                      {listas.CLIENTES.map(c=><option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div><label style={lbl}>Destino</label>
+                    <select style={inp} value={form.destino} onChange={e=>setForm({...form,destino:e.target.value,tanqueDestino:DESTINO_TANQUES[e.target.value]?.[0]?.id||"tk1"})}>
+                      <option value="">— seleccionar —</option>
+                      {listas.DESTINOS.map(d=><option key={d} value={d}>{d}</option>)}
+                    </select>
+                  </div>
+                  {/* Distribución en tanques destino */}
+                  {DESTINO_TANQUES[form.destino]&&(
+                    <div style={{background:"#f0faf8",border:`1px solid ${P.teal}`,borderRadius:8,padding:"10px 12px"}}>
+                      <div style={{fontFamily:"'Barlow Condensed'",fontSize:10,fontWeight:700,letterSpacing:2,color:P.teal,textTransform:"uppercase",marginBottom:8}}>
+                        Distribución en tanques destino
+                      </div>
+                      {DESTINO_TANQUES[form.destino].map(tk=>(
+                        <div key={tk.id} style={{display:"grid",gridTemplateColumns:"1fr 90px",gap:8,marginBottom:6,alignItems:"center"}}>
+                          <label style={{...lbl,margin:0,color:P.inkM}}>{tk.label}</label>
+                          <input
+                            style={{...inp,borderColor:(form.distribucion[tk.id]||0)>0?P.teal:P.border,fontWeight:(form.distribucion[tk.id]||0)>0?700:400,textAlign:"right"}}
+                            type="number" placeholder="0"
+                            value={form.distribucion[tk.id]||""}
+                            onChange={e=>{
+                              const v=parseFloat(e.target.value)||0;
+                              setForm(f=>({...f,distribucion:{...f.distribucion,[tk.id]:v}}));
+                            }}
+                          />
+                        </div>
+                      ))}
+                      {(()=>{
+                        const totalDist=Object.values(form.distribucion).reduce((a,b)=>a+(parseFloat(b)||0),0);
+                        const totalTk=(parseFloat(form.tk1)||0)+(parseFloat(form.tk2)||0)+(parseFloat(form.tk3)||0);
+                        const diff=totalTk-totalDist;
+                        if(totalDist===0) return null;
+                        return <div style={{fontFamily:"'Barlow Condensed'",fontSize:12,fontWeight:700,color:Math.abs(diff)<1?P.green:P.accent,textAlign:"right",marginTop:4}}>
+                          {Math.abs(diff)<1?"✓ Distribución completa":`Diferencia: ${diff>0?"+":""}${diff.toFixed(0)} L`}
+                        </div>;
+                      })()}
+                    </div>
+                  )}
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9}}>
+                    <div><label style={lbl}>Interno</label>
+                      <select style={inp} value={form.interno} onChange={e=>setForm({...form,interno:e.target.value})}>
+                        <option value="">—</option>
+                        {listas.INTERNOS.map(i=><option key={i} value={i}>{i}</option>)}
+                      </select>
+                    </div>
+                    <div><label style={lbl}>Chofer</label>
+                      <select style={inp} value={form.chofer} onChange={e=>setForm({...form,chofer:e.target.value})}>
+                        <option value="">—</option>
+                        {listas.CHOFERES.map(c=><option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </React.Fragment>
+              )}
+              <div style={{background:P.bg,border:`1px solid ${P.border}`,borderRadius:8,padding:"11px 13px"}}>
+                <div style={{fontFamily:"'Barlow Condensed'",fontSize:10,fontWeight:700,letterSpacing:2,color:P.inkL,textTransform:"uppercase",marginBottom:9}}>Litros por tanque</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+                  {TANKS.map(tk=>(
+                    <div key={tk}>
+                      <div style={{fontFamily:"'Barlow Condensed'",fontSize:10,fontWeight:700,color:P.accent,letterSpacing:1,marginBottom:4}}>{TANK_LABELS[tk]}</div>
+                      <input style={{...inp,borderColor:form[tk.toLowerCase()]?P.accent:P.border,fontWeight:form[tk.toLowerCase()]?600:400}} type="number" placeholder="0" value={form[tk.toLowerCase()]} onChange={e=>setForm({...form,[tk.toLowerCase()]:e.target.value})}/>
+                    </div>
+                  ))}
+                </div>
+                {fTot>0&&<div style={{fontFamily:"'Barlow Condensed'",fontSize:13,fontWeight:700,color:esI?P.green:P.accent,textAlign:"right",marginTop:7}}>{esI?"+":"−"}{fmt(fTot)} L</div>}
+              </div>
+              <div><label style={lbl}>N° Factura</label><input style={inp} placeholder="—" value={form.factura} onChange={e=>setForm({...form,factura:e.target.value})}/></div>
+              <div style={{display:"flex",gap:8,paddingTop:2}}>
+                <button onClick={submit} style={{flex:1,background:esI?"#1a4878":P.accent,border:"none",borderRadius:7,color:"#fff",fontFamily:"'Barlow Condensed'",fontWeight:700,fontSize:14,letterSpacing:2,padding:"11px 0",cursor:"pointer",textTransform:"uppercase"}}>
+                  {editId?"Guardar":"Registrar"}
+                </button>
+                {editId&&<button onClick={()=>{setEditId(null);setForm(ef());}} style={{background:"transparent",border:`1px solid ${P.border}`,borderRadius:7,color:P.inkL,fontFamily:"'Barlow Condensed'",fontSize:13,padding:"11px 14px",cursor:"pointer"}}>✕</button>}
+              </div>
+            </div>
+          </div>
+
+          {/* TABLA */}
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{background:P.card,border:`1px solid ${P.border}`,borderRadius:10,padding:"13px 16px",marginBottom:14,display:"flex",gap:11,flexWrap:"wrap",alignItems:"flex-end"}}>
+              <div><label style={lbl}>Mes</label><input style={{...inp,width:148}} type="month" value={fMes} onChange={e=>setFMes(e.target.value)}/></div>
+              <div><label style={lbl}>Tipo</label>
+                <select style={{...inp,width:110}} value={fTipo} onChange={e=>setFTipo(e.target.value)}>
+                  <option value="">Todos</option>
+                  {TIPOS.map(t=><option key={t.val} value={t.val}>{t.val}</option>)}
+                </select>
+              </div>
+              <div style={{flex:1}}><label style={lbl}>Buscar</label><input style={inp} placeholder="Cliente, proveedor, destino…" value={fQ} onChange={e=>setFQ(e.target.value)}/></div>
+              <div style={{fontFamily:"'Barlow Condensed'",fontSize:11,color:P.inkL,paddingBottom:9}}>{displayed.length} registros</div>
+            </div>
+            <div style={{background:P.card,border:`1px solid ${P.border}`,borderRadius:10,overflow:"hidden"}}>
+              <div style={{overflowX:"auto"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+                  <thead>
+                    <tr style={{background:P.bg}}>
+                      {["Fecha","Tipo","Comp.","Entidad","Destino","Gasoil Tk1","Euro Tk2","Euro Tk3","Total L",""].map(h=>(
+                        <th key={h} style={{padding:"9px 13px",textAlign:["Gasoil Tk1","Euro Tk2","Euro Tk3","Total L"].includes(h)?"right":"left",fontFamily:"'Barlow Condensed'",fontSize:10,fontWeight:700,letterSpacing:2,color:P.inkL,textTransform:"uppercase",borderBottom:`2px solid ${P.border}`,whiteSpace:"nowrap"}}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayed.length===0?(
+                      <tr><td colSpan={10} style={{padding:40,textAlign:"center",color:P.inkL,fontFamily:"'Barlow Condensed'",fontSize:13,letterSpacing:2}}>SIN MOVIMIENTOS REGISTRADOS</td></tr>
+                    ):displayed.map(m=>{
+                      const isIng=["RTO","FAC"].includes(m.ref);
+                      const t1=parseFloat(m.tk1)||0,t2=parseFloat(m.tk2)||0,t3=parseFloat(m.tk3)||0,tot=t1+t2+t3;
+                      return(
+                        <tr key={m.id} className="rh" style={{background:editId===m.id?"#fff3e8":isIng?"#f0f7ff":"#fff8f4",borderLeft:editId===m.id?`3px solid ${P.accent}`:"3px solid transparent"}}>
+                          <td style={{padding:"8px 13px",color:P.inkL,whiteSpace:"nowrap"}}>{m.fecha}</td>
+                          <td style={{padding:"8px 13px"}}><Badge tipo={m.ref}/></td>
+                          <td style={{padding:"8px 13px",color:P.inkM}}>{m.comp||"—"}</td>
+                          <td style={{padding:"8px 13px",fontWeight:600,color:P.ink,whiteSpace:"nowrap"}}>{m.receptor||m.proveedor||"—"}</td>
+                          <td style={{padding:"8px 13px",color:P.inkM,whiteSpace:"nowrap"}}>{m.destino||"—"}</td>
+                          {[t1,t2,t3].map((v,i)=>(
+                            <td key={i} style={{padding:"8px 13px",textAlign:"right",color:v?(isIng?P.green:P.accentL):P.border,fontVariantNumeric:"tabular-nums"}}>{v?fmt(v):"—"}</td>
+                          ))}
+                          <td style={{padding:"8px 13px",textAlign:"right",fontFamily:"'Barlow Condensed'",fontSize:15,fontWeight:700,color:isIng?P.green:P.accent,whiteSpace:"nowrap"}}>{isIng?"+":"−"}{fmt(tot)}</td>
+                          <td style={{padding:"8px 13px"}}>
+                            <div style={{display:"flex",gap:4}}>
+                              <button className="ba" onClick={()=>{setForm({...m});setEditId(m.id);}} style={{background:"#e6f0ff",border:"none",borderRadius:4,color:P.blue,fontSize:12,padding:"4px 9px"}}>✏️</button>
+                              <button className="ba" onClick={async()=>{ if(!window.confirm("¿Eliminar?"))return; setMovs(p=>p.filter(x=>x.id!==m.id)); try{await gasPost(GAS_URL_PLANTA,{action:"delete",id:m.id});showToast("✓ Eliminado","ok");}catch(e){} }} style={{background:"#fff0ee",border:"none",borderRadius:4,color:P.red,fontSize:12,padding:"4px 9px"}}>🗑</button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab==="resumen"&&(
+        <div>
+          <div style={{display:"flex",gap:11,alignItems:"flex-end",marginBottom:20,flexWrap:"wrap"}}>
+            <div><label style={lbl}>Período</label><input style={{...inp,width:158}} type="month" value={fMes} onChange={e=>setFMes(e.target.value)}/></div>
+          </div>
+          <div style={{display:"flex",gap:12,marginBottom:22,flexWrap:"wrap"}}>
+            <Stat label="Ingresos del período" value={Math.round(litros("in"))} color={P.green} idx={0}/>
+            <Stat label="Despachos del período" value={Math.round(litros("out"))} color={P.accent} idx={1}/>
+            <Stat label="Neto" value={Math.round(litros("in")-litros("out"))} color="#c89020" idx={2}/>
+            <Stat label="Movimientos" value={mesMovs.length} unit="" color={P.blue} idx={3}/>
+          </div>
+          <div style={{background:P.card,border:`1px solid ${P.border}`,borderRadius:12,overflow:"hidden"}}>
+            <div style={{padding:"12px 20px",background:P.bg,borderBottom:`1px solid ${P.border}`,fontFamily:"'Barlow Condensed'",fontWeight:700,fontSize:11,letterSpacing:3,color:P.inkL,textTransform:"uppercase"}}>Por cliente / proveedor</div>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+              <thead>
+                <tr style={{background:P.bg2}}>
+                  {["Entidad","Ingresos (L)","Despachos (L)","Movimientos"].map((h,i)=>(
+                    <th key={h} style={{padding:"9px 20px",textAlign:i===0?"left":"right",fontFamily:"'Barlow Condensed'",fontSize:10,fontWeight:700,letterSpacing:2,color:P.inkL,textTransform:"uppercase",borderBottom:`1px solid ${P.border}`}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {resumen.length===0?(<tr><td colSpan={4} style={{padding:32,textAlign:"center",color:P.inkL,fontFamily:"'Barlow Condensed'"}}>SIN DATOS</td></tr>)
+                :resumen.map(([k,d])=>(
+                  <tr key={k} className="rh">
+                    <td style={{padding:"10px 20px",fontWeight:600,color:P.ink}}>{k}</td>
+                    <td style={{padding:"10px 20px",textAlign:"right",color:d.ing>0?P.green:P.inkL,fontFamily:"'Barlow Condensed'",fontSize:15}}>{d.ing>0?`+${fmt(Math.round(d.ing))}`:"—"}</td>
+                    <td style={{padding:"10px 20px",textAlign:"right",color:d.eg>0?P.accent:P.inkL,fontFamily:"'Barlow Condensed'",fontSize:15,fontWeight:700}}>{d.eg>0?fmt(Math.round(d.eg)):"—"}</td>
+                    <td style={{padding:"10px 20px",textAlign:"right",color:P.inkL}}>{d.n}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {tab==="config"&&(
+        <div style={{display:"flex",gap:18,flexWrap:"wrap",alignItems:"flex-start"}}>
+          <div style={{flex:1,minWidth:240,background:P.card,border:`1px solid ${P.border}`,borderRadius:14,overflow:"hidden"}}>
+            <div style={{background:"linear-gradient(135deg,#1a4878,#0c2444)",padding:"14px 20px"}}>
+              <div style={{fontFamily:"'Barlow Condensed'",fontSize:16,fontWeight:900,color:"#fff",letterSpacing:2}}>STOCK INICIAL</div>
+            </div>
+            <div style={{padding:20}}>
+              {TANKS.map(tk=>(
+                <div key={tk} style={{marginBottom:13}}>
+                  <label style={{...lbl,color:P.accent}}>{TANK_LABELS[tk]} — Litros</label>
+                  <input style={inp} type="number" value={initStock[tk]} onChange={e=>setInitStock(p=>({...p,[tk]:parseFloat(e.target.value)||0}))}/>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{flex:1,minWidth:240,background:P.card,border:`1px solid ${P.border}`,borderRadius:14,overflow:"hidden"}}>
+            <div style={{background:`linear-gradient(135deg,${P.accent},#8a2e04)`,padding:"14px 20px"}}>
+              <div style={{fontFamily:"'Barlow Condensed'",fontSize:16,fontWeight:900,color:"#fff",letterSpacing:2}}>CAPACIDAD MÁXIMA</div>
+            </div>
+            <div style={{padding:20}}>
+              {TANKS.map(tk=>(
+                <div key={tk} style={{marginBottom:13}}>
+                  <label style={{...lbl,color:P.accent}}>{TANK_LABELS[tk]} — Litros</label>
+                  <input style={inp} type="number" value={caps[tk]} onChange={e=>setCaps(p=>({...p,[tk]:parseFloat(e.target.value)||0}))}/>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* LISTAS DESPLEGABLES */}
+          <div style={{width:"100%",background:P.card,border:`1px solid ${P.border}`,borderRadius:14,overflow:"hidden"}}>
+            <div style={{background:"linear-gradient(135deg,#2a5c2a,#1a3c1a)",padding:"14px 20px"}}>
+              <div style={{fontFamily:"'Barlow Condensed'",fontSize:16,fontWeight:900,color:"#fff",letterSpacing:2}}>LISTAS DESPLEGABLES</div>
+              <div style={{fontSize:11,color:"rgba(255,255,255,.5)",marginTop:2}}>Editá clientes, destinos, choferes e internos</div>
+            </div>
+            <div style={{padding:16,display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:12}}>
+              {Object.entries(listas).map(([key,items])=>(
+                <div key={key} style={{background:P.bg,borderRadius:10,padding:12,border:`1px solid ${P.border}`}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                    <span style={{fontFamily:"'Barlow Condensed'",fontSize:13,fontWeight:700,color:P.accent,letterSpacing:1}}>{key}</span>
+                    <button onClick={()=>setEditLista({key,draft:items.join("\n")})} style={{background:P.accent,border:"none",borderRadius:5,color:"#fff",fontFamily:"'Barlow Condensed'",fontSize:11,fontWeight:700,padding:"3px 10px",cursor:"pointer",letterSpacing:1}}>EDITAR</button>
+                  </div>
+                  <div style={{fontSize:11,color:P.inkL,lineHeight:1.9}}>
+                    {items.slice(0,5).map(i=><div key={i} style={{borderBottom:`1px solid ${P.border}`,padding:"1px 0"}}>{i}</div>)}
+                    {items.length>5&&<div style={{color:P.inkL,fontSize:10,marginTop:3}}>+{items.length-5} más...</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{width:"100%",marginTop:4}}>
+            <button onClick={async()=>{
+              setSyncing(true);
+              await gasPost(GAS_URL_PLANTA,{action:"setConfig",initStock,caps,listas});
+              setSyncing(false);
+              showToast("✓ Configuración guardada","ok");
+            }} style={{width:"100%",background:"linear-gradient(135deg,#1a4878,#0c2444)",border:"none",borderRadius:9,color:"#fff",fontFamily:"'Barlow Condensed'",fontWeight:700,fontSize:15,letterSpacing:2,padding:"13px 0",cursor:"pointer"}}>
+              💾 Guardar configuración en Google Sheets
+            </button>
+          </div>
+        </div>
+      )}
+
+
+      {/* MODAL EDITAR LISTA */}
+      {editLista&&(
+        <div style={{position:"fixed",inset:0,background:"#00000088",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={e=>{if(e.target===e.currentTarget)setEditLista(null);}}>
+          <div style={{background:P.card,borderRadius:16,padding:24,width:360,boxShadow:"0 20px 60px #00000055"}}>
+            <div style={{fontFamily:"'Barlow Condensed'",fontSize:22,fontWeight:900,color:P.ink,letterSpacing:2,marginBottom:4}}>{editLista.key}</div>
+            <div style={{fontSize:11,color:P.inkL,marginBottom:12}}>Un ítem por línea. Presioná APLICAR y luego GUARDAR CONFIGURACIÓN.</div>
+            <textarea value={editLista.draft} onChange={e=>setEditLista(p=>({...p,draft:e.target.value}))}
+              style={{width:"100%",height:220,background:P.bg,border:`1px solid ${P.border}`,borderRadius:8,padding:"10px 12px",fontSize:13,fontFamily:"'Barlow Condensed'",color:P.ink,resize:"vertical",boxSizing:"border-box"}}/>
+            <div style={{display:"flex",gap:8,marginTop:12}}>
+              <button onClick={()=>{
+                const items=editLista.draft.split("\n").map(s=>s.trim()).filter(Boolean);
+                setListas(p=>({...p,[editLista.key]:items}));
+                setEditLista(null);
+                showToast(`✓ ${editLista.key} actualizado`,"ok");
+              }} style={{flex:1,background:P.accent,border:"none",borderRadius:8,color:"#fff",fontFamily:"'Barlow Condensed'",fontWeight:700,fontSize:14,letterSpacing:1,padding:"11px 0",cursor:"pointer"}}>✓ APLICAR</button>
+              <button onClick={()=>setEditLista(null)} style={{background:"transparent",border:`1px solid ${P.border}`,borderRadius:8,color:P.inkL,fontFamily:"'Barlow Condensed'",fontSize:14,padding:"11px 16px",cursor:"pointer"}}>✕</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ══ MÓDULO BASE CR ══════════════════════════════════════════════════════ */
+function BaseCR({showToast}){
+  const [movs,setMovs]=useState([]);
+  const [initStock,setInitStock]=useState(4180);
+  const [tab,setTab]=useState("movs");
+  const [fMes,setFMes]=useState("");
+  const [fQ,setFQ]=useState("");
+  const [editId,setEditId]=useState(null);
+  const [syncing,setSyncing]=useState(false);
+
+  const efCR=()=>({fecha:toDay(),interno:"",patente:"",chofer:"",litros:"",producto:"Euro",observaciones:""});
+  const [form,setForm]=useState(efCR());
+
+  useEffect(()=>{
+    if(GAS_URL_BASECR.includes("REEMPLAZAR")) return;
+    setSyncing(true);
+    gasGet(GAS_URL_BASECR)
+      .then(rows=>{ setMovs([]); setTimeout(()=>setMovs(rows.map((r,i)=>rowToMovCR(r,i)).filter(Boolean)),0); showToast("✓ Datos Base CR cargados","ok"); })
+      .catch(()=>showToast("Sin conexión a Base CR Sheets","err",5000))
+      .finally(()=>setSyncing(false));
+  },[]);
+
+  // Auto-completar patente al seleccionar interno
+  const handleInterno=(val)=>{
+    const patente=INTERNO_MAP[val]||"";
+    setForm(f=>({...f,interno:val,patente}));
+  };
+
+  const stock=useMemo(()=>{
+    return movs.reduce((acc,m)=>{
+      const lts=parseFloat(m.litros)||0;
+      const esIngreso=(m.observaciones||"").toLowerCase().includes("ingreso");
+      return esIngreso ? acc+lts : acc-lts;
+    },initStock);
+  },[movs,initStock]);
+
+  const displayed=useMemo(()=>[...movs]
+    .filter(m=>!fMes||m.fecha.slice(0,7)===fMes)
+    .filter(m=>{if(!fQ)return true;const q=fQ.toLowerCase();return(m.interno||"").toLowerCase().includes(q)||(m.patente||"").toLowerCase().includes(q)||(m.chofer||"").toLowerCase().includes(q);})
+    .sort((a,b)=>b.fecha.localeCompare(a.fecha))
+  ,[movs,fMes,fQ]);
+
+  const submit=async()=>{
+    if(!form.fecha||!parseFloat(form.litros)){
+      showToast("Completá la fecha y los litros.","err"); return;
+    }
+    const id=editId||String(Date.now());
+    // Serializar distribucion como JSON para guardar en sheet (col 18)
+    const distStr=Object.keys(form.distribucion||{}).length>0?JSON.stringify(form.distribucion):"";
+    const payload={...form,id,tanqueDestino:distStr};
+    setMovs(p=>editId?p.map(m=>m.id===id?payload:m):[...p,payload]);
+    setEditId(null);setForm(efCR());
+    if(!GAS_URL_BASECR.includes("REEMPLAZAR")){
+      try{
+        await gasPost(GAS_URL_BASECR,{action:editId?"update":"add",...payload});
+        showToast(editId?"✓ Actualizado":"✓ Guardado en Base CR Sheets","ok");
+      }catch(e){ showToast("Guardado localmente","err",4000); }
+    } else {
+      showToast("✓ Guardado localmente (configurar URL de Base CR)","ok");
+    }
+  };
+
+  const litrosTotales=movs.reduce((a,m)=>{ const esIng=(m.observaciones||"").toLowerCase().includes("ingreso"); return esIng?a:a+(parseFloat(m.litros)||0); },0);
+  const mesMovs=useMemo(()=>fMes?movs.filter(m=>m.fecha.slice(0,7)===fMes):movs,[movs,fMes]);
+  const litrosMes=mesMovs.reduce((a,m)=>a+(parseFloat(m.litros)||0),0);
+
+  const pct=Math.min(100,Math.max(0,(stock/Math.max(stock+litrosTotales,1))*100));
+  const colorStock=pct>60?P.green:pct>25?P.amber:P.red;
+
+  const TABS=[{k:"movs",label:"Cargas"},{k:"resumen",label:"Resumen"}];
+
+  return(
+    <div>
+      {/* Stock banner */}
+      <div style={{background:`linear-gradient(135deg,${P.teal},#054850)`,borderRadius:12,padding:"16px 24px",marginBottom:18,display:"flex",alignItems:"center",gap:24,flexWrap:"wrap"}}>
+        <div>
+          <div style={{fontFamily:"'Barlow Condensed'",fontSize:10,fontWeight:700,letterSpacing:3,color:"rgba(255,255,255,.5)",textTransform:"uppercase",marginBottom:4}}>Stock Euro — Base CR</div>
+          <div style={{fontFamily:"'Barlow Condensed'",fontSize:40,fontWeight:900,color:"#fff",lineHeight:1}}>{fmt(Math.round(stock))} <span style={{fontSize:14,fontWeight:400,color:"rgba(255,255,255,.6)"}}>litros</span></div>
+        </div>
+        <div style={{flex:1,minWidth:140}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+            <span style={{fontSize:11,color:"rgba(255,255,255,.5)",fontFamily:"'Barlow Condensed'",letterSpacing:1}}>INICIAL: {fmt(initStock)} L</span>
+            <span style={{fontSize:11,color:"rgba(255,255,255,.5)",fontFamily:"'Barlow Condensed'",letterSpacing:1}}>DESPACHADO: {fmt(Math.round(litrosTotales))} L</span>
+          </div>
+          <div style={{height:8,background:"rgba(255,255,255,.15)",borderRadius:4}}>
+            <div style={{width:`${pct}%`,height:"100%",background:colorStock,borderRadius:4,transition:"width .5s"}}/>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          {!GAS_URL_BASECR.includes("REEMPLAZAR")&&(
+            <button onClick={()=>{
+              setSyncing(true);
+              gasGet(GAS_URL_BASECR)
+                .then(rows=>{setMovs([]);setTimeout(()=>setMovs(rows.map((r,i)=>rowToMovCR(r,i)).filter(Boolean)),0);showToast("✓ Sincronizado","ok");})
+                .catch(()=>showToast("Error al sincronizar","err",4000))
+                .finally(()=>setSyncing(false));
+            }} disabled={syncing} style={{background:"rgba(255,255,255,.15)",border:"1px solid rgba(255,255,255,.3)",borderRadius:7,color:"#fff",fontFamily:"'Barlow Condensed'",fontWeight:700,fontSize:11,letterSpacing:2,padding:"8px 14px",cursor:"pointer",opacity:syncing?.6:1}}>
+              {syncing?<span className="spin">⟳</span>:"↻"} Sincronizar
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Aviso si URL no configurada */}
+      {GAS_URL_BASECR.includes("REEMPLAZAR")&&(
+        <div style={{background:"#fff8e0",border:"1px solid #f0d070",borderRadius:8,padding:"10px 16px",marginBottom:14,fontSize:12,color:"#7a6010",fontFamily:"'Barlow Condensed'",letterSpacing:1}}>
+          ⚠️ Configurar URL del script de Base CR en el código (GAS_URL_BASECR) para sincronizar con Google Sheets.
+        </div>
+      )}
+
+      {/* Tabs */}
+      <div style={{display:"flex",gap:4,marginBottom:18,borderBottom:`2px solid ${P.border}`}}>
+        {TABS.map(t=>(
+          <button key={t.k} onClick={()=>setTab(t.k)} style={{background:"transparent",border:"none",fontFamily:"'Barlow Condensed'",fontWeight:700,fontSize:12,letterSpacing:2,textTransform:"uppercase",color:tab===t.k?P.teal:P.inkL,padding:"9px 18px 11px",cursor:"pointer",borderBottom:tab===t.k?`2px solid ${P.teal}`:"2px solid transparent",marginBottom:-2}}>{t.label}</button>
+        ))}
+      </div>
+
+      {tab==="movs"&&(
+        <div style={{display:"flex",gap:18,alignItems:"flex-start",flexWrap:"wrap"}}>
+          {/* FORMULARIO BASE CR */}
+          <div style={{width:300,flexShrink:0,background:P.card,border:`1px solid ${P.border}`,borderRadius:14,overflow:"hidden",boxShadow:"0 2px 16px rgba(0,0,0,.08)"}}>
+            <div style={{background:`linear-gradient(135deg,${P.teal},#043840)`,padding:"14px 20px",display:"flex",alignItems:"center",gap:10}}>
+              <span style={{fontSize:20}}>⛽</span>
+              <div>
+                <div style={{fontFamily:"'Barlow Condensed'",fontWeight:900,fontSize:16,color:"#fff",letterSpacing:1}}>{editId?"EDITAR":"NUEVA"} CARGA</div>
+                <div style={{fontSize:10,color:"rgba(255,255,255,.55)",letterSpacing:1}}>DESPACHO A VEHÍCULO — EURO</div>
+              </div>
+            </div>
+            <div style={{padding:18,display:"grid",gap:11}}>
+              <div><label style={lbl}>Fecha</label><input style={inp} type="date" value={form.fecha} onChange={e=>setForm({...form,fecha:e.target.value})}/></div>
+
+              {/* Interno con autocompletado de patente */}
+              <div>
+                <label style={lbl}>Interno</label>
+                <select style={inp} value={form.interno} onChange={e=>handleInterno(e.target.value)}>
+                  <option value="">— seleccionar —</option>
+                  {VEHICULOS.map(v=><option key={v.interno} value={v.interno}>{v.interno}</option>)}
+                </select>
+              </div>
+
+              {/* Patente - se autocompleta */}
+              <div>
+                <label style={lbl}>Patente {form.patente&&<span style={{color:P.teal,fontWeight:900}}>↓ auto</span>}</label>
+                <input style={{...inp,background:form.patente?"#f0faf8":"#faf7f2",borderColor:form.patente?P.teal:P.border,fontWeight:form.patente?700:400}} value={form.patente} onChange={e=>setForm({...form,patente:e.target.value})} placeholder="se completa automático"/>
+              </div>
+
+              <div><label style={lbl}>Chofer</label>
+                <select style={inp} value={form.chofer} onChange={e=>setForm({...form,chofer:e.target.value})}>
+                  <option value="">— seleccionar —</option>
+                  {DEFAULT_LISTAS.CHOFERES.map(c=><option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9}}>
+                <div>
+                  <label style={lbl}>Litros</label>
+                  <input style={{...inp,borderColor:form.litros?P.teal:P.border,fontWeight:form.litros?700:400}} type="number" placeholder="0" value={form.litros} onChange={e=>setForm({...form,litros:e.target.value})}/>
+                </div>
+                <div>
+                  <label style={lbl}>Producto</label>
+                  <select style={inp} value={form.producto} onChange={e=>setForm({...form,producto:e.target.value})}>
+                    <option value="Euro">Euro</option>
+                    <option value="Gasoil">Gasoil</option>
+                  </select>
+                </div>
+              </div>
+
+              {form.litros>0&&<div style={{background:"#f0faf8",border:`1px solid ${P.teal}`,borderRadius:6,padding:"8px 12px",fontFamily:"'Barlow Condensed'",fontSize:13,fontWeight:700,color:P.teal,textAlign:"right"}}>−{fmt(parseFloat(form.litros)||0)} L del stock</div>}
+
+              <div><label style={lbl}>Observaciones</label><input style={inp} placeholder="—" value={form.observaciones} onChange={e=>setForm({...form,observaciones:e.target.value})}/></div>
+
+              <div style={{display:"flex",gap:8,paddingTop:2}}>
+                <button onClick={submit} style={{flex:1,background:`linear-gradient(135deg,${P.teal},#043840)`,border:"none",borderRadius:7,color:"#fff",fontFamily:"'Barlow Condensed'",fontWeight:700,fontSize:14,letterSpacing:2,padding:"11px 0",cursor:"pointer",textTransform:"uppercase"}}>
+                  {editId?"Guardar":"Registrar"}
+                </button>
+                {editId&&<button onClick={()=>{setEditId(null);setForm(efCR());}} style={{background:"transparent",border:`1px solid ${P.border}`,borderRadius:7,color:P.inkL,fontFamily:"'Barlow Condensed'",fontSize:13,padding:"11px 14px",cursor:"pointer"}}>✕</button>}
+              </div>
+            </div>
+          </div>
+
+          {/* TABLA CARGAS */}
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{background:P.card,border:`1px solid ${P.border}`,borderRadius:10,padding:"13px 16px",marginBottom:14,display:"flex",gap:11,flexWrap:"wrap",alignItems:"flex-end"}}>
+              <div><label style={lbl}>Mes</label><input style={{...inp,width:148}} type="month" value={fMes} onChange={e=>setFMes(e.target.value)}/></div>
+              <div style={{flex:1}}><label style={lbl}>Buscar (interno, patente, chofer)</label><input style={inp} placeholder="Buscar…" value={fQ} onChange={e=>setFQ(e.target.value)}/></div>
+              <div style={{fontFamily:"'Barlow Condensed'",fontSize:11,color:P.inkL,paddingBottom:9}}>{displayed.length} registros</div>
+            </div>
+            <div style={{background:P.card,border:`1px solid ${P.border}`,borderRadius:10,overflow:"hidden"}}>
+              <div style={{overflowX:"auto"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+                  <thead>
+                    <tr style={{background:"#f0faf8"}}>
+                      {["Fecha","Interno","Patente","Chofer","Litros","Producto","Observaciones",""].map(h=>(
+                        <th key={h} style={{padding:"9px 13px",textAlign:h==="Litros"?"right":"left",fontFamily:"'Barlow Condensed'",fontSize:10,fontWeight:700,letterSpacing:2,color:P.teal,textTransform:"uppercase",borderBottom:`2px solid ${P.border}`,whiteSpace:"nowrap"}}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayed.length===0?(
+                      <tr><td colSpan={8} style={{padding:40,textAlign:"center",color:P.inkL,fontFamily:"'Barlow Condensed'",fontSize:13,letterSpacing:2}}>SIN CARGAS REGISTRADAS</td></tr>
+                    ):displayed.map(m=>{
+                      const lts=parseFloat(m.litros)||0;
+                      const esIngreso=(m.observaciones||"").toLowerCase().includes("ingreso");
+                      return(
+                        <tr key={m.id} className="rh" style={{background:esIngreso?"#f0faf8":"#fff",borderLeft:`3px solid ${esIngreso?P.teal:"transparent"}`}}>
+                          <td style={{padding:"8px 13px",color:P.inkL,whiteSpace:"nowrap"}}>{m.fecha}</td>
+                          <td style={{padding:"8px 13px",fontFamily:"'Barlow Condensed'",fontWeight:700,color:P.ink}}>{m.interno||"—"}</td>
+                          <td style={{padding:"8px 13px",fontFamily:"'Barlow Condensed'",color:P.teal,fontWeight:700}}>{m.patente||"—"}</td>
+                          <td style={{padding:"8px 13px",color:P.inkM}}>{m.chofer||"—"}</td>
+                          <td style={{padding:"8px 13px",textAlign:"right",fontFamily:"'Barlow Condensed'",fontSize:15,fontWeight:700,color:esIngreso?P.green:P.accent}}>{esIngreso?"+":"−"}{fmt(Math.abs(lts))}</td>
+                          <td style={{padding:"8px 13px"}}><span style={{background:"#e8f8f4",color:P.teal,border:`1px solid #b0e0d8`,fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:3,fontFamily:"'Barlow Condensed'",letterSpacing:1}}>{m.producto||"Euro"}</span></td>
+                          <td style={{padding:"8px 13px",color:P.inkL,fontSize:12}}>{m.observaciones||"—"}</td>
+                          <td style={{padding:"8px 13px"}}>
+                            <div style={{display:"flex",gap:4}}>
+                              <button className="ba" onClick={()=>{setForm({...m});setEditId(m.id);}} style={{background:"#e6f0ff",border:"none",borderRadius:4,color:P.blue,fontSize:12,padding:"4px 9px"}}>✏️</button>
+                              <button className="ba" onClick={async()=>{ if(!window.confirm("¿Eliminar?"))return; setMovs(p=>p.filter(x=>x.id!==m.id)); if(!GAS_URL_BASECR.includes("REEMPLAZAR")){try{await gasPost(GAS_URL_BASECR,{action:"delete",fecha:m.fecha,litros:m.litros});showToast("✓ Eliminado","ok");}catch(e){}}}} style={{background:"#fff0ee",border:"none",borderRadius:4,color:P.red,fontSize:12,padding:"4px 9px"}}>🗑</button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab==="resumen"&&(
+        <div>
+          <div style={{display:"flex",gap:11,alignItems:"flex-end",marginBottom:20,flexWrap:"wrap"}}>
+            <div><label style={lbl}>Período</label><input style={{...inp,width:158}} type="month" value={fMes} onChange={e=>setFMes(e.target.value)}/></div>
+          </div>
+          <div style={{display:"flex",gap:12,marginBottom:22,flexWrap:"wrap"}}>
+            <Stat label="Despachado del período" value={Math.round(litrosMes)} color={P.teal} idx={0}/>
+            <Stat label="Stock actual" value={Math.round(stock)} color={colorStock} idx={1}/>
+            <Stat label="Cargas registradas" value={mesMovs.length} unit="" color={P.blue} idx={2}/>
+          </div>
+          {/* Resumen por vehículo */}
+          <div style={{background:P.card,border:`1px solid ${P.border}`,borderRadius:12,overflow:"hidden"}}>
+            <div style={{padding:"12px 20px",background:"#f0faf8",borderBottom:`1px solid ${P.border}`,fontFamily:"'Barlow Condensed'",fontWeight:700,fontSize:11,letterSpacing:3,color:P.teal,textTransform:"uppercase"}}>Por vehículo</div>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+              <thead>
+                <tr style={{background:P.bg2}}>
+                  {["Interno","Patente","Litros cargados","Cargas"].map((h,i)=>(
+                    <th key={h} style={{padding:"9px 20px",textAlign:i>1?"right":"left",fontFamily:"'Barlow Condensed'",fontSize:10,fontWeight:700,letterSpacing:2,color:P.inkL,textTransform:"uppercase",borderBottom:`1px solid ${P.border}`}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {(()=>{
+                  const byVeh={};
+                  mesMovs.forEach(m=>{
+                    const k=m.interno||"—";
+                    if(!byVeh[k])byVeh[k]={patente:m.patente||"—",litros:0,n:0};
+                    byVeh[k].litros+=parseFloat(m.litros)||0;
+                    byVeh[k].n++;
+                  });
+                  const rows=Object.entries(byVeh).sort((a,b)=>b[1].litros-a[1].litros);
+                  return rows.length===0?<tr><td colSpan={4} style={{padding:32,textAlign:"center",color:P.inkL,fontFamily:"'Barlow Condensed'"}}>SIN DATOS</td></tr>
+                  :rows.map(([k,d])=>(
+                    <tr key={k} className="rh">
+                      <td style={{padding:"10px 20px",fontWeight:700,color:P.ink,fontFamily:"'Barlow Condensed'",fontSize:15}}>{k}</td>
+                      <td style={{padding:"10px 20px",color:P.teal,fontWeight:700,fontFamily:"'Barlow Condensed'"}}>{d.patente}</td>
+                      <td style={{padding:"10px 20px",textAlign:"right",fontFamily:"'Barlow Condensed'",fontSize:15,fontWeight:700,color:P.accent}}>−{fmt(Math.round(d.litros))}</td>
+                      <td style={{padding:"10px 20px",textAlign:"right",color:P.inkL}}>{d.n}</td>
+                    </tr>
+                  ));
+                })()}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ══ APP PRINCIPAL ════════════════════════════════════════════════════════ */
+function App(){
+  const [planta,setPlanta]=useState("granel"); // "granel" | "basecr"
+  const [toast,setToast]=useState({msg:"",type:""});
+  const showToast=(msg,type="ok",ms=3000)=>{setToast({msg,type});setTimeout(()=>setToast({msg:"",type:""}),ms);};
+
+  return(
+    <div style={{fontFamily:"'Barlow',sans-serif",background:P.bg,minHeight:"100vh",color:P.ink}}>
+      <Toast msg={toast.msg} type={toast.type}/>
+
+      {/* HEADER GLOBAL */}
+      <div style={{background:"linear-gradient(135deg,#1c1008,#2e1c08 50%,#3c2810)",borderBottom:`3px solid ${P.accent}`}}>
+        <div style={{maxWidth:1440,margin:"0 auto",padding:"0 32px",display:"flex",alignItems:"stretch",flexWrap:"wrap"}}>
+          <div style={{display:"flex",flexDirection:"column",justifyContent:"center",padding:"16px 28px 16px 0",borderRight:"1px solid rgba(255,255,255,.08)",marginRight:28}}>
+            <div style={{fontFamily:"'Barlow Condensed'",fontSize:26,fontWeight:900,color:"#fff",letterSpacing:3,lineHeight:1}}><span style={{color:P.accentL}}>⛽</span> COMBUSTIBLE</div>
+            <div style={{fontFamily:"'Barlow Condensed'",fontSize:11,fontWeight:600,color:"rgba(255,255,255,.38)",letterSpacing:4,marginTop:3}}>GESTIÓN A GRANEL</div>
+          </div>
+
+          {/* SELECTOR DE PLANTA */}
+          <div style={{display:"flex",alignItems:"center",gap:8,padding:"12px 0"}}>
+            <button onClick={()=>setPlanta("granel")} style={{
+              background:planta==="granel"?P.accent:"rgba(255,255,255,.08)",
+              border:`1px solid ${planta==="granel"?P.accent:"rgba(255,255,255,.15)"}`,
+              borderRadius:8,color:"#fff",fontFamily:"'Barlow Condensed'",fontWeight:700,
+              fontSize:13,letterSpacing:2,padding:"9px 20px",cursor:"pointer",
+              textTransform:"uppercase",transition:"all .2s"
+            }}>
+              🏭 Planta Granel
+            </button>
+            <button onClick={()=>setPlanta("basecr")} style={{
+              background:planta==="basecr"?P.teal:"rgba(255,255,255,.08)",
+              border:`1px solid ${planta==="basecr"?P.teal:"rgba(255,255,255,.15)"}`,
+              borderRadius:8,color:"#fff",fontFamily:"'Barlow Condensed'",fontWeight:700,
+              fontSize:13,letterSpacing:2,padding:"9px 20px",cursor:"pointer",
+              textTransform:"uppercase",transition:"all .2s"
+            }}>
+              🚛 Base CR
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* CONTENIDO */}
+      <div style={{padding:"26px 32px",maxWidth:1440,margin:"0 auto"}}>
+        {/* Banner de conexión */}
+        <div style={{background:P.card,border:`1px solid ${P.border}`,borderRadius:10,padding:"10px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10,fontSize:12,color:P.inkL}}>
+          <span style={{fontSize:16}}>🔗</span>
+          <span>
+            <strong style={{color:P.ink}}>{planta==="granel"?"Planta Granel":"Base CR"}</strong>
+            {" — "}
+            {planta==="granel"
+              ?"Conectado a Google Sheets. Movimientos guardados automáticamente."
+              :GAS_URL_BASECR.includes("REEMPLAZAR")
+                ?"Configurar la URL del script de Base CR para conectar con Google Sheets."
+                :"Conectado a Google Sheets de Base CR. Cargas guardadas automáticamente."
+            }
+          </span>
+        </div>
+
+        {planta==="granel"
+          ? <PlantaGranel showToast={showToast}/>
+          : <BaseCR showToast={showToast}/>
+        }
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
