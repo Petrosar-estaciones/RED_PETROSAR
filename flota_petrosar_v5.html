@@ -378,8 +378,25 @@ function parsarFuente(table,fuente,from,to,filtVeh=null){
     const fecha=parseFecha(row,fuente.iFecha);
     if(!inRange(fecha,from,to)){skipFecha++;continue;}
     let litros=0;
-    if(fuente.iLitrosMulti)litros=fuente.iLitrosMulti.reduce((s,i)=>s+(+v(row,i)||0),0);
-    else litros=parseFloat(v(row,fuente.iLitros))||0;
+    if(fuente.iLitrosMulti){
+      litros=fuente.iLitrosMulti.reduce((s,i)=>s+(+v(row,i)||0),0);
+    } else {
+      const lv=v(row,fuente.iLitros);
+      const lf=f(row,fuente.iLitros);
+      if(typeof lv==='number' && lv===Math.floor(lv) && lf){
+        // .v es entero pero puede tener decimales en .f — ej: .v=31, .f="31,884"
+        // formato argentino: punto=miles, coma=decimal → "31,884" = 31.884
+        const fromFmt=parseFloat(lf.replace(/\./g,'').replace(',','.'))||0;
+        litros=fromFmt||lv;
+      } else if(typeof lv==='number'){
+        litros=lv;
+      } else if(typeof lv==='string'){
+        // string con coma decimal: "31,884" → 31.884
+        litros=parseFloat(lv.replace(/\./g,'').replace(',','.'))||0;
+      } else if(lf){
+        litros=parseFloat(lf.replace(/\./g,'').replace(',','.'))||0;
+      }
+    }
     if(!litros)continue;
     const pat=fuente.iPatente>=0?norm(s(row,fuente.iPatente)):'';
     const int_=String(v(row,fuente.iInterno)||'').trim();
