@@ -232,46 +232,55 @@ function normProd(s) {
   return 'EURO';
 }
 
+const SHEET_DC = '1CvPGNJGlv64Vs1PtEqdUrj9pntw7at0HPboS7YYnIf8';
 const FUENTES = {
-  // TP: gid=0, col A=Op B=Fecha C=Litros D=Producto F=Patente G=Interno J=Sector R=Cliente
+  // TP: gid=0 — B=Fecha C=Litros D=Producto F=Patente G=Interno R=Cliente(col17)
   TP: { nombre:'TP', id:SHEET_EST, ref:'0',
     iFecha:1, iLitros:2, iProducto:3, iPatente:5, iInterno:6,
-    filtroCliente: true,  // col R debe contener PETROSAR
-    headerRows:0, punto:'TP' },
-  // AG: gid=1244583268 — filtrar col R contiene PETROSAR
+    filtroCliente:true, headerRows:0, punto:'TP' },
+
+  // AG: gid=1244583268 — misma estructura
   AG: { nombre:'AG', id:SHEET_EST, ref:'1244583268',
     iFecha:1, iLitros:2, iProducto:3, iPatente:5, iInterno:6,
-    filtroCliente: true, headerRows:0, punto:'AG' },
-  // VH: solapa VH — filtrar col R contiene PETROSAR
-  VH: { nombre:'VH', id:SHEET_EST, ref:'VH',
-    iFecha:1, iLitros:2, iProducto:3, iPatente:5, iInterno:6,
-    filtroCliente: true, headerRows:0, punto:'VH' },
-  // CD: solapa CD — filtrar col R contiene PETROSAR
+    filtroCliente:true, headerRows:0, punto:'AG' },
+
+  // CD: misma estructura que TP/AG, filtrar PETROSAR en col R
   CD: { nombre:'CD', id:SHEET_EST, ref:'CD',
     iFecha:1, iLitros:2, iProducto:3, iPatente:5, iInterno:6,
-    filtroCliente: true, headerRows:0, punto:'CD' },
-  // RESERO: gid=1798585939, B=Fecha(1) H=Interno(7) R=Litros(17) sin filtro cliente
+    filtroCliente:true, headerRows:0, punto:'CD' },
+
+  // RESERO: gid=1798585939
+  // Row 1-6: headers (Desde/Hasta/etc), Row 7: col names
+  // A=TransaccionN(0) B=FechaInicio(1) G=Consola(6) H=Surtidor(7) I=MainID/Interno(8)
+  // O=Producto(14) R=Cantidad/Litros(17)
   RESERO: { nombre:'RESERO', id:SHEET_EST, ref:'1798585939',
-    iFecha:1, iLitros:17, iProducto:14, iPatente:-1, iInterno:7,
-    filtroCliente: false, headerRows:6, punto:'RESERO' },
-  // VH/CD Datos Conductor
-  VHCD: { nombre:'VH/CD', id:'1CvPGNJGlv64Vs1PtEqdUrj9pntw7at0HPboS7YYnIf8', ref:'578541772',
+    iFecha:1, iLitros:17, iProducto:14, iPatente:-1, iInterno:8,
+    filtroCliente:false, headerRows:6, punto:'RESERO' },
+
+  // VH: sheet Datos Conductor, producto = "EURO + DIESEL VH"
+  // A=Fecha(0) C=NroVale/Interno(2) G=Patente(6) M=Producto(12) N=Cantidad(13)
+  VH: { nombre:'VH', id:SHEET_DC, ref:'578541772',
     iFecha:0, iLitros:13, iProducto:12, iPatente:6, iInterno:2,
-    filtroCliente: false, headerRows:0,
-    punto: null // dinámico por producto
-  },
-  // BASE CR: A=Fecha B=Interno C=Patente D=Chofer E=Litros F=Producto
+    filtroCliente:false, headerRows:0, punto:'VH',
+    filtroProducto:'EURO + DIESEL VH' },
+
+  // CD Datos Conductor: mismo sheet, todos excepto "EURO + DIESEL VH"
+  CD_DC: { nombre:'CD', id:SHEET_DC, ref:'578541772',
+    iFecha:0, iLitros:13, iProducto:12, iPatente:6, iInterno:2,
+    filtroCliente:false, headerRows:0, punto:'CD',
+    filtroProductoExcluir:'EURO + DIESEL VH' },
+
+  // BASE CR: A=Fecha(0) B=Interno(1) C=Patente(2) E=Litros(4) F=Producto(5)
   BASECR: { nombre:'BASE CR', id:'1A_0pcSuycTcTBcf8bAHXopHk_FrLSgcdbDSFbvZnLuQ', ref:'0',
     iFecha:0, iLitros:4, iProducto:5, iPatente:2, iInterno:1,
-    filtroCliente: false, headerRows:0, punto:'BASE CR' },
-  // PLANTA: gid=1688777748, B=Fecha J=Interno L+M+N=litros
+    filtroCliente:false, headerRows:0, punto:'BASE CR' },
+
+  // PLANTA: gid=1688777748, B=Fecha(1) J=Interno(9) L+M+N=litros, solo 742/836/794
   PLANTA: { nombre:'PLANTA', id:'1NWUzcMuA5JmUXW5p3MiWwes8M4nb5EBNoTssFBU0ndE', ref:'1688777748',
     iFecha:1, iLitros:null, iLitrosMulti:[11,12,13], iProducto:2, iPatente:-1, iInterno:9,
-    filtroCliente: false, headerRows:0, punto:'PLANTA',
+    filtroCliente:false, headerRows:0, punto:'PLANTA',
     filtroInternos:[742,836,794] }
-};
-
-const SHEET_RODADOS = '1MUMqZlrP5-oce4oqHMEL6VvcFdGaLL3MzUDqYX8KevY';
+}
 const SECTOR_ORDER  = ['AG','TP','VH','CD','BASE CR','RESERO','PLANTA'];
 const SECTOR_COLOR  = {AG:'#1a7a4a',TP:'#5b21b6',VH:'#b45309',CD:'#1a5fa8','BASE CR':'#b91c1c',RESERO:'#3a7d0a',PLANTA:'#0369a1'};
 const SECTOR_BG     = {AG:'#e8f7ee',TP:'#f0eafe',VH:'#fff3e0',CD:'#e0f0ff','BASE CR':'#fdecea',RESERO:'#f0fde4',PLANTA:'#e0f4ff'};
@@ -357,6 +366,14 @@ function parsarFuente(table,fuente,from,to,filtVeh=null){
     // Filtro internos específicos (Planta)
     if(fuente.filtroInternos){
       if(!fuente.filtroInternos.includes(+v(row,fuente.iInterno))){skipFiltro++;continue;}
+    }
+    // Filtro por producto exacto (VH)
+    if(fuente.filtroProducto){
+      if(!s(row,fuente.iProducto).toUpperCase().includes(fuente.filtroProducto.toUpperCase())){skipFiltro++;continue;}
+    }
+    // Filtro excluir producto (CD_DC: todo excepto VH)
+    if(fuente.filtroProductoExcluir){
+      if(s(row,fuente.iProducto).toUpperCase().includes(fuente.filtroProductoExcluir.toUpperCase())){skipFiltro++;continue;}
     }
     const fecha=parseFecha(row,fuente.iFecha);
     if(!inRange(fecha,from,to)){skipFecha++;continue;}
