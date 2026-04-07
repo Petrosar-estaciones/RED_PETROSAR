@@ -238,15 +238,15 @@ const FUENTES = {
     iFecha:1, iLitros:2, iProducto:3, iPatente:5, iInterno:6,
     filtroCliente: true,  // col R debe contener PETROSAR
     headerRows:0, punto:'TP' },
-  // AG: gid=1244583268 — todo es PETROSAR, sin filtro cliente
+  // AG: gid=1244583268 — filtrar col R contiene PETROSAR
   AG: { nombre:'AG', id:SHEET_EST, ref:'1244583268',
     iFecha:1, iLitros:2, iProducto:3, iPatente:5, iInterno:6,
-    filtroCliente: false, headerRows:0, punto:'AG' },
-  // VH: solapa VH — todo PETROSAR
+    filtroCliente: true, headerRows:0, punto:'AG' },
+  // VH: solapa VH — filtrar col R contiene PETROSAR
   VH: { nombre:'VH', id:SHEET_EST, ref:'VH',
     iFecha:1, iLitros:2, iProducto:3, iPatente:5, iInterno:6,
-    filtroCliente: false, headerRows:0, punto:'VH' },
-  // CD: solapa CD — filtrar PETROSAR (tiene clientes externos también)
+    filtroCliente: true, headerRows:0, punto:'VH' },
+  // CD: solapa CD — filtrar col R contiene PETROSAR
   CD: { nombre:'CD', id:SHEET_EST, ref:'CD',
     iFecha:1, iLitros:2, iProducto:3, iPatente:5, iInterno:6,
     filtroCliente: true, headerRows:0, punto:'CD' },
@@ -292,21 +292,35 @@ function fmtDate(d){if(!d)return'—';const[y,m,day]=d.split('-');return`${day}/
 
 function parseFecha(row,i){
   const val=v(row,i),fmt=f(row,i);
-  // 1. Intentar desde el valor gviz directo (Date(y,m,d,...))
-  if(typeof val==='string'){
-    const m=val.match(/Date\((\d+),(\d+),(\d+)/);
-    if(m)return new Date(+m[1],+m[2],+m[3]);
+  // gviz datetime viene como objeto con .v = "Date(y,m,d,h,min,s)"
+  // o como string directo
+  const tryStr = s => {
+    if(!s) return null;
+    // Date(2026,2,1,8,30,0) — mes base 0
+    let m=s.match(/Date\((\d+),(\d+),(\d+)/);
+    if(m) return new Date(+m[1],+m[2],+m[3]);
+    // YYYY-MM-DD o YYYY/MM/DD
+    m=s.match(/(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+    if(m) return new Date(+m[1],+m[2]-1,+m[3]);
+    // DD/MM/YYYY o DD-MM-YYYY
+    m=s.match(/(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+    if(m) return new Date(+m[3],+m[2]-1,+m[1]);
+    return null;
+  };
+  // 1. Valor raw de gviz (puede ser string "Date(...)" o número)
+  if(val!==null){
+    const r=tryStr(String(val));
+    if(r&&!isNaN(r)) return r;
+    if(typeof val==='number') return new Date(val);
   }
-  // 2. Intentar desde el formato formateado (DD/MM/YYYY o YYYY-MM-DD)
-  for(const src of [fmt,typeof val==='string'?val:'']){
-    if(!src)continue;
-    let m=src.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
-    if(m)return new Date(+m[1],+m[2]-1,+m[3]);
-    m=src.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
-    if(m){let[,a,b,c]=m;c=+c<100?2000+(+c):+c;if(+a<=31&&+b<=12)return new Date(c,+b-1,+a);}
+  // 2. Formato display (f)
+  if(fmt){
+    const r=tryStr(fmt);
+    if(r&&!isNaN(r)) return r;
+    // formato "(DD/MM/YYYY, HH:MM:SS)" que usan algunas celdas datetime
+    const m=fmt.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if(m) return new Date(+m[3],+m[2]-1,+m[1]);
   }
-  // 3. Timestamp numérico
-  if(typeof val==='number')return new Date(val);
   return null;
 }
 
