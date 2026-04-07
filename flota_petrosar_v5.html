@@ -7,210 +7,143 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #f5f6fa;
-    --white: #ffffff;
-    --navy: #0f2044;
-    --orange: #e85d20;
-    --orange-l: #ff7a40;
-    --orange-pale: #fff3ee;
-    --blue: #1a5fa8;
-    --blue-pale: #eef4fc;
-    --green: #1a7a4a;
-    --green-pale: #edf7f2;
-    --red: #c0392b;
-    --red-pale: #fdf0ee;
-    --gold: #c97d10;
-    --gold-pale: #fdf6e3;
-    --border: #e2e6ef;
-    --txt: #1a1f36;
-    --muted: #6b7280;
-    --r: 12px;
-    --r-sm: 8px;
-    --shadow: 0 1px 4px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
-    --shadow-sm: 0 1px 3px rgba(0,0,0,.06);
+    --bg:#f5f6fa;--white:#ffffff;--navy:#0f2044;--orange:#e85d20;--orange-l:#ff7a40;
+    --orange-pale:#fff3ee;--blue:#1a5fa8;--blue-pale:#eef4fc;--green:#1a7a4a;
+    --green-pale:#edf7f2;--red:#c0392b;--red-pale:#fdf0ee;--gold:#c97d10;
+    --gold-pale:#fdf6e3;--border:#e2e6ef;--txt:#1a1f36;--muted:#6b7280;
+    --r:12px;--r-sm:8px;--shadow:0 1px 4px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.06);
+    --shadow-sm:0 1px 3px rgba(0,0,0,.06);
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--txt); min-height: 100vh; }
-
-  /* HEADER */
-  .hdr {
-    background: var(--navy);
-    padding: 0 32px;
-    display: flex; align-items: center; gap: 20px;
-    position: sticky; top: 0; z-index: 100;
-    box-shadow: 0 2px 8px rgba(0,0,0,.15);
-  }
-  .logo {
-    background: var(--orange); color: #fff;
-    font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 15px;
-    letter-spacing: 1px; padding: 6px 14px; border-radius: 6px; my: 14px;
-    margin: 14px 0;
-  }
-  .hdr-info { flex: 1; }
-  .hdr-title { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 17px; color: #fff; letter-spacing: .3px; }
-  .hdr-sub { font-size: 11px; color: rgba(255,255,255,.5); margin-top: 1px; letter-spacing: .5px; text-transform: uppercase; }
-
-  /* TABS */
-  .tabs { background: var(--white); border-bottom: 1.5px solid var(--border); padding: 0 32px; display: flex; gap: 0; }
-  .tab {
-    font-size: 13px; font-weight: 600; letter-spacing: .3px;
-    padding: 14px 20px; cursor: pointer; color: var(--muted);
-    border-bottom: 2.5px solid transparent; margin-bottom: -1.5px;
-    transition: all .18s; white-space: nowrap;
-  }
-  .tab.active { color: var(--orange); border-bottom-color: var(--orange); }
-  .tab:hover:not(.active) { color: var(--txt); }
-
-  /* MAIN */
-  .main { padding: 28px 32px; max-width: 1280px; margin: 0 auto; }
-
-  /* CARD */
-  .card { background: var(--white); border-radius: var(--r); border: 1px solid var(--border); box-shadow: var(--shadow-sm); padding: 20px 24px; margin-bottom: 20px; }
-  .card-title { font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
-
-  /* INPUTS */
-  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
-  .fg { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 130px; }
-  .lbl { font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: .5px; }
-  input, select {
-    background: var(--bg); border: 1.5px solid var(--border); border-radius: var(--r-sm);
-    color: var(--txt); font-family: 'Inter', sans-serif; font-size: 13px;
-    padding: 9px 12px; width: 100%; outline: none; transition: border-color .15s;
-  }
-  input:focus, select:focus { border-color: var(--orange); background: #fff; }
-  input::placeholder { color: #bbb; }
-
-  /* BUTTONS */
-  .btn { font-family: 'Inter', sans-serif; font-weight: 600; font-size: 13px; padding: 9px 22px; border: none; border-radius: var(--r-sm); cursor: pointer; transition: all .15s; white-space: nowrap; height: 38px; }
-  .btn-primary { background: var(--orange); color: #fff; }
-  .btn-primary:hover { background: var(--orange-l); }
-  .btn-ghost { background: transparent; color: var(--muted); border: 1.5px solid var(--border); }
-  .btn-ghost:hover { border-color: var(--muted); color: var(--txt); }
-
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh}
+  .hdr{background:var(--navy);padding:0 32px;display:flex;align-items:center;gap:20px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+  .logo{background:var(--orange);color:#fff;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;letter-spacing:1px;padding:6px 14px;border-radius:6px;margin:14px 0}
+  .hdr-title{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:17px;color:#fff}
+  .hdr-sub{font-size:11px;color:rgba(255,255,255,.5);margin-top:1px;letter-spacing:.5px;text-transform:uppercase}
+  .tabs{background:var(--white);border-bottom:1.5px solid var(--border);padding:0 32px;display:flex;gap:0}
+  .tab{font-size:13px;font-weight:600;padding:14px 20px;cursor:pointer;color:var(--muted);border-bottom:2.5px solid transparent;margin-bottom:-1.5px;transition:all .18s;white-space:nowrap}
+  .tab.active{color:var(--orange);border-bottom-color:var(--orange)}
+  .tab:hover:not(.active){color:var(--txt)}
+  .main{padding:28px 32px;max-width:1300px;margin:0 auto}
+  .card{background:var(--white);border-radius:var(--r);border:1px solid var(--border);box-shadow:var(--shadow-sm);padding:20px 24px;margin-bottom:20px}
+  .card-title{font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+  .fg{display:flex;flex-direction:column;gap:5px;flex:1;min-width:130px}
+  .lbl{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.5px}
+  input,select{background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r-sm);color:var(--txt);font-family:'Inter',sans-serif;font-size:13px;padding:9px 12px;width:100%;outline:none;transition:border-color .15s}
+  input:focus,select:focus{border-color:var(--orange);background:#fff}
+  input::placeholder{color:#bbb}
+  .btn{font-family:'Inter',sans-serif;font-weight:600;font-size:13px;padding:9px 22px;border:none;border-radius:var(--r-sm);cursor:pointer;transition:all .15s;white-space:nowrap;height:38px}
+  .btn-primary{background:var(--orange);color:#fff}
+  .btn-primary:hover{background:var(--orange-l)}
+  .btn-ghost{background:transparent;color:var(--muted);border:1.5px solid var(--border)}
+  .btn-ghost:hover{border-color:var(--muted);color:var(--txt)}
+  /* SEGMENTED CONTROL */
+  .seg{display:flex;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r-sm);padding:3px;gap:3px}
+  .seg-btn{flex:1;font-size:12px;font-weight:600;padding:6px 14px;border:none;border-radius:6px;cursor:pointer;background:transparent;color:var(--muted);transition:all .15s;white-space:nowrap}
+  .seg-btn.active{background:var(--white);color:var(--orange);box-shadow:var(--shadow-sm)}
   /* AUTOCOMPLETE */
-  .ac-wrap { position: relative; }
-  .ac-dd { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #fff; border: 1.5px solid var(--border); border-radius: var(--r-sm); max-height: 240px; overflow-y: auto; z-index: 300; box-shadow: var(--shadow); display: none; }
-  .ac-item { padding: 10px 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); transition: background .1s; }
-  .ac-item:last-child { border-bottom: none; }
-  .ac-item:hover, .ac-item.hi { background: var(--orange-pale); }
-  .ac-int { font-weight: 700; font-size: 14px; color: var(--orange); min-width: 48px; }
-  .ac-pat { font-weight: 600; font-size: 12px; background: var(--blue-pale); color: var(--blue); padding: 2px 8px; border-radius: 4px; letter-spacing: .5px; }
-  .ac-desc { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
+  .ac-wrap{position:relative}
+  .ac-dd{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1.5px solid var(--border);border-radius:var(--r-sm);max-height:240px;overflow-y:auto;z-index:300;box-shadow:var(--shadow);display:none}
+  .ac-item{padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);transition:background .1s}
+  .ac-item:last-child{border-bottom:none}
+  .ac-item:hover,.ac-item.hi{background:var(--orange-pale)}
+  .ac-int{font-weight:700;font-size:14px;color:var(--orange);min-width:48px}
+  .ac-pat{font-weight:600;font-size:12px;background:var(--blue-pale);color:var(--blue);padding:2px 8px;border-radius:4px;letter-spacing:.5px}
+  .ac-desc{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   /* MES TABS */
-  .mes-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
-  .mes-tab { font-size: 12px; font-weight: 600; padding: 5px 14px; border-radius: 20px; border: 1.5px solid var(--border); color: var(--muted); cursor: pointer; transition: all .15s; background: var(--white); }
-  .mes-tab.active { background: var(--orange); color: #fff; border-color: var(--orange); }
-  .mes-tab:hover:not(.active) { border-color: var(--muted); color: var(--txt); }
-
-  /* KPI GRID */
-  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 12px; margin-bottom: 20px; }
-  .kpi { background: var(--white); border: 1px solid var(--border); border-radius: var(--r); padding: 16px 18px; box-shadow: var(--shadow-sm); }
-  .kpi-lbl { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 6px; }
-  .kpi-val { font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 700; color: var(--txt); line-height: 1; }
-  .kpi-unit { font-size: 12px; color: var(--muted); margin-top: 3px; }
-  .kpi.accent { background: var(--orange); border-color: var(--orange); }
-  .kpi.accent .kpi-lbl { color: rgba(255,255,255,.75); }
-  .kpi.accent .kpi-val { color: #fff; }
-  .kpi.accent .kpi-unit { color: rgba(255,255,255,.75); }
-
-  /* PUNTOS GRID */
-  .puntos-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: 14px; margin-bottom: 20px; }
-  .punto-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; box-shadow: var(--shadow-sm); }
-  .punto-head { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-  .punto-tag { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; padding: 4px 10px; border-radius: 20px; }
-  .punto-lts { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 22px; }
-  .punto-body { padding: 12px 18px; }
-  .punto-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
-  .punto-row:last-child { border-bottom: none; }
-  .punto-row-lbl { color: var(--muted); }
-  .punto-row-val { font-weight: 600; font-size: 13px; }
-
+  .mes-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+  .mes-tab{font-size:12px;font-weight:600;padding:5px 14px;border-radius:20px;border:1.5px solid var(--border);color:var(--muted);cursor:pointer;transition:all .15s;background:var(--white)}
+  .mes-tab.active{background:var(--orange);color:#fff;border-color:var(--orange)}
+  .mes-tab:hover:not(.active){border-color:var(--muted);color:var(--txt)}
+  /* KPI */
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+  .kpi{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow-sm)}
+  .kpi-lbl{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+  .kpi-val{font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:700;color:var(--txt);line-height:1}
+  .kpi-unit{font-size:11px;color:var(--muted);margin-top:3px}
+  .kpi.accent{background:var(--orange);border-color:var(--orange)}
+  .kpi.accent .kpi-lbl{color:rgba(255,255,255,.75)}
+  .kpi.accent .kpi-val{color:#fff}
+  .kpi.accent .kpi-unit{color:rgba(255,255,255,.75)}
+  /* SECTOR CARDS */
+  .sectores-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:20px}
+  .sector-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow-sm)}
+  .sector-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+  .sector-tag{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:4px 10px;border-radius:20px}
+  .sector-lts{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:20px}
+  .sector-body{padding:12px 18px}
+  .sector-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px}
+  .sector-row:last-child{border-bottom:none}
+  .sector-row-lbl{color:var(--muted)}
+  .sector-row-val{font-weight:600;font-size:13px}
+  /* PRODUCT BREAKDOWN */
+  .prod-bar{margin-top:8px}
+  .prod-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;font-size:12px}
+  .prod-lbl{color:var(--muted);font-weight:500}
+  .prod-val{font-weight:700}
+  .bar-track{height:4px;background:var(--bg);border-radius:2px;margin-bottom:8px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:2px;transition:width .4s}
   /* TABLE */
-  .tbl-wrap { background: var(--white); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; box-shadow: var(--shadow-sm); margin-bottom: 20px; }
-  .tbl-hdr { padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
-  .tbl-title { font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--txt); }
-  .tbl-count { font-size: 11px; color: var(--muted); background: var(--bg); padding: 3px 10px; border-radius: 12px; border: 1px solid var(--border); }
-  table.dt { width: 100%; border-collapse: collapse; font-size: 13px; }
-  table.dt th { font-size: 11px; font-weight: 600; letter-spacing: .8px; text-transform: uppercase; color: var(--muted); padding: 10px 18px; text-align: left; border-bottom: 1px solid var(--border); background: var(--bg); }
-  table.dt td { padding: 10px 18px; border-bottom: 1px solid var(--border); color: var(--txt); }
-  table.dt tr:last-child td { border-bottom: none; }
-  table.dt tr:hover td { background: var(--orange-pale); }
-  .lts-val { font-weight: 700; color: var(--orange); font-size: 14px; }
-
+  .tbl-wrap{background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow-sm);margin-bottom:20px}
+  .tbl-hdr{padding:14px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+  .tbl-title{font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--txt)}
+  .tbl-count{font-size:11px;color:var(--muted);background:var(--bg);padding:3px 10px;border-radius:12px;border:1px solid var(--border)}
+  table.dt{width:100%;border-collapse:collapse;font-size:13px}
+  table.dt th{font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);padding:10px 18px;text-align:left;border-bottom:1px solid var(--border);background:var(--bg)}
+  table.dt td{padding:10px 18px;border-bottom:1px solid var(--border);color:var(--txt)}
+  table.dt tr:last-child td{border-bottom:none}
+  table.dt tr:hover td{background:var(--orange-pale)}
+  table.dt tfoot td{font-weight:700;background:var(--orange-pale);color:var(--orange)}
+  .lts-val{font-weight:700;color:var(--orange);font-size:14px}
   /* BADGES */
-  .badge { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; }
-  .b-ag   { background: #e8f7ee; color: #1a7a4a; }
-  .b-tp   { background: #f0eafe; color: #5b21b6; }
-  .b-vh   { background: #fff3e0; color: #b45309; }
-  .b-cd   { background: #e0f0ff; color: #1a5fa8; }
-  .b-basecr { background: #fdecea; color: #b91c1c; }
-  .b-vh_dc  { background: #fff3e0; color: #b45309; }
-  .b-cd_dc  { background: #e0f0ff; color: #1a5fa8; }
-  .b-resero { background: #f0fde4; color: #3a7d0a; }
-  .b-planta { background: #e0f4ff; color: #0369a1; }
-
-  /* CRUCE */
-  .diff-ok   { color: var(--green); font-weight: 700; }
-  .diff-warn { color: var(--gold);  font-weight: 700; }
-  .diff-err  { color: var(--red);   font-weight: 700; }
-
-  /* VALORIZACIÓN */
-  .precio-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 12px; margin-bottom: 20px; }
-  .precio-inp { display: flex; flex-direction: column; gap: 4px; }
-  .precio-inp label { font-size: 11px; font-weight: 600; color: var(--muted); }
-  .tabla-valorizacion { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .tabla-valorizacion th { font-size: 11px; font-weight: 600; letter-spacing: .8px; text-transform: uppercase; color: var(--muted); padding: 10px 16px; text-align: left; background: var(--bg); border-bottom: 1px solid var(--border); }
-  .tabla-valorizacion td { padding: 10px 16px; border-bottom: 1px solid var(--border); }
-  .tabla-valorizacion tr:last-child td { border-bottom: none; font-weight: 700; background: var(--orange-pale); }
-  .tabla-valorizacion tr:hover:not(:last-child) td { background: #fafbff; }
-
+  .badge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:3px 8px;border-radius:4px}
+  .b-ag{background:#e8f7ee;color:#1a7a4a}
+  .b-tp{background:#f0eafe;color:#5b21b6}
+  .b-vh{background:#fff3e0;color:#b45309}
+  .b-cd{background:#e0f0ff;color:#1a5fa8}
+  .b-basecr{background:#fdecea;color:#b91c1c}
+  .b-resero{background:#f0fde4;color:#3a7d0a}
+  .b-planta{background:#e0f4ff;color:#0369a1}
+  .b-euro{background:#fff3e0;color:#92400e}
+  .b-gasoil{background:#e0f0ff;color:#1e40af}
   /* VEH CARD */
-  .veh-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--r); padding: 18px 22px; margin-bottom: 18px; display: flex; align-items: center; gap: 18px; box-shadow: var(--shadow-sm); }
-  .veh-int { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 32px; color: var(--orange); line-height: 1; }
-  .veh-pat { font-weight: 700; font-size: 15px; letter-spacing: 1.5px; background: var(--blue-pale); color: var(--blue); padding: 4px 12px; border-radius: 6px; margin-top: 4px; display: inline-block; }
-  .veh-desc { font-size: 12px; color: var(--muted); margin-top: 3px; }
-
-  /* LOADING / EMPTY */
-  .loading { display: none; padding: 48px; text-align: center; color: var(--muted); }
-  .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--orange); border-radius: 50%; animation: spin .7s linear infinite; margin: 0 auto 14px; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .empty { padding: 48px 24px; text-align: center; color: var(--muted); }
-  .empty-icon { font-size: 40px; margin-bottom: 10px; }
-  .empty-title { font-size: 16px; font-weight: 600; color: var(--txt); margin-bottom: 4px; }
-  .alert { border-radius: var(--r-sm); padding: 10px 14px; font-size: 12px; margin-bottom: 14px; font-weight: 500; }
-  .alert-warn { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
-  .alert-err  { background: var(--red-pale); border: 1px solid #fca5a5; color: var(--red); }
-
-  @keyframes fadeIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
-  .fade { animation: fadeIn .3s ease; }
-
-  @media(max-width:640px) {
-    .main { padding: 16px; }
-    .tabs { padding: 0 16px; overflow-x: auto; }
-    .hdr { padding: 0 16px; }
-    .kpi-grid { grid-template-columns: repeat(2,1fr); }
-    .puntos-grid { grid-template-columns: 1fr; }
-  }
+  .veh-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:18px 22px;margin-bottom:18px;display:flex;align-items:center;gap:18px;box-shadow:var(--shadow-sm)}
+  .veh-int{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:32px;color:var(--orange);line-height:1}
+  .veh-pat{font-weight:700;font-size:15px;letter-spacing:1.5px;background:var(--blue-pale);color:var(--blue);padding:4px 12px;border-radius:6px;margin-top:4px;display:inline-block}
+  .veh-desc{font-size:12px;color:var(--muted);margin-top:3px}
+  /* PRECIO */
+  .precio-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
+  .precio-inp{display:flex;flex-direction:column;gap:4px}
+  .precio-inp label{font-size:11px;font-weight:600;color:var(--muted)}
+  /* LOADING/EMPTY */
+  .loading{display:none;padding:48px;text-align:center;color:var(--muted)}
+  .spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 14px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .empty{padding:48px 24px;text-align:center;color:var(--muted)}
+  .empty-icon{font-size:40px;margin-bottom:10px}
+  .empty-title{font-size:16px;font-weight:600;color:var(--txt);margin-bottom:4px}
+  .alert{border-radius:var(--r-sm);padding:10px 14px;font-size:12px;margin-bottom:14px;font-weight:500}
+  .alert-warn{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+  .alert-err{background:var(--red-pale);border:1px solid #fca5a5;color:var(--red)}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+  .fade{animation:fadeIn .3s ease}
+  @media(max-width:640px){.main{padding:16px}.tabs{padding:0 12px;overflow-x:auto}.hdr{padding:0 16px}.kpi-grid{grid-template-columns:repeat(2,1fr)}.sectores-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
-
 <header class="hdr">
   <div class="logo">PETROSAR</div>
-  <div class="hdr-info">
+  <div>
     <div class="hdr-title">Consumo Flota Interna</div>
     <div class="hdr-sub">Control de combustible · Todas las fuentes</div>
   </div>
 </header>
-
 <nav class="tabs">
   <div class="tab active" onclick="switchTab('veh')">Por Vehículo</div>
-  <div class="tab" onclick="switchTab('totales')">Totales por Punto</div>
+  <div class="tab" onclick="switchTab('totales')">Totales por Sector</div>
   <div class="tab" onclick="switchTab('valorizacion')">Valorización</div>
-  <div class="tab" onclick="switchTab('cruce')">Cruce VH / CD</div>
 </nav>
-
 <main class="main">
 
   <!-- TAB VEH -->
@@ -241,11 +174,19 @@
   <!-- TAB TOTALES -->
   <div id="tab-totales" style="display:none">
     <div class="card">
-      <div class="card-title">Filtrar período</div>
-      <div class="row">
+      <div class="card-title">Filtrar período y centro de costo</div>
+      <div class="row" style="margin-bottom:14px">
         <div class="fg"><label class="lbl">Desde</label><input type="date" id="totFrom"></div>
         <div class="fg"><label class="lbl">Hasta</label><input type="date" id="totTo"></div>
         <div style="align-self:flex-end"><button class="btn btn-primary" onclick="cargarTotales()">Actualizar</button></div>
+      </div>
+      <div>
+        <div class="lbl" style="margin-bottom:8px">Centro de costo</div>
+        <div class="seg" style="max-width:320px">
+          <button class="seg-btn active" id="cc-petrosar" onclick="selCC('PETROSAR')">PETROSAR</button>
+          <button class="seg-btn" id="cc-eess" onclick="selCC('EESS')">EESS CD</button>
+          <button class="seg-btn" id="cc-todos" onclick="selCC('TODOS')">Todos</button>
+        </div>
       </div>
     </div>
     <div class="mes-tabs" id="mesTabs"></div>
@@ -256,12 +197,14 @@
   <!-- TAB VALORIZACIÓN -->
   <div id="tab-valorizacion" style="display:none">
     <div class="card">
-      <div class="card-title">Precios de referencia</div>
+      <div class="card-title">Precios de referencia por litro</div>
       <div class="precio-grid">
-        <div class="precio-inp"><label>Precio neto Euro Diesel ($/lts)</label><input type="number" id="pNeto" value="2065" step="1"></div>
-        <div class="precio-inp"><label>Precio neto Gasoil ($/lts)</label><input type="number" id="pNeto2" value="1848" step="1"></div>
-        <div class="precio-inp"><label>Impuesto Interno ($/lts)</label><input type="number" id="pImpInt" value="120" step="1"></div>
-        <div class="precio-inp"><label>CO2 ($/lts)</label><input type="number" id="pCO2" value="38" step="1"></div>
+        <div class="precio-inp"><label>Euro Diesel ($/lts neto)</label><input type="number" id="pEuro" value="2065" step="1"></div>
+        <div class="precio-inp"><label>Gasoil ($/lts neto)</label><input type="number" id="pGasoil" value="1848" step="1"></div>
+        <div class="precio-inp"><label>Impuesto Interno Euro ($/lts)</label><input type="number" id="pImpEuro" value="120" step="1"></div>
+        <div class="precio-inp"><label>Impuesto Interno Gasoil ($/lts)</label><input type="number" id="pImpGasoil" value="95" step="1"></div>
+        <div class="precio-inp"><label>CO2 Euro ($/lts)</label><input type="number" id="pCO2Euro" value="38" step="1"></div>
+        <div class="precio-inp"><label>CO2 Gasoil ($/lts)</label><input type="number" id="pCO2Gasoil" value="32" step="1"></div>
       </div>
       <div class="row">
         <div class="fg"><label class="lbl">Desde</label><input type="date" id="valFrom"></div>
@@ -274,274 +217,264 @@
     <div id="resVal"><div class="empty"><div class="empty-icon">💰</div><div class="empty-title">Configurá los precios y calculá</div></div></div>
   </div>
 
-  <!-- TAB CRUCE -->
-  <div id="tab-cruce" style="display:none">
-    <div class="card">
-      <div class="card-title">Cruce Estaciones vs. Datos Conductor — VH y CD</div>
-      <div class="row">
-        <div class="fg"><label class="lbl">Desde</label><input type="date" id="cruceFrom"></div>
-        <div class="fg"><label class="lbl">Hasta</label><input type="date" id="cruceTo"></div>
-        <div class="fg" style="max-width:160px">
-          <label class="lbl">Punto</label>
-          <select id="crucePunto"><option value="ambos">VH + CD</option><option value="VH">Solo VH</option><option value="CD">Solo CD</option></select>
-        </div>
-        <div style="align-self:flex-end"><button class="btn btn-primary" onclick="cargarCruce()">Cruzar</button></div>
-      </div>
-    </div>
-    <div class="mes-tabs" id="mesTabsCruce"></div>
-    <div id="loadingCruce" class="loading"><div class="spinner"></div>Cruzando datos...</div>
-    <div id="resCruce"><div class="empty"><div class="empty-icon">🔀</div><div class="empty-title">Seleccioná un período y hacé clic en Cruzar</div></div></div>
-  </div>
-
 </main>
-
 <script>
 // ═══════════════════════════════════
-// CONFIGURACIÓN FUENTES
+// FUENTES — índices fijos por columna
 // ═══════════════════════════════════
 const SHEET_EST = '1418oEjkm9IVg6RsBIrygD42G2SaDa0yx0DmJtpZxBWE';
+const EESS_INTERNOS = [1009, 836, 742, 794]; // internos EESS CD
+
+// Producto normalizado
+function normProd(s) {
+  const u = s.toUpperCase();
+  if (u.includes('GASOIL') || u.includes('DIESEL BIO')) return 'GASOIL';
+  return 'EURO';
+}
+
 const FUENTES = {
-  // TP: solapa "TP", A=Operacion B=FechaHora C=Litros D=Producto E=Precio F=Patente G=Interno J=Sector R=Cliente
-  // Solo filas donde col R contiene PETROSAR
-  TP: {
-    nombre:'TP', id:SHEET_EST, ref:'TP',
+  // TP: gid=0, col A=Op B=Fecha C=Litros D=Producto F=Patente G=Interno J=Sector R=Cliente
+  TP: { nombre:'TP', id:SHEET_EST, ref:'0',
     iFecha:1, iLitros:2, iProducto:3, iPatente:5, iInterno:6,
-    filtro: row => str(row,17).toUpperCase().includes('PETROSAR'),
-    punto: ()=>'TP'
-  },
-  // AG: solapa "AG", misma estructura
-  AG: {
-    nombre:'AG', id:SHEET_EST, ref:'AG',
+    filtroCliente: true,  // col R debe contener PETROSAR
+    headerRows:0, punto:'TP' },
+  // AG: gid=1244583268, misma estructura
+  AG: { nombre:'AG', id:SHEET_EST, ref:'1244583268',
     iFecha:1, iLitros:2, iProducto:3, iPatente:5, iInterno:6,
-    filtro: row => str(row,17).toUpperCase().includes('PETROSAR'),
-    punto: ()=>'AG'
-  },
-  // VH: solapa "VH", misma estructura
-  VH: {
-    nombre:'VH', id:SHEET_EST, ref:'VH',
+    filtroCliente: true, headerRows:0, punto:'AG' },
+  // VH: solapa VH
+  VH: { nombre:'VH', id:SHEET_EST, ref:'VH',
     iFecha:1, iLitros:2, iProducto:3, iPatente:5, iInterno:6,
-    filtro: row => str(row,17).toUpperCase().includes('PETROSAR'),
-    punto: ()=>'VH'
-  },
-  // CD: solapa "CD", misma estructura
-  CD: {
-    nombre:'CD', id:SHEET_EST, ref:'CD',
+    filtroCliente: true, headerRows:0, punto:'VH' },
+  // CD: solapa CD
+  CD: { nombre:'CD', id:SHEET_EST, ref:'CD',
     iFecha:1, iLitros:2, iProducto:3, iPatente:5, iInterno:6,
-    filtro: row => str(row,17).toUpperCase().includes('PETROSAR'),
-    punto: ()=>'CD'
-  },
-  // RESERO: gid=1798585939, 6 filas de encabezado
-  // B=Fecha(1) H=MainID/Interno(7) R=Cantidad/Litros(17) — todos son PETROSAR
-  RESERO: {
-    nombre:'RESERO', id:SHEET_EST, ref:'1798585939',
+    filtroCliente: true, headerRows:0, punto:'CD' },
+  // RESERO: gid=1798585939, B=Fecha(1) H=Interno(7) R=Litros(17) sin filtro cliente
+  RESERO: { nombre:'RESERO', id:SHEET_EST, ref:'1798585939',
     iFecha:1, iLitros:17, iProducto:14, iPatente:-1, iInterno:7,
-    headerRows:6,
-    filtro: row => { const v = val(row,17); return v!==null && v!=='' && !isNaN(+v) && +v>0; },
-    punto: ()=>'RESERO'
-  },
-  // VH/CD Datos Conductor: sheet separado, solapa C
-  // A=Fecha C=Interno G=Patente M=Producto N=Cantidad(litros)
-  // Producto con "VH" → VH_DC, resto → CD_DC (para cruce)
-  VHCD: {
-    nombre:'VH/CD Dat.Cond.', id:'1CvPGNJGlv64Vs1PtEqdUrj9pntw7at0HPboS7YYnIf8', ref:'578541772',
+    filtroCliente: false, headerRows:6, punto:'RESERO' },
+  // VH/CD Datos Conductor
+  VHCD: { nombre:'VH/CD', id:'1CvPGNJGlv64Vs1PtEqdUrj9pntw7at0HPboS7YYnIf8', ref:'578541772',
     iFecha:0, iLitros:13, iProducto:12, iPatente:6, iInterno:2,
-    filtro: ()=>true,
-    punto: row=>str(row,12).toUpperCase().includes('VH')?'VH_DC':'CD_DC'
+    filtroCliente: false, headerRows:0,
+    punto: null // dinámico por producto
   },
-  // BASE CR
-  BASECR: {
-    nombre:'Base CR', id:'1A_0pcSuycTcTBcf8bAHXopHk_FrLSgcdbDSFbvZnLuQ', ref:'0',
+  // BASE CR: A=Fecha B=Interno C=Patente D=Chofer E=Litros F=Producto
+  BASECR: { nombre:'BASE CR', id:'1A_0pcSuycTcTBcf8bAHXopHk_FrLSgcdbDSFbvZnLuQ', ref:'0',
     iFecha:0, iLitros:4, iProducto:5, iPatente:2, iInterno:1,
-    filtro: ()=>true,
-    punto: ()=>'BASE CR'
-  },
-  // PLANTA: cols L+M+N = litros, solo internos 742/836/794
-  PLANTA: {
-    nombre:'Planta', id:'1NWUzcMuA5JmUXW5p3MiWwes8M4nb5EBNoTssFBU0ndE', ref:'1688777748',
-    iFecha:1, iLitrosMulti:[11,12,13], iProducto:2, iPatente:-1, iInterno:9,
-    filtro: row=>[742,836,794].includes(+val(row,9)),
-    punto: ()=>'PLANTA'
-  }
+    filtroCliente: false, headerRows:0, punto:'BASE CR' },
+  // PLANTA: gid=1688777748, B=Fecha J=Interno L+M+N=litros
+  PLANTA: { nombre:'PLANTA', id:'1NWUzcMuA5JmUXW5p3MiWwes8M4nb5EBNoTssFBU0ndE', ref:'1688777748',
+    iFecha:1, iLitros:null, iLitrosMulti:[11,12,13], iProducto:2, iPatente:-1, iInterno:9,
+    filtroCliente: false, headerRows:0, punto:'PLANTA',
+    filtroInternos:[742,836,794] }
 };
+
 const SHEET_RODADOS = '1MUMqZlrP5-oce4oqHMEL6VvcFdGaLL3MzUDqYX8KevY';
-const PUNTO_ORDER   = ['AG','TP','VH','CD','BASE CR','RESERO','PLANTA','VH_DC','CD_DC'];
-const PUNTO_COLORS  = { AG:'#1a7a4a', TP:'#5b21b6', VH:'#b45309', CD:'#1a5fa8', 'BASE CR':'#b91c1c', RESERO:'#3a7d0a', PLANTA:'#0369a1', VH_DC:'#b45309', CD_DC:'#1a5fa8' };
-const PUNTO_BG      = { AG:'#e8f7ee', TP:'#f0eafe', VH:'#fff3e0', CD:'#e0f0ff', 'BASE CR':'#fdecea', RESERO:'#f0fde4', PLANTA:'#e0f4ff', VH_DC:'#fff3e0', CD_DC:'#e0f0ff' };
+const SECTOR_ORDER  = ['AG','TP','VH','CD','BASE CR','RESERO','PLANTA'];
+const SECTOR_COLOR  = {AG:'#1a7a4a',TP:'#5b21b6',VH:'#b45309',CD:'#1a5fa8','BASE CR':'#b91c1c',RESERO:'#3a7d0a',PLANTA:'#0369a1'};
+const SECTOR_BG     = {AG:'#e8f7ee',TP:'#f0eafe',VH:'#fff3e0',CD:'#e0f0ff','BASE CR':'#fdecea',RESERO:'#f0fde4',PLANTA:'#e0f4ff'};
+
+let ccActual = 'PETROSAR';
 
 // ═══════════════════════════════════
 // UTILIDADES
 // ═══════════════════════════════════
 let FLOTA = [];
+function v(row,i){return(i>=0&&row.c&&row.c[i])?(row.c[i].v??null):null;}
+function s(row,i){return String(v(row,i)||'').trim();}
+function f(row,i){return(row.c&&row.c[i])?(row.c[i].f||''):'';}
+function norm(x){return String(x||'').trim().toUpperCase().replace(/[\s\-]/g,'');}
+function fmtN(n,d=2){return(+n||0).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});}
+function fmtARS(n){return '$'+fmtN(n,0);}
+function fmtDate(d){if(!d)return'—';const[y,m,day]=d.split('-');return`${day}/${m}/${y}`;}
 
-function val(row,i)  { return (i>=0 && row.c && row.c[i]) ? (row.c[i].v??null) : null; }
-function str(row,i)  { return String(val(row,i)||'').trim(); }
-function fmt(row,i)  { return (row.c && row.c[i]) ? (row.c[i].f||'') : ''; }
-function norm(s)     { return String(s||'').trim().toUpperCase().replace(/[\s\-]/g,''); }
-function fmtN(n,dec=2) { return (+n||0).toLocaleString('es-AR',{minimumFractionDigits:dec,maximumFractionDigits:dec}); }
-function fmtARS(n)   { return '$'+fmtN(n,0); }
-function fmtDate(d)  { if(!d)return'—'; const[y,m,day]=d.split('-'); return`${day}/${m}/${y}`; }
-
-function parseFecha(row,i) {
-  const v=val(row,i), f=fmt(row,i);
-  for(const s of [f, typeof v==='string'?v:'']) {
-    if(!s) continue;
-    let m=s.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
-    if(m){ let[,a,b,c]=m; c=+c<100?2000+(+c):+c; if(+a<=31&&+b<=12) return new Date(c,+b-1,+a); }
-    m=s.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
-    if(m) return new Date(+m[1],+m[2]-1,+m[3]);
+function parseFecha(row,i){
+  const val=v(row,i),fmt=f(row,i);
+  for(const src of [fmt,typeof val==='string'?val:'']){
+    if(!src)continue;
+    let m=src.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+    if(m){let[,a,b,c]=m;c=+c<100?2000+(+c):+c;if(+a<=31&&+b<=12)return new Date(c,+b-1,+a);}
+    m=src.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    if(m)return new Date(+m[1],+m[2]-1,+m[3]);
   }
-  if(typeof v==='string'){ const m=v.match(/Date\((\d+),(\d+),(\d+)/); if(m) return new Date(+m[1],+m[2],+m[3]); }
+  if(typeof val==='string'){const m=val.match(/Date\((\d+),(\d+),(\d+)/);if(m)return new Date(+m[1],+m[2],+m[3]);}
   return null;
 }
 
-function inRange(f,from,to) {
-  if(!f) return false;
-  if(from && f<new Date(from+'T00:00:00')) return false;
-  if(to   && f>new Date(to  +'T23:59:59')) return false;
+function inRange(fecha,from,to){
+  if(!fecha)return false;
+  if(from&&fecha<new Date(from+'T00:00:00'))return false;
+  if(to&&fecha>new Date(to+'T23:59:59'))return false;
   return true;
 }
 
-async function fetchGviz(id,ref='0') {
+async function fetchGviz(id,ref='0'){
   const p=/^\d+$/.test(String(ref))?`gid=${ref}`:`sheet=${encodeURIComponent(ref)}`;
   const r=await fetch(`https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:json&headers=1&${p}`);
-  if(!r.ok) throw new Error(`HTTP ${r.status}`);
+  if(!r.ok)throw new Error(`HTTP ${r.status}`);
   const t=await r.text();
   const j=JSON.parse(t.slice(t.indexOf('(')+1,t.lastIndexOf(')')));
-  if(j.status==='error') throw new Error(j.errors?.[0]?.message||'Error');
+  if(j.status==='error')throw new Error(j.errors?.[0]?.message||'Error sheet');
   return j.table;
 }
 
-function parsarFuente(table,fuente,from,to,filtVeh=null) {
-  if(!table?.rows) return [];
+function parsarFuente(table,fuente,from,to,filtVeh=null){
+  if(!table?.rows)return[];
   const res=[];
-  const skipRows = fuente.headerRows||0;
-  let rowIdx = 0;
-  for(const row of table.rows) {
-    rowIdx++;
-    if(rowIdx <= skipRows) continue;
-    if(!row.c) continue;
-    if(!fuente.filtro(row)) continue;
-    const fecha=parseFecha(row,fuente.iFecha);
-    if(!inRange(fecha,from,to)) continue;
-    let litros=0;
-    if(fuente.iLitrosMulti) litros=fuente.iLitrosMulti.reduce((s,i)=>s+(+val(row,i)||0),0);
-    else litros=parseFloat(val(row,fuente.iLitros))||0;
-    if(!litros) continue;
-    const pat=norm(str(row,fuente.iPatente>=0?fuente.iPatente:-1));
-    const int_=String(val(row,fuente.iInterno>=0?fuente.iInterno:-1)||'').trim();
-    const prod=str(row,fuente.iProducto);
-    const punto=fuente.punto(row);
-    if(filtVeh) {
-      const okPat=pat&&pat===norm(filtVeh.Dominio);
-      const okInt=int_&&int_===String(filtVeh.Interno);
-      if(!okPat&&!okInt) continue;
+  let ri=0;
+  for(const row of table.rows){
+    ri++;
+    if(ri<=fuente.headerRows)continue;
+    if(!row.c)continue;
+    // Filtro cliente (PETROSAR en col R)
+    if(fuente.filtroCliente){
+      const cli=s(row,17).toUpperCase();
+      if(!cli.includes('PETROSAR'))continue;
     }
-    // Mes para valorización
+    // Filtro internos específicos (Planta)
+    if(fuente.filtroInternos){
+      if(!fuente.filtroInternos.includes(+v(row,fuente.iInterno)))continue;
+    }
+    const fecha=parseFecha(row,fuente.iFecha);
+    if(!inRange(fecha,from,to))continue;
+    let litros=0;
+    if(fuente.iLitrosMulti)litros=fuente.iLitrosMulti.reduce((s,i)=>s+(+v(row,i)||0),0);
+    else litros=parseFloat(v(row,fuente.iLitros))||0;
+    if(!litros)continue;
+    const pat=fuente.iPatente>=0?norm(s(row,fuente.iPatente)):'';
+    const int_=String(v(row,fuente.iInterno)||'').trim();
+    const prodRaw=s(row,fuente.iProducto);
+    const prod=normProd(prodRaw);
+    // Punto: dinámico para VHCD
+    let punto=fuente.punto;
+    if(!punto){
+      // VHCD: producto VH → VH, resto → CD
+      punto=prodRaw.toUpperCase().includes('VH')?'VH':'CD';
+    }
+    // Filtro vehículo
+    if(filtVeh){
+      const okP=pat&&pat===norm(filtVeh.Dominio);
+      const okI=int_&&int_===String(filtVeh.Interno);
+      if(!okP&&!okI)continue;
+    }
     const mes=fecha?`${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,'0')}`:null;
-    res.push({fecha,fechaStr:fmt(row,fuente.iFecha)||(fecha?fecha.toLocaleDateString('es-AR'):''),litros,prod,pat,int:int_,punto,mes});
+    const interno=+int_||0;
+    res.push({fecha,fechaStr:f(row,fuente.iFecha)||(fecha?fecha.toLocaleDateString('es-AR'):''),litros,prod,prodRaw,pat,int:int_,interno,punto,mes,fuente:fuente.nombre});
   }
   return res;
 }
 
-// Configuración de columnas ya incluida en FUENTES
+// Filtro centro de costo
+function filtrarCC(despachos,cc){
+  if(cc==='TODOS')return despachos;
+  if(cc==='EESS')return despachos.filter(d=>EESS_INTERNOS.includes(d.interno));
+  // PETROSAR = todos los que NO son EESS
+  return despachos.filter(d=>!EESS_INTERNOS.includes(d.interno));
+}
 
-async function consultarTodo(from,to,filtVeh=null) {
+async function consultarTodo(from,to,filtVeh=null){
   const keys=Object.keys(FUENTES);
   const results=await Promise.allSettled(keys.map(k=>fetchGviz(FUENTES[k].id,FUENTES[k].ref)));
-  const despachos=[], errores=[];
+  const despachos=[],errores=[];
   results.forEach((r,i)=>{
     const k=keys[i];
-    if(r.status==='fulfilled') despachos.push(...parsarFuente(r.value,FUENTES[k],from,to,filtVeh));
+    if(r.status==='fulfilled')despachos.push(...parsarFuente(r.value,FUENTES[k],from,to,filtVeh));
     else errores.push(`${FUENTES[k].nombre}: ${r.reason?.message||'error'}`);
   });
-  return {despachos,errores};
+  return{despachos,errores};
 }
 
 // ═══════════════════════════════════
 // FLOTA DINÁMICA
 // ═══════════════════════════════════
-async function cargarFlota() {
-  try {
-    // Timeout de 8s para no bloquear la app
-    const controller = new AbortController();
-    const tid = setTimeout(()=>controller.abort(), 8000);
+async function cargarFlota(){
+  try{
     const t=await fetchGviz(SHEET_RODADOS,'0');
-    clearTimeout(tid);
-    if(!t?.rows) return;
+    if(!t?.rows)return;
     const seen=new Set();
-    for(const row of t.rows) {
-      if(!row.c) continue;
-      const interno=row.c[0]?.v, dominio=String(row.c[1]?.v||'').trim().toUpperCase(), desc=String(row.c[3]?.v||'').trim();
-      if(!interno||!dominio||dominio==='NAN') continue;
+    for(const row of t.rows){
+      if(!row.c)continue;
+      const interno=row.c[0]?.v,dominio=String(row.c[1]?.v||'').trim().toUpperCase(),desc=String(row.c[3]?.v||'').trim();
+      if(!interno||!dominio||dominio==='NAN')continue;
       const k=String(interno);
-      if(seen.has(k)) continue;
+      if(seen.has(k))continue;
       seen.add(k);
       FLOTA.push({Interno:+interno,Dominio:dominio,Descripción:desc});
     }
     FLOTA.sort((a,b)=>a.Interno-b.Interno);
-  } catch(e) { console.warn('Flota error:',e.message); }
+  }catch(e){console.warn('Flota:',e.message);}
 }
 
 // ═══════════════════════════════════
 // TABS
 // ═══════════════════════════════════
-function switchTab(t) {
-  ['veh','totales','valorizacion','cruce'].forEach(id=>document.getElementById('tab-'+id).style.display=id===t?'block':'none');
-  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['veh','totales','valorizacion','cruce'][i]===t));
+function switchTab(t){
+  ['veh','totales','valorizacion'].forEach(id=>document.getElementById('tab-'+id).style.display=id===t?'block':'none');
+  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['veh','totales','valorizacion'][i]===t));
   if(t==='totales'&&!document.getElementById('mesTabs').children.length){buildMeses('mesTabs');setDates('totFrom','totTo');}
   if(t==='valorizacion'&&!document.getElementById('mesTabsVal').children.length){buildMeses('mesTabsVal');setDates('valFrom','valTo');}
-  if(t==='cruce'&&!document.getElementById('mesTabsCruce').children.length){buildMeses('mesTabsCruce');setDates('cruceFrom','cruceTo');}
 }
 function setDates(f,t){const now=new Date();document.getElementById(f).value=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);document.getElementById(t).value=now.toISOString().slice(0,10);}
 function buildMeses(cid){
-  const now=new Date(); let html='';
-  for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const lbl=d.toLocaleString('es-AR',{month:'short',year:'2-digit'}).toUpperCase();html+=`<div class="mes-tab${i===0?' active':''}" onclick="selMes(this,'${cid}',${d.getFullYear()},${d.getMonth()})">${lbl}</div>`;}
+  const now=new Date();let html='';
+  for(let i=5;i>=0;i--){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    const lbl=d.toLocaleString('es-AR',{month:'short',year:'2-digit'}).toUpperCase();
+    html+=`<div class="mes-tab${i===0?' active':''}" onclick="selMes(this,'${cid}',${d.getFullYear()},${d.getMonth()})">${lbl}</div>`;
+  }
   html+=`<div class="mes-tab" onclick="selMes(this,'${cid}',-1,-1)">Todo</div>`;
   document.getElementById(cid).innerHTML=html;
 }
 function selMes(el,cid,y,m){
-  document.querySelectorAll(`#${cid} .mes-tab`).forEach(t=>t.classList.remove('active')); el.classList.add('active');
+  document.querySelectorAll(`#${cid} .mes-tab`).forEach(t=>t.classList.remove('active'));el.classList.add('active');
   if(y===-1)return;
   const from=new Date(y,m,1),to=new Date(y,m+1,0),fmt=d=>d.toISOString().slice(0,10);
   if(cid==='mesTabs'){document.getElementById('totFrom').value=fmt(from);document.getElementById('totTo').value=fmt(to);cargarTotales();}
-  else if(cid==='mesTabsVal'){document.getElementById('valFrom').value=fmt(from);document.getElementById('valTo').value=fmt(to);cargarValorizacion();}
-  else{document.getElementById('cruceFrom').value=fmt(from);document.getElementById('cruceTo').value=fmt(to);cargarCruce();}
+  else{document.getElementById('valFrom').value=fmt(from);document.getElementById('valTo').value=fmt(to);cargarValorizacion();}
 }
 
-// ═══════════════════════════════════
+// CC selector
+function selCC(cc){
+  ccActual=cc;
+  ['PETROSAR','EESS','TODOS'].forEach(x=>{
+    document.getElementById('cc-'+x.toLowerCase()).classList.toggle('active',x===cc);
+  });
+  cargarTotales();
+}
+
 // INIT
-// ═══════════════════════════════════
 (async function(){
   const now=new Date();
   document.getElementById('vehFrom').value=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
   document.getElementById('vehTo').value=now.toISOString().slice(0,10);
-  const inp=document.getElementById('vehSearch');
-  // Timeout: si tarda más de 5 segundos, habilitamos igual
-  const timeout = setTimeout(()=>{
-    inp.disabled=false;
-    inp.placeholder='Ingresá patente o interno';
-  }, 5000);
-  try {
-    await cargarFlota();
-  } catch(e) {}
-  clearTimeout(timeout);
-  inp.disabled=false;
-  inp.placeholder=FLOTA.length?`Buscar entre ${FLOTA.length} vehículos...`:'Ingresá patente o interno';
+  cargarFlota().then(()=>{
+    const inp=document.getElementById('vehSearch');
+    inp.placeholder=FLOTA.length?`Buscar entre ${FLOTA.length} vehículos...`:'Ingresá patente o interno';
+  });
 })();
 
 // ═══════════════════════════════════
 // AUTOCOMPLETE
 // ═══════════════════════════════════
 let selVeh=null,acItems=[],acIdx=-1;
-function acSearch(v){
-  selVeh=null; const q=norm(v);
+function acSearch(val){
+  selVeh=null;const q=norm(val);
   if(q.length<2){closeAC();return;}
   acItems=FLOTA.filter(x=>norm(x.Dominio).includes(q)||String(x.Interno).startsWith(q)).slice(0,10);
   if(!acItems.length){closeAC();return;}
   document.getElementById('acDd').innerHTML=acItems.map((x,i)=>`<div class="ac-item" onclick="acSel(${i})"><span class="ac-int">${x.Interno}</span><span class="ac-pat">${x.Dominio}</span><span class="ac-desc">${x.Descripción||''}</span></div>`).join('');
-  document.getElementById('acDd').style.display='block'; acIdx=-1;
+  document.getElementById('acDd').style.display='block';acIdx=-1;
 }
-function acKey(e){const dd=document.getElementById('acDd');if(dd.style.display==='none'){if(e.key==='Enter')buscarVeh();return;}if(e.key==='ArrowDown'){acIdx=Math.min(acIdx+1,acItems.length-1);hiAC();e.preventDefault();}else if(e.key==='ArrowUp'){acIdx=Math.max(acIdx-1,0);hiAC();e.preventDefault();}else if(e.key==='Enter'){if(acIdx>=0)acSel(acIdx);else buscarVeh();}else if(e.key==='Escape')closeAC();}
+function acKey(e){
+  const dd=document.getElementById('acDd');
+  if(dd.style.display==='none'){if(e.key==='Enter')buscarVeh();return;}
+  if(e.key==='ArrowDown'){acIdx=Math.min(acIdx+1,acItems.length-1);hiAC();e.preventDefault();}
+  else if(e.key==='ArrowUp'){acIdx=Math.max(acIdx-1,0);hiAC();e.preventDefault();}
+  else if(e.key==='Enter'){if(acIdx>=0)acSel(acIdx);else buscarVeh();}
+  else if(e.key==='Escape')closeAC();
+}
 function hiAC(){document.querySelectorAll('.ac-item').forEach((el,i)=>el.classList.toggle('hi',i===acIdx));}
 function acSel(i){selVeh=acItems[i];document.getElementById('vehSearch').value=`${selVeh.Interno} — ${selVeh.Dominio}`;closeAC();}
 function closeAC(){document.getElementById('acDd').style.display='none';}
@@ -555,20 +488,15 @@ function limpiarVeh(){document.getElementById('vehSearch').value='';selVeh=null;
 async function buscarVeh(){
   if(!selVeh){
     const q=norm(document.getElementById('vehSearch').value);
-    selVeh=FLOTA.find(v=>norm(v.Dominio)===q||String(v.Interno)===q);
-    // Si no está en flota pero ingresó algo, crear objeto temporal para buscar igual
-    if(!selVeh && q.length>=3){
-      // Puede ser patente o interno numérico
-      const esNum=/^\d+$/.test(q);
-      selVeh={ Interno: esNum?+q:0, Dominio: q, Descripción:'Búsqueda directa' };
-    }
-    if(!selVeh){document.getElementById('vehAlert').innerHTML='<div class="alert alert-err">Ingresá al menos 3 caracteres de patente o interno.</div>';return;}
+    selVeh=FLOTA.find(x=>norm(x.Dominio)===q||String(x.Interno)===q);
+    if(!selVeh&&q.length>=3)selVeh={Interno:/^\d+$/.test(q)?+q:0,Dominio:q,Descripción:'Búsqueda directa'};
+    if(!selVeh){document.getElementById('vehAlert').innerHTML='<div class="alert alert-err">Ingresá al menos 3 caracteres.</div>';return;}
   }
   document.getElementById('vehAlert').innerHTML='';
   document.getElementById('resVeh').innerHTML='';
   document.getElementById('loadingVeh').style.display='block';
   const from=document.getElementById('vehFrom').value,to=document.getElementById('vehTo').value;
-  const {despachos,errores}=await consultarTodo(from,to,selVeh);
+  const{despachos,errores}=await consultarTodo(from,to,selVeh);
   despachos.sort((a,b)=>(b.fecha||0)-(a.fecha||0));
   document.getElementById('loadingVeh').style.display='none';
   renderVeh(selVeh,despachos,errores,from,to);
@@ -577,9 +505,8 @@ async function buscarVeh(){
 function renderVeh(veh,desp,errores,from,to){
   const total=desp.reduce((s,d)=>s+d.litros,0),cant=desp.length;
   const dias=Math.max(1,Math.round((new Date(to)-new Date(from))/86400000)+1);
-  const porPunto={};
-  desp.forEach(d=>{porPunto[d.punto]=(porPunto[d.punto]||0)+d.litros;});
-
+  const porPunto={},porProd={EURO:0,GASOIL:0};
+  desp.forEach(d=>{porPunto[d.punto]=(porPunto[d.punto]||0)+d.litros;porProd[d.prod]=(porProd[d.prod]||0)+d.litros;});
   document.getElementById('resVeh').innerHTML=`
     <div class="veh-card fade">
       <div style="font-size:34px">${vehIcon(veh.Descripción)}</div>
@@ -592,81 +519,130 @@ function renderVeh(veh,desp,errores,from,to){
     </div>
     <div class="kpi-grid fade">
       <div class="kpi accent"><div class="kpi-lbl">Total litros</div><div class="kpi-val">${fmtN(total)}</div><div class="kpi-unit">todas las fuentes</div></div>
-      <div class="kpi"><div class="kpi-lbl">Despachos</div><div class="kpi-val">${cant}</div><div class="kpi-unit">cargas realizadas</div></div>
-      <div class="kpi"><div class="kpi-lbl">Prom. diario</div><div class="kpi-val">${fmtN(total/dias)}</div><div class="kpi-unit">lts/día</div></div>
-      <div class="kpi"><div class="kpi-lbl">Prom. por carga</div><div class="kpi-val">${cant?fmtN(total/cant):'—'}</div><div class="kpi-unit">lts/despacho</div></div>
+      <div class="kpi"><div class="kpi-lbl">Euro Diesel</div><div class="kpi-val">${fmtN(porProd.EURO)}</div><div class="kpi-unit">lts</div></div>
+      <div class="kpi"><div class="kpi-lbl">Gasoil</div><div class="kpi-val">${fmtN(porProd.GASOIL)}</div><div class="kpi-unit">lts</div></div>
+      <div class="kpi"><div class="kpi-lbl">Despachos</div><div class="kpi-val">${cant}</div><div class="kpi-unit">cargas · ${fmtN(total/dias)} lts/día</div></div>
     </div>
     ${Object.keys(porPunto).length?`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px" class="fade">
       ${Object.entries(porPunto).sort((a,b)=>b[1]-a[1]).map(([p,lts])=>`
-        <div style="background:${PUNTO_BG[p]||'#f5f5f5'};border-radius:10px;padding:12px 18px;min-width:110px;text-align:center;border:1px solid ${PUNTO_COLORS[p]||'#ddd'}22">
-          <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:${PUNTO_COLORS[p]||'#666'};text-transform:uppercase;margin-bottom:4px">${p}</div>
-          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:18px;color:var(--txt)">${fmtN(lts)}</div>
+        <div style="background:${SECTOR_BG[p]||'#f5f5f5'};border-radius:10px;padding:12px 18px;min-width:110px;text-align:center;border:1px solid ${SECTOR_COLOR[p]||'#ddd'}33">
+          <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:${SECTOR_COLOR[p]||'#666'};text-transform:uppercase;margin-bottom:4px">${p}</div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:18px">${fmtN(lts)}</div>
           <div style="font-size:10px;color:var(--muted)">lts</div>
         </div>`).join('')}
     </div>`:''}
-    ${errores.length?`<div class="alert alert-warn fade">⚠ Fuentes con error: ${errores.join(' | ')}</div>`:''}
+    ${errores.length?`<div class="alert alert-warn fade">⚠ Sin datos de: ${errores.map(e=>e.split(':')[0]).join(', ')}</div>`:''}
     <div class="tbl-wrap fade">
       <div class="tbl-hdr"><span class="tbl-title">Detalle de despachos</span><span class="tbl-count">${cant} registros</span></div>
       ${cant===0?`<div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">Sin despachos en el período</div></div>`:`
-      <table class="dt"><thead><tr><th>Fecha</th><th>Litros</th><th>Producto</th><th>Punto</th></tr></thead><tbody>
+      <table class="dt"><thead><tr><th>Fecha</th><th>Litros</th><th>Producto</th><th>Sector</th><th>Fuente</th></tr></thead><tbody>
         ${desp.map(d=>`<tr>
           <td>${d.fechaStr}</td>
           <td><span class="lts-val">${fmtN(d.litros)}</span> <span style="font-size:11px;color:var(--muted)">lts</span></td>
-          <td style="color:var(--muted);font-size:12px">${d.prod}</td>
+          <td><span class="badge b-${d.prod.toLowerCase()}">${d.prod}</span></td>
           <td><span class="badge b-${d.punto.toLowerCase().replace(/\s/g,'')}">${d.punto}</span></td>
+          <td style="font-size:12px;color:var(--muted)">${d.fuente}</td>
         </tr>`).join('')}
       </tbody></table>`}
     </div>`;
 }
 
 // ═══════════════════════════════════
-// TAB 2: TOTALES POR PUNTO
+// TAB 2: TOTALES POR SECTOR
 // ═══════════════════════════════════
+let cachedDespachos=null,cachedFrom=null,cachedTo=null;
+
 async function cargarTotales(){
-  document.getElementById('resTot').innerHTML='';
-  document.getElementById('loadingTot').style.display='block';
   const from=document.getElementById('totFrom').value,to=document.getElementById('totTo').value;
-  const {despachos,errores}=await consultarTodo(from,to);
-  document.getElementById('loadingTot').style.display='none';
+  // Usar cache si mismo período
+  let despachos,errores;
+  if(cachedDespachos&&cachedFrom===from&&cachedTo===to){
+    despachos=cachedDespachos;errores=[];
+  }else{
+    document.getElementById('resTot').innerHTML='';
+    document.getElementById('loadingTot').style.display='block';
+    const res=await consultarTodo(from,to);
+    despachos=res.despachos;errores=res.errores;
+    cachedDespachos=despachos;cachedFrom=from;cachedTo=to;
+    document.getElementById('loadingTot').style.display='none';
+  }
+  const filtrados=filtrarCC(despachos,ccActual);
+  renderTotales(filtrados,errores,from,to);
+}
+
+function renderTotales(desp,errores,from,to){
   const map={};
-  despachos.forEach(d=>{if(!map[d.punto])map[d.punto]={lts:0,cargas:0};map[d.punto].lts+=d.litros;map[d.punto].cargas++;});
-  const total=despachos.reduce((s,d)=>s+d.litros,0);
-  const puntos=PUNTO_ORDER.filter(p=>map[p] && !p.includes('_DC'));
+  desp.forEach(d=>{
+    if(!map[d.punto])map[d.punto]={lts:0,euro:0,gasoil:0,cargas:0};
+    map[d.punto].lts+=d.litros;map[d.punto].cargas++;
+    if(d.prod==='GASOIL')map[d.punto].gasoil+=d.litros;
+    else map[d.punto].euro+=d.litros;
+  });
+  const total=desp.reduce((s,d)=>s+d.litros,0);
+  const totalEuro=desp.filter(d=>d.prod==='EURO').reduce((s,d)=>s+d.litros,0);
+  const totalGasoil=desp.filter(d=>d.prod==='GASOIL').reduce((s,d)=>s+d.litros,0);
+  const sectores=SECTOR_ORDER.filter(p=>map[p]);
+
+  const ccLabel={'PETROSAR':'PETROSAR (flota propia)','EESS':'EESS CD (internos 1009/836/742/794)','TODOS':'Todos'}[ccActual];
 
   document.getElementById('resTot').innerHTML=`
-    ${errores.length?`<div class="alert alert-warn fade">⚠ ${errores.join(' | ')}</div>`:''}
-    <div class="puntos-grid fade">
-      ${puntos.map(p=>{const c=PUNTO_COLORS[p]||'#888',bg=PUNTO_BG[p]||'#f5f5f5',pct=total?(map[p].lts/total*100).toFixed(1):0;
-        return`<div class="punto-card">
-          <div class="punto-head">
-            <span class="punto-tag" style="background:${bg};color:${c}">${p}</span>
-            <div style="text-align:right"><div class="punto-lts" style="color:${c}">${fmtN(map[p].lts)}</div><div style="font-size:11px;color:var(--muted)">lts · ${pct}%</div></div>
+    ${errores.length?`<div class="alert alert-warn fade">⚠ Sin datos de: ${errores.map(e=>e.split(':')[0]).join(', ')}</div>`:''}
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px;font-weight:500">Mostrando: <strong style="color:var(--txt)">${ccLabel}</strong> · ${fmtDate(from)} → ${fmtDate(to)}</div>
+    <div class="kpi-grid fade">
+      <div class="kpi accent"><div class="kpi-lbl">Total litros</div><div class="kpi-val">${fmtN(total)}</div><div class="kpi-unit">${desp.length} despachos</div></div>
+      <div class="kpi"><div class="kpi-lbl">Euro Diesel</div><div class="kpi-val">${fmtN(totalEuro)}</div><div class="kpi-unit">${total?((totalEuro/total)*100).toFixed(1)+'% del total':''}</div></div>
+      <div class="kpi"><div class="kpi-lbl">Gasoil</div><div class="kpi-val">${fmtN(totalGasoil)}</div><div class="kpi-unit">${total?((totalGasoil/total)*100).toFixed(1)+'% del total':''}</div></div>
+      <div class="kpi"><div class="kpi-lbl">Sectores activos</div><div class="kpi-val">${sectores.length}</div><div class="kpi-unit">con despachos</div></div>
+    </div>
+    <div class="sectores-grid fade">
+      ${sectores.map(p=>{
+        const c=SECTOR_COLOR[p]||'#888',bg=SECTOR_BG[p]||'#f5f5f5';
+        const pct=total?(map[p].lts/total*100).toFixed(1):0;
+        const barEuro=map[p].lts?(map[p].euro/map[p].lts*100).toFixed(0):0;
+        return`<div class="sector-card">
+          <div class="sector-head">
+            <span class="sector-tag" style="background:${bg};color:${c}">${p}</span>
+            <div style="text-align:right">
+              <div class="sector-lts" style="color:${c}">${fmtN(map[p].lts)}</div>
+              <div style="font-size:11px;color:var(--muted)">lts · ${pct}%</div>
+            </div>
           </div>
-          <div class="punto-body">
-            <div class="punto-row"><span class="punto-row-lbl">Despachos</span><span class="punto-row-val">${map[p].cargas}</span></div>
-            <div class="punto-row"><span class="punto-row-lbl">Prom. por carga</span><span class="punto-row-val">${fmtN(map[p].lts/map[p].cargas)} lts</span></div>
+          <div class="sector-body">
+            ${map[p].euro?`<div class="prod-row"><span class="prod-lbl">Euro Diesel</span><span class="prod-val">${fmtN(map[p].euro)} lts</span></div>
+            <div class="bar-track"><div class="bar-fill" style="width:${barEuro}%;background:#92400e40"></div></div>`:''}
+            ${map[p].gasoil?`<div class="prod-row"><span class="prod-lbl">Gasoil</span><span class="prod-val">${fmtN(map[p].gasoil)} lts</span></div>
+            <div class="bar-track"><div class="bar-fill" style="width:${100-+barEuro}%;background:#1e40af40"></div></div>`:''}
+            <div class="sector-row"><span class="sector-row-lbl">Despachos</span><span class="sector-row-val">${map[p].cargas}</span></div>
+            <div class="sector-row"><span class="sector-row-lbl">Prom./carga</span><span class="sector-row-val">${fmtN(map[p].lts/map[p].cargas)} lts</span></div>
           </div>
         </div>`;}).join('')}
     </div>
     <div class="tbl-wrap fade">
-      <div class="tbl-hdr"><span class="tbl-title">Resumen global</span><span class="tbl-count">${despachos.length} despachos</span></div>
-      <table class="dt"><thead><tr><th>Punto</th><th>Litros</th><th>Despachos</th><th>Prom/carga</th><th>% del total</th></tr></thead>
-      <tbody>
-        ${puntos.map(p=>`<tr>
-          <td><span class="badge b-${p.toLowerCase().replace(/\s/g,'')}">${p}</span></td>
-          <td><span class="lts-val">${fmtN(map[p].lts)}</span></td>
-          <td>${map[p].cargas}</td>
-          <td>${fmtN(map[p].lts/map[p].cargas)}</td>
-          <td style="color:var(--muted)">${total?(map[p].lts/total*100).toFixed(1)+'%':'—'}</td>
-        </tr>`).join('')}
-        <tr style="font-weight:700;background:var(--orange-pale)">
-          <td style="color:var(--orange)">TOTAL</td>
-          <td style="color:var(--orange)">${fmtN(total)}</td>
-          <td>${despachos.length}</td><td>—</td><td>100%</td>
-        </tr>
-      </tbody></table>
+      <div class="tbl-hdr"><span class="tbl-title">Resumen global</span><span class="tbl-count">${desp.length} despachos</span></div>
+      <table class="dt">
+        <thead><tr><th>Sector</th><th>Euro Diesel</th><th>Gasoil</th><th>Total lts</th><th>Despachos</th><th>% total</th></tr></thead>
+        <tbody>
+          ${sectores.map(p=>`<tr>
+            <td><span class="badge b-${p.toLowerCase().replace(/\s/g,'')}">${p}</span></td>
+            <td>${map[p].euro?fmtN(map[p].euro):'—'}</td>
+            <td>${map[p].gasoil?fmtN(map[p].gasoil):'—'}</td>
+            <td><span class="lts-val">${fmtN(map[p].lts)}</span></td>
+            <td>${map[p].cargas}</td>
+            <td style="color:var(--muted)">${pct(map[p].lts,total)}</td>
+          </tr>`).join('')}
+        </tbody>
+        <tfoot><tr>
+          <td>TOTAL</td>
+          <td>${fmtN(totalEuro)}</td>
+          <td>${fmtN(totalGasoil)}</td>
+          <td>${fmtN(total)}</td>
+          <td>${desp.length}</td>
+          <td>100%</td>
+        </tr></tfoot>
+      </table>
     </div>`;
 }
+function pct(a,b){return b?(a/b*100).toFixed(1)+'%':'—';}
 
 // ═══════════════════════════════════
 // TAB 3: VALORIZACIÓN
@@ -675,136 +651,101 @@ async function cargarValorizacion(){
   document.getElementById('resVal').innerHTML='';
   document.getElementById('loadingVal').style.display='block';
   const from=document.getElementById('valFrom').value,to=document.getElementById('valTo').value;
-  const pNeto=+document.getElementById('pNeto').value||0;
-  const pNeto2=+document.getElementById('pNeto2').value||0;
-  const pImpInt=+document.getElementById('pImpInt').value||0;
-  const pCO2=+document.getElementById('pCO2').value||0;
+  const pEuro=+document.getElementById('pEuro').value||0;
+  const pGasoil=+document.getElementById('pGasoil').value||0;
+  const pImpEuro=+document.getElementById('pImpEuro').value||0;
+  const pImpGasoil=+document.getElementById('pImpGasoil').value||0;
+  const pCO2Euro=+document.getElementById('pCO2Euro').value||0;
+  const pCO2Gasoil=+document.getElementById('pCO2Gasoil').value||0;
 
-  const {despachos,errores}=await consultarTodo(from,to);
+  let despachos,errores;
+  if(cachedDespachos&&cachedFrom===from&&cachedTo===to){
+    despachos=cachedDespachos;errores=[];
+  }else{
+    const res=await consultarTodo(from,to);
+    despachos=res.despachos;errores=res.errores;
+    cachedDespachos=despachos;cachedFrom=from;cachedTo=to;
+  }
   document.getElementById('loadingVal').style.display='none';
 
-  // Agrupar por mes
+  // Agrupar por mes y producto
   const meses={};
   despachos.forEach(d=>{
     const m=d.mes||'Sin fecha';
-    if(!meses[m]) meses[m]={lts:0,neto:0,impInt:0,co2:0,total:0};
-    const esGasoil=d.prod.toUpperCase().includes('GASOIL');
-    const precio=esGasoil?pNeto2:pNeto;
-    meses[m].lts+=d.litros;
-    meses[m].neto+=d.litros*precio;
-    meses[m].impInt+=d.litros*pImpInt;
-    meses[m].co2+=d.litros*pCO2;
-    meses[m].total+=d.litros*(precio+pImpInt+pCO2);
+    if(!meses[m])meses[m]={ltsEuro:0,ltsGasoil:0,netoEuro:0,netoGasoil:0,impEuro:0,impGasoil:0,co2Euro:0,co2Gasoil:0};
+    if(d.prod==='GASOIL'){
+      meses[m].ltsGasoil+=d.litros;
+      meses[m].netoGasoil+=d.litros*pGasoil;
+      meses[m].impGasoil+=d.litros*pImpGasoil;
+      meses[m].co2Gasoil+=d.litros*pCO2Gasoil;
+    }else{
+      meses[m].ltsEuro+=d.litros;
+      meses[m].netoEuro+=d.litros*pEuro;
+      meses[m].impEuro+=d.litros*pImpEuro;
+      meses[m].co2Euro+=d.litros*pCO2Euro;
+    }
   });
 
   const keys=Object.keys(meses).sort();
-  const totales={lts:0,neto:0,impInt:0,co2:0,total:0};
-  keys.forEach(k=>{Object.keys(totales).forEach(f=>totales[f]+=meses[k][f]);});
-
   if(!keys.length){document.getElementById('resVal').innerHTML='<div class="empty"><div class="empty-icon">📭</div><div class="empty-title">Sin datos en el período</div></div>';return;}
 
-  // KPIs
-  const totalGlobal=despachos.reduce((s,d)=>s+d.litros,0);
+  const tot={ltsEuro:0,ltsGasoil:0,netoEuro:0,netoGasoil:0,impEuro:0,impGasoil:0,co2Euro:0,co2Gasoil:0};
+  keys.forEach(k=>Object.keys(tot).forEach(f=>tot[f]+=meses[k][f]));
+
+  const totalLts=tot.ltsEuro+tot.ltsGasoil;
+  const totalNeto=tot.netoEuro+tot.netoGasoil;
+  const totalImp=tot.impEuro+tot.impGasoil;
+  const totalCO2=tot.co2Euro+tot.co2Gasoil;
+  const totalVal=totalNeto+totalImp+totalCO2;
+
   document.getElementById('resVal').innerHTML=`
-    ${errores.length?`<div class="alert alert-warn fade">⚠ ${errores.join(' | ')}</div>`:''}
+    ${errores.length?`<div class="alert alert-warn fade">⚠ Sin datos de: ${errores.map(e=>e.split(':')[0]).join(', ')}</div>`:''}
     <div class="kpi-grid fade">
-      <div class="kpi accent"><div class="kpi-lbl">Total litros</div><div class="kpi-val">${fmtN(totalGlobal)}</div><div class="kpi-unit">período seleccionado</div></div>
-      <div class="kpi"><div class="kpi-lbl">Valor neto</div><div class="kpi-val" style="font-size:20px">${fmtARS(totales.neto)}</div><div class="kpi-unit">sin impuestos</div></div>
-      <div class="kpi"><div class="kpi-lbl">Imp. Interno + CO2</div><div class="kpi-val" style="font-size:20px">${fmtARS(totales.impInt+totales.co2)}</div><div class="kpi-unit">impuestos totales</div></div>
-      <div class="kpi" style="border-color:var(--orange)"><div class="kpi-lbl">Total valorizado</div><div class="kpi-val" style="font-size:20px;color:var(--orange)">${fmtARS(totales.total)}</div><div class="kpi-unit">neto + impuestos</div></div>
+      <div class="kpi accent"><div class="kpi-lbl">Total litros</div><div class="kpi-val">${fmtN(totalLts)}</div><div class="kpi-unit">${fmtN(tot.ltsEuro)} Euro · ${fmtN(tot.ltsGasoil)} Gasoil</div></div>
+      <div class="kpi"><div class="kpi-lbl">Valor neto</div><div class="kpi-val" style="font-size:19px">${fmtARS(totalNeto)}</div><div class="kpi-unit">sin impuestos</div></div>
+      <div class="kpi"><div class="kpi-lbl">Imp. Interno</div><div class="kpi-val" style="font-size:19px">${fmtARS(totalImp)}</div><div class="kpi-unit">+ CO2: ${fmtARS(totalCO2)}</div></div>
+      <div class="kpi" style="border-color:var(--orange)"><div class="kpi-lbl">Total valorizado</div><div class="kpi-val" style="font-size:19px;color:var(--orange)">${fmtARS(totalVal)}</div><div class="kpi-unit">neto + impuestos</div></div>
     </div>
     <div class="tbl-wrap fade">
-      <div class="tbl-hdr"><span class="tbl-title">Valorización por mes</span><span class="tbl-count">${keys.length} meses</span></div>
-      <table class="tabla-valorizacion">
-        <thead><tr><th>Mes</th><th>Litros</th><th>Valor neto</th><th>Imp. Interno</th><th>CO2</th><th>Total</th></tr></thead>
+      <div class="tbl-hdr"><span class="tbl-title">Valorización por mes y producto</span><span class="tbl-count">${keys.length} meses</span></div>
+      <table class="dt">
+        <thead><tr><th>Mes</th><th>Producto</th><th>Litros</th><th>Neto</th><th>Imp. Interno</th><th>CO2</th><th>Total</th></tr></thead>
         <tbody>
-          ${keys.map(k=>{
+          ${keys.flatMap(k=>{
+            const d=meses[k];
             const[y,m]=k.split('-');
-            const nomMes=new Date(+y,+m-1,1).toLocaleString('es-AR',{month:'long',year:'numeric'});
-            return`<tr>
-              <td style="font-weight:500">${nomMes}</td>
-              <td>${fmtN(meses[k].lts)}</td>
-              <td>${fmtARS(meses[k].neto)}</td>
-              <td>${fmtARS(meses[k].impInt)}</td>
-              <td>${fmtARS(meses[k].co2)}</td>
-              <td style="font-weight:700;color:var(--orange)">${fmtARS(meses[k].total)}</td>
-            </tr>`;}).join('')}
-          <tr>
-            <td>TOTAL</td>
-            <td>${fmtN(totales.lts)}</td>
-            <td>${fmtARS(totales.neto)}</td>
-            <td>${fmtARS(totales.impInt)}</td>
-            <td>${fmtARS(totales.co2)}</td>
-            <td>${fmtARS(totales.total)}</td>
-          </tr>
+            const nom=new Date(+y,+m-1,1).toLocaleString('es-AR',{month:'long',year:'numeric'});
+            const rows=[];
+            if(d.ltsEuro>0)rows.push(`<tr>
+              <td style="font-weight:500">${nom}</td>
+              <td><span class="badge b-euro">Euro Diesel</span></td>
+              <td>${fmtN(d.ltsEuro)}</td>
+              <td>${fmtARS(d.netoEuro)}</td>
+              <td>${fmtARS(d.impEuro)}</td>
+              <td>${fmtARS(d.co2Euro)}</td>
+              <td style="font-weight:700;color:var(--orange)">${fmtARS(d.netoEuro+d.impEuro+d.co2Euro)}</td>
+            </tr>`);
+            if(d.ltsGasoil>0)rows.push(`<tr>
+              <td style="font-weight:500">${d.ltsEuro>0?'':nom}</td>
+              <td><span class="badge b-gasoil">Gasoil</span></td>
+              <td>${fmtN(d.ltsGasoil)}</td>
+              <td>${fmtARS(d.netoGasoil)}</td>
+              <td>${fmtARS(d.impGasoil)}</td>
+              <td>${fmtARS(d.co2Gasoil)}</td>
+              <td style="font-weight:700;color:var(--orange)">${fmtARS(d.netoGasoil+d.impGasoil+d.co2Gasoil)}</td>
+            </tr>`);
+            return rows;
+          }).join('')}
         </tbody>
+        <tfoot><tr>
+          <td colspan="2">TOTAL</td>
+          <td>${fmtN(totalLts)}</td>
+          <td>${fmtARS(totalNeto)}</td>
+          <td>${fmtARS(totalImp)}</td>
+          <td>${fmtARS(totalCO2)}</td>
+          <td>${fmtARS(totalVal)}</td>
+        </tr></tfoot>
       </table>
-    </div>`;
-}
-
-// ═══════════════════════════════════
-// TAB 4: CRUCE VH/CD
-// ═══════════════════════════════════
-async function cargarCruce(){
-  document.getElementById('resCruce').innerHTML='';
-  document.getElementById('loadingCruce').style.display='block';
-  const from=document.getElementById('cruceFrom').value,to=document.getElementById('cruceTo').value;
-  const filtPunto=document.getElementById('crucePunto').value;
-  const [rEst,rDC]=await Promise.allSettled([fetchGviz(FUENTES.VH.id,FUENTES.VH.ref),fetchGviz(FUENTES.VHCD.id,FUENTES.VHCD.ref)]);
-  document.getElementById('loadingCruce').style.display='none';
-  const errores=[];
-  // Estaciones: leer VH y CD desde sus solapas propias
-  const [rVH, rCD, rDC] = await Promise.allSettled([
-    fetchGviz(FUENTES.VH.id, FUENTES.VH.ref),
-    fetchGviz(FUENTES.CD.id, FUENTES.CD.ref),
-    fetchGviz(FUENTES.VHCD.id, FUENTES.VHCD.ref)
-  ]);
-  if(rEst.status==='rejected') errores.push('Estaciones: '+rEst.reason?.message);
-  if(rDC.status==='rejected')  errores.push('Dat. Conductor: '+rDC.reason?.message);
-  const despVHest = rVH.status==='fulfilled'?parsarFuente(rVH.value,FUENTES.VH,from,to):[];
-  const despCDest = rCD.status==='fulfilled'?parsarFuente(rCD.value,FUENTES.CD,from,to):[];
-  const despDC    = rDC.status==='fulfilled'?parsarFuente(rDC.value,FUENTES.VHCD,from,to):[];
-  const despEst = [...despVHest, ...despCDest];
-  const fEst = filtPunto==='ambos'?despEst:despEst.filter(d=>d.punto===filtPunto);
-  const fDC  = filtPunto==='ambos'?despDC:despDC.filter(d=>d.punto===(filtPunto==='VH'?'VH_DC':'CD_DC'));
-  const tEst=fEst.reduce((s,d)=>s+d.litros,0),tDC=fDC.reduce((s,d)=>s+d.litros,0);
-  const diff=tEst-tDC,diffPct=tDC?Math.abs(diff/tDC*100):0;
-  const diffCls=Math.abs(diff)<1?'diff-ok':diffPct<5?'diff-warn':'diff-err';
-  const pm={};
-  fEst.forEach(d=>{const k=d.pat||d.int;if(!pm[k])pm[k]={pat:d.pat,int:d.int,ltsEst:0,ltsDC:0,cEst:0,cDC:0,punto:d.punto};pm[k].ltsEst+=d.litros;pm[k].cEst++;});
-  fDC.forEach(d=>{const k=norm(d.pat)||d.int;if(!pm[k])pm[k]={pat:d.pat,int:d.int,ltsEst:0,ltsDC:0,cEst:0,cDC:0,punto:d.punto};pm[k].ltsDC+=d.litros;pm[k].cDC++;});
-  const rows=Object.values(pm).map(r=>({...r,diff:r.ltsEst-r.ltsDC})).sort((a,b)=>Math.abs(b.diff)-Math.abs(a.diff));
-
-  document.getElementById('resCruce').innerHTML=`
-    <div class="kpi-grid fade">
-      <div class="kpi"><div class="kpi-lbl">Estaciones Desp.</div><div class="kpi-val" style="color:var(--blue)">${fmtN(tEst)}</div><div class="kpi-unit">lts registrados</div></div>
-      <div class="kpi"><div class="kpi-lbl">Datos Conductor</div><div class="kpi-val" style="color:var(--gold)">${fmtN(tDC)}</div><div class="kpi-unit">lts registrados</div></div>
-      <div class="kpi"><div class="kpi-lbl">Diferencia total</div><div class="kpi-val ${diffCls}">${diff>=0?'+':''}${fmtN(diff)}</div><div class="kpi-unit">${diffPct.toFixed(1)}% variación</div></div>
-      <div class="kpi"><div class="kpi-lbl">Vehículos</div><div class="kpi-val">${rows.length}</div><div class="kpi-unit">con actividad</div></div>
-    </div>
-    <div style="display:flex;gap:14px;margin-bottom:14px;font-size:12px;color:var(--muted)" class="fade">
-      <span>● <span class="diff-ok">Verde</span> = coinciden</span>
-      <span>● <span class="diff-warn">Dorado</span> = &lt;5%</span>
-      <span>● <span class="diff-err">Rojo</span> = ≥5%</span>
-    </div>
-    ${errores.length?`<div class="alert alert-warn fade">⚠ ${errores.join(' | ')}</div>`:''}
-    <div class="tbl-wrap fade">
-      <div class="tbl-hdr"><span class="tbl-title">Cruce por patente</span><span class="tbl-count">${rows.length} vehículos</span></div>
-      ${rows.length===0?`<div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">Sin datos</div></div>`:`
-      <table class="dt"><thead><tr><th>Patente</th><th>Punto</th><th>Lts Estaciones</th><th>Lts Dat. Conductor</th><th>Diferencia</th><th>%</th></tr></thead><tbody>
-        ${rows.map(r=>{
-          const pct=r.ltsDC?Math.abs(r.diff/r.ltsDC*100):(r.ltsEst?100:0);
-          const cls=Math.abs(r.diff)<1?'diff-ok':pct<5?'diff-warn':'diff-err';
-          const vinfo=FLOTA.find(v=>norm(v.Dominio)===(r.pat||''));
-          return`<tr>
-            <td><span style="font-weight:600;font-size:13px">${r.pat||r.int}</span>${vinfo?`<div style="font-size:10px;color:var(--muted)">#${vinfo.Interno}</div>`:''}</td>
-            <td><span class="badge b-${(r.punto||'').toLowerCase().replace(/\s/g,'')}">${r.punto||'—'}</span></td>
-            <td><span style="font-weight:700;color:var(--blue)">${r.ltsEst?fmtN(r.ltsEst):'—'}</span>${r.cEst?`<div style="font-size:10px;color:var(--muted)">${r.cEst} cargas</div>`:''}</td>
-            <td><span style="font-weight:700;color:var(--gold)">${r.ltsDC?fmtN(r.ltsDC):'—'}</span>${r.cDC?`<div style="font-size:10px;color:var(--muted)">${r.cDC} cargas</div>`:''}</td>
-            <td><span class="${cls}">${r.diff>=0?'+':''}${fmtN(r.diff)}</span></td>
-            <td><span class="${cls}">${r.ltsDC||r.ltsEst?pct.toFixed(1)+'%':'—'}</span></td>
-          </tr>`;}).join('')}
-      </tbody></table>`}
     </div>`;
 }
 
