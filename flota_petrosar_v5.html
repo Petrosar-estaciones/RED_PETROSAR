@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PETROSAR · Consumo Flota</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f6fa;
+    --white: #ffffff;
+    --navy: #0f2044;
+    --orange: #e85d20;
+    --orange-l: #ff7a40;
+    --orange-pale: #fff3ee;
+    --blue: #1a5fa8;
+    --blue-pale: #eef4fc;
+    --green: #1a7a4a;
+    --green-pale: #edf7f2;
+    --red: #c0392b;
+    --red-pale: #fdf0ee;
+    --gold: #c97d10;
+    --gold-pale: #fdf6e3;
+    --border: #e2e6ef;
+    --txt: #1a1f36;
+    --muted: #6b7280;
+    --r: 12px;
+    --r-sm: 8px;
+    --shadow: 0 1px 4px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,.06);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--txt); min-height: 100vh; }
+
+  /* HEADER */
+  .hdr {
+    background: var(--navy);
+    padding: 0 32px;
+    display: flex; align-items: center; gap: 20px;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,.15);
+  }
+  .logo {
+    background: var(--orange); color: #fff;
+    font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 15px;
+    letter-spacing: 1px; padding: 6px 14px; border-radius: 6px; my: 14px;
+    margin: 14px 0;
+  }
+  .hdr-info { flex: 1; }
+  .hdr-title { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 17px; color: #fff; letter-spacing: .3px; }
+  .hdr-sub { font-size: 11px; color: rgba(255,255,255,.5); margin-top: 1px; letter-spacing: .5px; text-transform: uppercase; }
+
+  /* TABS */
+  .tabs { background: var(--white); border-bottom: 1.5px solid var(--border); padding: 0 32px; display: flex; gap: 0; }
+  .tab {
+    font-size: 13px; font-weight: 600; letter-spacing: .3px;
+    padding: 14px 20px; cursor: pointer; color: var(--muted);
+    border-bottom: 2.5px solid transparent; margin-bottom: -1.5px;
+    transition: all .18s; white-space: nowrap;
+  }
+  .tab.active { color: var(--orange); border-bottom-color: var(--orange); }
+  .tab:hover:not(.active) { color: var(--txt); }
+
+  /* MAIN */
+  .main { padding: 28px 32px; max-width: 1280px; margin: 0 auto; }
+
+  /* CARD */
+  .card { background: var(--white); border-radius: var(--r); border: 1px solid var(--border); box-shadow: var(--shadow-sm); padding: 20px 24px; margin-bottom: 20px; }
+  .card-title { font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
+
+  /* INPUTS */
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+  .fg { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 130px; }
+  .lbl { font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: .5px; }
+  input, select {
+    background: var(--bg); border: 1.5px solid var(--border); border-radius: var(--r-sm);
+    color: var(--txt); font-family: 'Inter', sans-serif; font-size: 13px;
+    padding: 9px 12px; width: 100%; outline: none; transition: border-color .15s;
+  }
+  input:focus, select:focus { border-color: var(--orange); background: #fff; }
+  input::placeholder { color: #bbb; }
+
+  /* BUTTONS */
+  .btn { font-family: 'Inter', sans-serif; font-weight: 600; font-size: 13px; padding: 9px 22px; border: none; border-radius: var(--r-sm); cursor: pointer; transition: all .15s; white-space: nowrap; height: 38px; }
+  .btn-primary { background: var(--orange); color: #fff; }
+  .btn-primary:hover { background: var(--orange-l); }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1.5px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--muted); color: var(--txt); }
+
+  /* AUTOCOMPLETE */
+  .ac-wrap { position: relative; }
+  .ac-dd { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #fff; border: 1.5px solid var(--border); border-radius: var(--r-sm); max-height: 240px; overflow-y: auto; z-index: 300; box-shadow: var(--shadow); display: none; }
+  .ac-item { padding: 10px 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); transition: background .1s; }
+  .ac-item:last-child { border-bottom: none; }
+  .ac-item:hover, .ac-item.hi { background: var(--orange-pale); }
+  .ac-int { font-weight: 700; font-size: 14px; color: var(--orange); min-width: 48px; }
+  .ac-pat { font-weight: 600; font-size: 12px; background: var(--blue-pale); color: var(--blue); padding: 2px 8px; border-radius: 4px; letter-spacing: .5px; }
+  .ac-desc { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* MES TABS */
+  .mes-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
+  .mes-tab { font-size: 12px; font-weight: 600; padding: 5px 14px; border-radius: 20px; border: 1.5px solid var(--border); color: var(--muted); cursor: pointer; transition: all .15s; background: var(--white); }
+  .mes-tab.active { background: var(--orange); color: #fff; border-color: var(--orange); }
+  .mes-tab:hover:not(.active) { border-color: var(--muted); color: var(--txt); }
+
+  /* KPI GRID */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 12px; margin-bottom: 20px; }
+  .kpi { background: var(--white); border: 1px solid var(--border); border-radius: var(--r); padding: 16px 18px; box-shadow: var(--shadow-sm); }
+  .kpi-lbl { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 6px; }
+  .kpi-val { font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 700; color: var(--txt); line-height: 1; }
+  .kpi-unit { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .kpi.accent { background: var(--orange); border-color: var(--orange); }
+  .kpi.accent .kpi-lbl { color: rgba(255,255,255,.75); }
+  .kpi.accent .kpi-val { color: #fff; }
+  .kpi.accent .kpi-unit { color: rgba(255,255,255,.75); }
+
+  /* PUNTOS GRID */
+  .puntos-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: 14px; margin-bottom: 20px; }
+  .punto-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; box-shadow: var(--shadow-sm); }
+  .punto-head { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .punto-tag { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; padding: 4px 10px; border-radius: 20px; }
+  .punto-lts { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 22px; }
+  .punto-body { padding: 12px 18px; }
+  .punto-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .punto-row:last-child { border-bottom: none; }
+  .punto-row-lbl { color: var(--muted); }
+  .punto-row-val { font-weight: 600; font-size: 13px; }
+
+  /* TABLE */
+  .tbl-wrap { background: var(--white); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; box-shadow: var(--shadow-sm); margin-bottom: 20px; }
+  .tbl-hdr { padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+  .tbl-title { font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--txt); }
+  .tbl-count { font-size: 11px; color: var(--muted); background: var(--bg); padding: 3px 10px; border-radius: 12px; border: 1px solid var(--border); }
+  table.dt { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.dt th { font-size: 11px; font-weight: 600; letter-spacing: .8px; text-transform: uppercase; color: var(--muted); padding: 10px 18px; text-align: left; border-bottom: 1px solid var(--border); background: var(--bg); }
+  table.dt td { padding: 10px 18px; border-bottom: 1px solid var(--border); color: var(--txt); }
+  table.dt tr:last-child td { border-bottom: none; }
+  table.dt tr:hover td { background: var(--orange-pale); }
+  .lts-val { font-weight: 700; color: var(--orange); font-size: 14px; }
+
+  /* BADGES */
+  .badge { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; }
+  .b-ag   { background: #e8f7ee; color: #1a7a4a; }
+  .b-tp   { background: #f0eafe; color: #5b21b6; }
+  .b-vh   { background: #fff3e0; color: #b45309; }
+  .b-cd   { background: #e0f0ff; color: #1a5fa8; }
+  .b-basecr { background: #fdecea; color: #b91c1c; }
+  .b-resero { background: #f0fde4; color: #3a7d0a; }
+  .b-planta { background: #e0f4ff; color: #0369a1; }
+
+  /* CRUCE */
+  .diff-ok   { color: var(--green); font-weight: 700; }
+  .diff-warn { color: var(--gold);  font-weight: 700; }
+  .diff-err  { color: var(--red);   font-weight: 700; }
+
+  /* VALORIZACIÓN */
+  .precio-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 12px; margin-bottom: 20px; }
+  .precio-inp { display: flex; flex-direction: column; gap: 4px; }
+  .precio-inp label { font-size: 11px; font-weight: 600; color: var(--muted); }
+  .tabla-valorizacion { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .tabla-valorizacion th { font-size: 11px; font-weight: 600; letter-spacing: .8px; text-transform: uppercase; color: var(--muted); padding: 10px 16px; text-align: left; background: var(--bg); border-bottom: 1px solid var(--border); }
+  .tabla-valorizacion td { padding: 10px 16px; border-bottom: 1px solid var(--border); }
+  .tabla-valorizacion tr:last-child td { border-bottom: none; font-weight: 700; background: var(--orange-pale); }
+  .tabla-valorizacion tr:hover:not(:last-child) td { background: #fafbff; }
+
+  /* VEH CARD */
+  .veh-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--r); padding: 18px 22px; margin-bottom: 18px; display: flex; align-items: center; gap: 18px; box-shadow: var(--shadow-sm); }
+  .veh-int { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 32px; color: var(--orange); line-height: 1; }
+  .veh-pat { font-weight: 700; font-size: 15px; letter-spacing: 1.5px; background: var(--blue-pale); color: var(--blue); padding: 4px 12px; border-radius: 6px; margin-top: 4px; display: inline-block; }
+  .veh-desc { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+  /* LOADING / EMPTY */
+  .loading { display: none; padding: 48px; text-align: center; color: var(--muted); }
+  .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--orange); border-radius: 50%; animation: spin .7s linear infinite; margin: 0 auto 14px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .empty { padding: 48px 24px; text-align: center; color: var(--muted); }
+  .empty-icon { font-size: 40px; margin-bottom: 10px; }
+  .empty-title { font-size: 16px; font-weight: 600; color: var(--txt); margin-bottom: 4px; }
+  .alert { border-radius: var(--r-sm); padding: 10px 14px; font-size: 12px; margin-bottom: 14px; font-weight: 500; }
+  .alert-warn { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+  .alert-err  { background: var(--red-pale); border: 1px solid #fca5a5; color: var(--red); }
+
+  @keyframes fadeIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+  .fade { animation: fadeIn .3s ease; }
+
+  @media(max-width:640px) {
+    .main { padding: 16px; }
+    .tabs { padding: 0 16px; overflow-x: auto; }
+    .hdr { padding: 0 16px; }
+    .kpi-grid { grid-template-columns: repeat(2,1fr); }
+    .puntos-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="logo">PETROSAR</div>
+  <div class="hdr-info">
+    <div class="hdr-title">Consumo Flota Interna</div>
+    <div class="hdr-sub">Control de combustible · Todas las fuentes</div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <div class="tab active" onclick="switchTab('veh')">Por Vehículo</div>
+  <div class="tab" onclick="switchTab('totales')">Totales por Punto</div>
+  <div class="tab" onclick="switchTab('valorizacion')">Valorización</div>
+  <div class="tab" onclick="switchTab('cruce')">Cruce VH / CD</div>
+</nav>
+
+<main class="main">
+
+  <!-- TAB VEH -->
+  <div id="tab-veh">
+    <div class="card">
+      <div class="card-title">Buscar vehículo</div>
+      <div class="row">
+        <div class="fg" style="flex:2;min-width:200px">
+          <label class="lbl">Patente o Interno</label>
+          <div class="ac-wrap">
+            <input type="text" id="vehSearch" placeholder="Cargando flota..." disabled autocomplete="off" oninput="acSearch(this.value)" onkeydown="acKey(event)">
+            <div class="ac-dd" id="acDd"></div>
+          </div>
+        </div>
+        <div class="fg"><label class="lbl">Desde</label><input type="date" id="vehFrom"></div>
+        <div class="fg"><label class="lbl">Hasta</label><input type="date" id="vehTo"></div>
+        <div style="display:flex;gap:8px;align-items:flex-end">
+          <button class="btn btn-primary" onclick="buscarVeh()">Buscar</button>
+          <button class="btn btn-ghost" onclick="limpiarVeh()">✕</button>
+        </div>
+      </div>
+      <div id="vehAlert"></div>
+    </div>
+    <div id="loadingVeh" class="loading"><div class="spinner"></div>Consultando todas las fuentes...</div>
+    <div id="resVeh"><div class="empty"><div class="empty-icon">⛽</div><div class="empty-title">Ingresá una patente o interno</div><div style="font-size:13px;margin-top:4px">para ver el historial de consumo</div></div></div>
+  </div>
+
+  <!-- TAB TOTALES -->
+  <div id="tab-totales" style="display:none">
+    <div class="card">
+      <div class="card-title">Filtrar período</div>
+      <div class="row">
+        <div class="fg"><label class="lbl">Desde</label><input type="date" id="totFrom"></div>
+        <div class="fg"><label class="lbl">Hasta</label><input type="date" id="totTo"></div>
+        <div style="align-self:flex-end"><button class="btn btn-primary" onclick="cargarTotales()">Actualizar</button></div>
+      </div>
+    </div>
+    <div class="mes-tabs" id="mesTabs"></div>
+    <div id="loadingTot" class="loading"><div class="spinner"></div>Cargando totales...</div>
+    <div id="resTot"><div class="empty"><div class="empty-icon">📊</div><div class="empty-title">Seleccioná un período</div></div></div>
+  </div>
+
+  <!-- TAB VALORIZACIÓN -->
+  <div id="tab-valorizacion" style="display:none">
+    <div class="card">
+      <div class="card-title">Precios de referencia</div>
+      <div class="precio-grid">
+        <div class="precio-inp"><label>Precio neto Euro Diesel ($/lts)</label><input type="number" id="pNeto" value="2065" step="1"></div>
+        <div class="precio-inp"><label>Precio neto Gasoil ($/lts)</label><input type="number" id="pNeto2" value="1848" step="1"></div>
+        <div class="precio-inp"><label>Impuesto Interno ($/lts)</label><input type="number" id="pImpInt" value="120" step="1"></div>
+        <div class="precio-inp"><label>CO2 ($/lts)</label><input type="number" id="pCO2" value="38" step="1"></div>
+      </div>
+      <div class="row">
+        <div class="fg"><label class="lbl">Desde</label><input type="date" id="valFrom"></div>
+        <div class="fg"><label class="lbl">Hasta</label><input type="date" id="valTo"></div>
+        <div style="align-self:flex-end"><button class="btn btn-primary" onclick="cargarValorizacion()">Calcular</button></div>
+      </div>
+    </div>
+    <div class="mes-tabs" id="mesTabsVal"></div>
+    <div id="loadingVal" class="loading"><div class="spinner"></div>Calculando valorización...</div>
+    <div id="resVal"><div class="empty"><div class="empty-icon">💰</div><div class="empty-title">Configurá los precios y calculá</div></div></div>
+  </div>
+
+  <!-- TAB CRUCE -->
+  <div id="tab-cruce" style="display:none">
+    <div class="card">
+      <div class="card-title">Cruce Estaciones vs. Datos Conductor — VH y CD</div>
+      <div class="row">
+        <div class="fg"><label class="lbl">Desde</label><input type="date" id="cruceFrom"></div>
+        <div class="fg"><label class="lbl">Hasta</label><input type="date" id="cruceTo"></div>
+        <div class="fg" style="max-width:160px">
+          <label class="lbl">Punto</label>
+          <select id="crucePunto"><option value="ambos">VH + CD</option><option value="VH">Solo VH</option><option value="CD">Solo CD</option></select>
+        </div>
+        <div style="align-self:flex-end"><button class="btn btn-primary" onclick="cargarCruce()">Cruzar</button></div>
+      </div>
+    </div>
+    <div class="mes-tabs" id="mesTabsCruce"></div>
+    <div id="loadingCruce" class="loading"><div class="spinner"></div>Cruzando datos...</div>
+    <div id="resCruce"><div class="empty"><div class="empty-icon">🔀</div><div class="empty-title">Seleccioná un período y hacé clic en Cruzar</div></div></div>
+  </div>
+
+</main>
+
+<script>
+// ═══════════════════════════════════
+// CONFIGURACIÓN FUENTES
+// ═══════════════════════════════════
+const FUENTES = {
+  AGTP: {
+    nombre:'AG / TP', id:'1418oEjkm9IVg6RsBIrygD42G2SaDa0yx0DmJtpZxBWE', ref:'0',
+    iFecha:1, iLitros:2, iProducto:3,
+    filtro: row => str(row,17).toUpperCase().includes('PETROSAR'),
+    punto:  row => { const s=str(row,9).toUpperCase(),g=str(row,6).toUpperCase(); return (s.includes('TRES PICOS')||s.includes('TP')||g==='TP')?'TP':'AG'; }
+  },
+  RESERO: {
+    nombre:'Resero', id:'1418oEjkm9IVg6RsBIrygD42G2SaDa0yx0DmJtpZxBWE', ref:'Resero',
+    iFecha:1, iLitros:2, iProducto:3,
+    filtro: ()=>true, punto: ()=>'RESERO'
+  },
+  VHCD: {
+    nombre:'VH / CD', id:'1CvPGNJGlv64Vs1PtEqdUrj9pntw7at0HPboS7YYnIf8', ref:'578541772',
+    iFecha:0, iLitros:13, iProducto:12,
+    filtro: ()=>true, punto: row=>str(row,12).toUpperCase().includes('VH')?'VH':'CD'
+  },
+  BASECR: {
+    nombre:'Base CR', id:'1A_0pcSuycTcTBcf8bAHXopHk_FrLSgcdbDSFbvZnLuQ', ref:'0',
+    iFecha:0, iLitros:4, iProducto:5,
+    filtro: ()=>true, punto: ()=>'BASE CR'
+  },
+  PLANTA: {
+    nombre:'Planta', id:'1NWUzcMuA5JmUXW5p3MiWwes8M4nb5EBNoTssFBU0ndE', ref:'1688777748',
+    iFecha:1, iLitrosMulti:[11,12,13], iProducto:2,
+    filtro: row=>[742,836,794].includes(+val(row,9)), punto: ()=>'PLANTA'
+  }
+};
+const SHEET_RODADOS = '1MUMqZlrP5-oce4oqHMEL6VvcFdGaLL3MzUDqYX8KevY';
+const PUNTO_ORDER   = ['AG','TP','VH','CD','BASE CR','RESERO','PLANTA'];
+const PUNTO_COLORS  = { AG:'#1a7a4a', TP:'#5b21b6', VH:'#b45309', CD:'#1a5fa8', 'BASE CR':'#b91c1c', RESERO:'#3a7d0a', PLANTA:'#0369a1' };
+const PUNTO_BG      = { AG:'#e8f7ee', TP:'#f0eafe', VH:'#fff3e0', CD:'#e0f0ff', 'BASE CR':'#fdecea', RESERO:'#f0fde4', PLANTA:'#e0f4ff' };
+
+// ═══════════════════════════════════
+// UTILIDADES
+// ═══════════════════════════════════
+let FLOTA = [];
+
+function val(row,i)  { return (i>=0 && row.c && row.c[i]) ? (row.c[i].v??null) : null; }
+function str(row,i)  { return String(val(row,i)||'').trim(); }
+function fmt(row,i)  { return (row.c && row.c[i]) ? (row.c[i].f||'') : ''; }
+function norm(s)     { return String(s||'').trim().toUpperCase().replace(/[\s\-]/g,''); }
+function fmtN(n,dec=2) { return (+n||0).toLocaleString('es-AR',{minimumFractionDigits:dec,maximumFractionDigits:dec}); }
+function fmtARS(n)   { return '$'+fmtN(n,0); }
+function fmtDate(d)  { if(!d)return'—'; const[y,m,day]=d.split('-'); return`${day}/${m}/${y}`; }
+
+function parseFecha(row,i) {
+  const v=val(row,i), f=fmt(row,i);
+  for(const s of [f, typeof v==='string'?v:'']) {
+    if(!s) continue;
+    let m=s.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+    if(m){ let[,a,b,c]=m; c=+c<100?2000+(+c):+c; if(+a<=31&&+b<=12) return new Date(c,+b-1,+a); }
+    m=s.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    if(m) return new Date(+m[1],+m[2]-1,+m[3]);
+  }
+  if(typeof v==='string'){ const m=v.match(/Date\((\d+),(\d+),(\d+)/); if(m) return new Date(+m[1],+m[2],+m[3]); }
+  return null;
+}
+
+function inRange(f,from,to) {
+  if(!f) return false;
+  if(from && f<new Date(from+'T00:00:00')) return false;
+  if(to   && f>new Date(to  +'T23:59:59')) return false;
+  return true;
+}
+
+async function fetchGviz(id,ref='0') {
+  const p=/^\d+$/.test(String(ref))?`gid=${ref}`:`sheet=${encodeURIComponent(ref)}`;
+  const r=await fetch(`https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:json&headers=1&${p}`);
+  if(!r.ok) throw new Error(`HTTP ${r.status}`);
+  const t=await r.text();
+  const j=JSON.parse(t.slice(t.indexOf('(')+1,t.lastIndexOf(')')));
+  if(j.status==='error') throw new Error(j.errors?.[0]?.message||'Error');
+  return j.table;
+}
+
+function parsarFuente(table,fuente,from,to,filtVeh=null) {
+  if(!table?.rows) return [];
+  const res=[];
+  for(const row of table.rows) {
+    if(!row.c) continue;
+    if(!fuente.filtro(row)) continue;
+    const fecha=parseFecha(row,fuente.iFecha);
+    if(!inRange(fecha,from,to)) continue;
+    let litros=0;
+    if(fuente.iLitrosMulti) litros=fuente.iLitrosMulti.reduce((s,i)=>s+(+val(row,i)||0),0);
+    else litros=parseFloat(val(row,fuente.iLitros))||0;
+    if(!litros) continue;
+    const pat=norm(str(row,fuente.iPatente>=0?fuente.iPatente:-1));
+    const int_=String(val(row,fuente.iInterno>=0?fuente.iInterno:-1)||'').trim();
+    const prod=str(row,fuente.iProducto);
+    const punto=fuente.punto(row);
+    if(filtVeh) {
+      const okPat=pat&&pat===norm(filtVeh.Dominio);
+      const okInt=int_&&int_===String(filtVeh.Interno);
+      if(!okPat&&!okInt) continue;
+    }
+    // Mes para valorización
+    const mes=fecha?`${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,'0')}`:null;
+    res.push({fecha,fechaStr:fmt(row,fuente.iFecha)||(fecha?fecha.toLocaleDateString('es-AR'):''),litros,prod,pat,int:int_,punto,mes});
+  }
+  return res;
+}
+
+// AGTP: agregar iPatente e iInterno
+FUENTES.AGTP.iPatente=5; FUENTES.AGTP.iInterno=6;
+FUENTES.RESERO.iPatente=5; FUENTES.RESERO.iInterno=9;
+FUENTES.VHCD.iPatente=6; FUENTES.VHCD.iInterno=2;
+FUENTES.BASECR.iPatente=2; FUENTES.BASECR.iInterno=1;
+FUENTES.PLANTA.iPatente=-1; FUENTES.PLANTA.iInterno=9;
+
+async function consultarTodo(from,to,filtVeh=null) {
+  const keys=Object.keys(FUENTES);
+  const results=await Promise.allSettled(keys.map(k=>fetchGviz(FUENTES[k].id,FUENTES[k].ref)));
+  const despachos=[], errores=[];
+  results.forEach((r,i)=>{
+    const k=keys[i];
+    if(r.status==='fulfilled') despachos.push(...parsarFuente(r.value,FUENTES[k],from,to,filtVeh));
+    else errores.push(`${FUENTES[k].nombre}: ${r.reason?.message||'error'}`);
+  });
+  return {despachos,errores};
+}
+
+// ═══════════════════════════════════
+// FLOTA DINÁMICA
+// ═══════════════════════════════════
+async function cargarFlota() {
+  try {
+    const t=await fetchGviz(SHEET_RODADOS,'0');
+    if(!t?.rows) return;
+    const seen=new Set();
+    for(const row of t.rows) {
+      if(!row.c) continue;
+      const interno=row.c[0]?.v, dominio=String(row.c[1]?.v||'').trim().toUpperCase(), desc=String(row.c[3]?.v||'').trim();
+      if(!interno||!dominio||dominio==='NAN') continue;
+      const k=String(interno);
+      if(seen.has(k)) continue;
+      seen.add(k);
+      FLOTA.push({Interno:+interno,Dominio:dominio,Descripción:desc});
+    }
+    FLOTA.sort((a,b)=>a.Interno-b.Interno);
+  } catch(e) { console.warn('Flota error:',e.message); }
+}
+
+// ═══════════════════════════════════
+// TABS
+// ═══════════════════════════════════
+function switchTab(t) {
+  ['veh','totales','valorizacion','cruce'].forEach(id=>document.getElementById('tab-'+id).style.display=id===t?'block':'none');
+  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['veh','totales','valorizacion','cruce'][i]===t));
+  if(t==='totales'&&!document.getElementById('mesTabs').children.length){buildMeses('mesTabs');setDates('totFrom','totTo');}
+  if(t==='valorizacion'&&!document.getElementById('mesTabsVal').children.length){buildMeses('mesTabsVal');setDates('valFrom','valTo');}
+  if(t==='cruce'&&!document.getElementById('mesTabsCruce').children.length){buildMeses('mesTabsCruce');setDates('cruceFrom','cruceTo');}
+}
+function setDates(f,t){const now=new Date();document.getElementById(f).value=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);document.getElementById(t).value=now.toISOString().slice(0,10);}
+function buildMeses(cid){
+  const now=new Date(); let html='';
+  for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const lbl=d.toLocaleString('es-AR',{month:'short',year:'2-digit'}).toUpperCase();html+=`<div class="mes-tab${i===0?' active':''}" onclick="selMes(this,'${cid}',${d.getFullYear()},${d.getMonth()})">${lbl}</div>`;}
+  html+=`<div class="mes-tab" onclick="selMes(this,'${cid}',-1,-1)">Todo</div>`;
+  document.getElementById(cid).innerHTML=html;
+}
+function selMes(el,cid,y,m){
+  document.querySelectorAll(`#${cid} .mes-tab`).forEach(t=>t.classList.remove('active')); el.classList.add('active');
+  if(y===-1)return;
+  const from=new Date(y,m,1),to=new Date(y,m+1,0),fmt=d=>d.toISOString().slice(0,10);
+  if(cid==='mesTabs'){document.getElementById('totFrom').value=fmt(from);document.getElementById('totTo').value=fmt(to);cargarTotales();}
+  else if(cid==='mesTabsVal'){document.getElementById('valFrom').value=fmt(from);document.getElementById('valTo').value=fmt(to);cargarValorizacion();}
+  else{document.getElementById('cruceFrom').value=fmt(from);document.getElementById('cruceTo').value=fmt(to);cargarCruce();}
+}
+
+// ═══════════════════════════════════
+// INIT
+// ═══════════════════════════════════
+(async function(){
+  const now=new Date();
+  document.getElementById('vehFrom').value=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
+  document.getElementById('vehTo').value=now.toISOString().slice(0,10);
+  await cargarFlota();
+  const inp=document.getElementById('vehSearch');
+  inp.disabled=false;
+  inp.placeholder=FLOTA.length?`Buscar entre ${FLOTA.length} vehículos...`:'Ingresá patente o interno';
+})();
+
+// ═══════════════════════════════════
+// AUTOCOMPLETE
+// ═══════════════════════════════════
+let selVeh=null,acItems=[],acIdx=-1;
+function acSearch(v){
+  selVeh=null; const q=norm(v);
+  if(q.length<2){closeAC();return;}
+  acItems=FLOTA.filter(x=>norm(x.Dominio).includes(q)||String(x.Interno).startsWith(q)).slice(0,10);
+  if(!acItems.length){closeAC();return;}
+  document.getElementById('acDd').innerHTML=acItems.map((x,i)=>`<div class="ac-item" onclick="acSel(${i})"><span class="ac-int">${x.Interno}</span><span class="ac-pat">${x.Dominio}</span><span class="ac-desc">${x.Descripción||''}</span></div>`).join('');
+  document.getElementById('acDd').style.display='block'; acIdx=-1;
+}
+function acKey(e){const dd=document.getElementById('acDd');if(dd.style.display==='none'){if(e.key==='Enter')buscarVeh();return;}if(e.key==='ArrowDown'){acIdx=Math.min(acIdx+1,acItems.length-1);hiAC();e.preventDefault();}else if(e.key==='ArrowUp'){acIdx=Math.max(acIdx-1,0);hiAC();e.preventDefault();}else if(e.key==='Enter'){if(acIdx>=0)acSel(acIdx);else buscarVeh();}else if(e.key==='Escape')closeAC();}
+function hiAC(){document.querySelectorAll('.ac-item').forEach((el,i)=>el.classList.toggle('hi',i===acIdx));}
+function acSel(i){selVeh=acItems[i];document.getElementById('vehSearch').value=`${selVeh.Interno} — ${selVeh.Dominio}`;closeAC();}
+function closeAC(){document.getElementById('acDd').style.display='none';}
+document.addEventListener('click',e=>{if(!e.target.closest('.ac-wrap'))closeAC();});
+
+// ═══════════════════════════════════
+// TAB 1: POR VEHÍCULO
+// ═══════════════════════════════════
+function limpiarVeh(){document.getElementById('vehSearch').value='';selVeh=null;document.getElementById('resVeh').innerHTML='<div class="empty"><div class="empty-icon">⛽</div><div class="empty-title">Ingresá una patente o interno</div></div>';document.getElementById('vehAlert').innerHTML='';}
+
+async function buscarVeh(){
+  if(!selVeh){const q=norm(document.getElementById('vehSearch').value);selVeh=FLOTA.find(v=>norm(v.Dominio)===q||String(v.Interno)===q);if(!selVeh){document.getElementById('vehAlert').innerHTML='<div class="alert alert-err">Seleccioná un vehículo del listado.</div>';return;}}
+  document.getElementById('vehAlert').innerHTML='';
+  document.getElementById('resVeh').innerHTML='';
+  document.getElementById('loadingVeh').style.display='block';
+  const from=document.getElementById('vehFrom').value,to=document.getElementById('vehTo').value;
+  const {despachos,errores}=await consultarTodo(from,to,selVeh);
+  despachos.sort((a,b)=>(b.fecha||0)-(a.fecha||0));
+  document.getElementById('loadingVeh').style.display='none';
+  renderVeh(selVeh,despachos,errores,from,to);
+}
+
+function renderVeh(veh,desp,errores,from,to){
+  const total=desp.reduce((s,d)=>s+d.litros,0),cant=desp.length;
+  const dias=Math.max(1,Math.round((new Date(to)-new Date(from))/86400000)+1);
+  const porPunto={};
+  desp.forEach(d=>{porPunto[d.punto]=(porPunto[d.punto]||0)+d.litros;});
+
+  document.getElementById('resVeh').innerHTML=`
+    <div class="veh-card fade">
+      <div style="font-size:34px">${vehIcon(veh.Descripción)}</div>
+      <div>
+        <div class="veh-int">#${veh.Interno}</div>
+        <div class="veh-pat">${veh.Dominio}</div>
+        <div class="veh-desc">${veh.Descripción||'—'}</div>
+      </div>
+      <div style="margin-left:auto;font-size:12px;color:var(--muted);text-align:right">${fmtDate(from)} → ${fmtDate(to)}</div>
+    </div>
+    <div class="kpi-grid fade">
+      <div class="kpi accent"><div class="kpi-lbl">Total litros</div><div class="kpi-val">${fmtN(total)}</div><div class="kpi-unit">todas las fuentes</div></div>
+      <div class="kpi"><div class="kpi-lbl">Despachos</div><div class="kpi-val">${cant}</div><div class="kpi-unit">cargas realizadas</div></div>
+      <div class="kpi"><div class="kpi-lbl">Prom. diario</div><div class="kpi-val">${fmtN(total/dias)}</div><div class="kpi-unit">lts/día</div></div>
+      <div class="kpi"><div class="kpi-lbl">Prom. por carga</div><div class="kpi-val">${cant?fmtN(total/cant):'—'}</div><div class="kpi-unit">lts/despacho</div></div>
+    </div>
+    ${Object.keys(porPunto).length?`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px" class="fade">
+      ${Object.entries(porPunto).sort((a,b)=>b[1]-a[1]).map(([p,lts])=>`
+        <div style="background:${PUNTO_BG[p]||'#f5f5f5'};border-radius:10px;padding:12px 18px;min-width:110px;text-align:center;border:1px solid ${PUNTO_COLORS[p]||'#ddd'}22">
+          <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:${PUNTO_COLORS[p]||'#666'};text-transform:uppercase;margin-bottom:4px">${p}</div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:18px;color:var(--txt)">${fmtN(lts)}</div>
+          <div style="font-size:10px;color:var(--muted)">lts</div>
+        </div>`).join('')}
+    </div>`:''}
+    ${errores.length?`<div class="alert alert-warn fade">⚠ Fuentes con error: ${errores.join(' | ')}</div>`:''}
+    <div class="tbl-wrap fade">
+      <div class="tbl-hdr"><span class="tbl-title">Detalle de despachos</span><span class="tbl-count">${cant} registros</span></div>
+      ${cant===0?`<div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">Sin despachos en el período</div></div>`:`
+      <table class="dt"><thead><tr><th>Fecha</th><th>Litros</th><th>Producto</th><th>Punto</th></tr></thead><tbody>
+        ${desp.map(d=>`<tr>
+          <td>${d.fechaStr}</td>
+          <td><span class="lts-val">${fmtN(d.litros)}</span> <span style="font-size:11px;color:var(--muted)">lts</span></td>
+          <td style="color:var(--muted);font-size:12px">${d.prod}</td>
+          <td><span class="badge b-${d.punto.toLowerCase().replace(/\s/g,'')}">${d.punto}</span></td>
+        </tr>`).join('')}
+      </tbody></table>`}
+    </div>`;
+}
+
+// ═══════════════════════════════════
+// TAB 2: TOTALES POR PUNTO
+// ═══════════════════════════════════
+async function cargarTotales(){
+  document.getElementById('resTot').innerHTML='';
+  document.getElementById('loadingTot').style.display='block';
+  const from=document.getElementById('totFrom').value,to=document.getElementById('totTo').value;
+  const {despachos,errores}=await consultarTodo(from,to);
+  document.getElementById('loadingTot').style.display='none';
+  const map={};
+  despachos.forEach(d=>{if(!map[d.punto])map[d.punto]={lts:0,cargas:0};map[d.punto].lts+=d.litros;map[d.punto].cargas++;});
+  const total=despachos.reduce((s,d)=>s+d.litros,0);
+  const puntos=PUNTO_ORDER.filter(p=>map[p]);
+
+  document.getElementById('resTot').innerHTML=`
+    ${errores.length?`<div class="alert alert-warn fade">⚠ ${errores.join(' | ')}</div>`:''}
+    <div class="puntos-grid fade">
+      ${puntos.map(p=>{const c=PUNTO_COLORS[p]||'#888',bg=PUNTO_BG[p]||'#f5f5f5',pct=total?(map[p].lts/total*100).toFixed(1):0;
+        return`<div class="punto-card">
+          <div class="punto-head">
+            <span class="punto-tag" style="background:${bg};color:${c}">${p}</span>
+            <div style="text-align:right"><div class="punto-lts" style="color:${c}">${fmtN(map[p].lts)}</div><div style="font-size:11px;color:var(--muted)">lts · ${pct}%</div></div>
+          </div>
+          <div class="punto-body">
+            <div class="punto-row"><span class="punto-row-lbl">Despachos</span><span class="punto-row-val">${map[p].cargas}</span></div>
+            <div class="punto-row"><span class="punto-row-lbl">Prom. por carga</span><span class="punto-row-val">${fmtN(map[p].lts/map[p].cargas)} lts</span></div>
+          </div>
+        </div>`;}).join('')}
+    </div>
+    <div class="tbl-wrap fade">
+      <div class="tbl-hdr"><span class="tbl-title">Resumen global</span><span class="tbl-count">${despachos.length} despachos</span></div>
+      <table class="dt"><thead><tr><th>Punto</th><th>Litros</th><th>Despachos</th><th>Prom/carga</th><th>% del total</th></tr></thead>
+      <tbody>
+        ${puntos.map(p=>`<tr>
+          <td><span class="badge b-${p.toLowerCase().replace(/\s/g,'')}">${p}</span></td>
+          <td><span class="lts-val">${fmtN(map[p].lts)}</span></td>
+          <td>${map[p].cargas}</td>
+          <td>${fmtN(map[p].lts/map[p].cargas)}</td>
+          <td style="color:var(--muted)">${total?(map[p].lts/total*100).toFixed(1)+'%':'—'}</td>
+        </tr>`).join('')}
+        <tr style="font-weight:700;background:var(--orange-pale)">
+          <td style="color:var(--orange)">TOTAL</td>
+          <td style="color:var(--orange)">${fmtN(total)}</td>
+          <td>${despachos.length}</td><td>—</td><td>100%</td>
+        </tr>
+      </tbody></table>
+    </div>`;
+}
+
+// ═══════════════════════════════════
+// TAB 3: VALORIZACIÓN
+// ═══════════════════════════════════
+async function cargarValorizacion(){
+  document.getElementById('resVal').innerHTML='';
+  document.getElementById('loadingVal').style.display='block';
+  const from=document.getElementById('valFrom').value,to=document.getElementById('valTo').value;
+  const pNeto=+document.getElementById('pNeto').value||0;
+  const pNeto2=+document.getElementById('pNeto2').value||0;
+  const pImpInt=+document.getElementById('pImpInt').value||0;
+  const pCO2=+document.getElementById('pCO2').value||0;
+
+  const {despachos,errores}=await consultarTodo(from,to);
+  document.getElementById('loadingVal').style.display='none';
+
+  // Agrupar por mes
+  const meses={};
+  despachos.forEach(d=>{
+    const m=d.mes||'Sin fecha';
+    if(!meses[m]) meses[m]={lts:0,neto:0,impInt:0,co2:0,total:0};
+    const esGasoil=d.prod.toUpperCase().includes('GASOIL');
+    const precio=esGasoil?pNeto2:pNeto;
+    meses[m].lts+=d.litros;
+    meses[m].neto+=d.litros*precio;
+    meses[m].impInt+=d.litros*pImpInt;
+    meses[m].co2+=d.litros*pCO2;
+    meses[m].total+=d.litros*(precio+pImpInt+pCO2);
+  });
+
+  const keys=Object.keys(meses).sort();
+  const totales={lts:0,neto:0,impInt:0,co2:0,total:0};
+  keys.forEach(k=>{Object.keys(totales).forEach(f=>totales[f]+=meses[k][f]);});
+
+  if(!keys.length){document.getElementById('resVal').innerHTML='<div class="empty"><div class="empty-icon">📭</div><div class="empty-title">Sin datos en el período</div></div>';return;}
+
+  // KPIs
+  const totalGlobal=despachos.reduce((s,d)=>s+d.litros,0);
+  document.getElementById('resVal').innerHTML=`
+    ${errores.length?`<div class="alert alert-warn fade">⚠ ${errores.join(' | ')}</div>`:''}
+    <div class="kpi-grid fade">
+      <div class="kpi accent"><div class="kpi-lbl">Total litros</div><div class="kpi-val">${fmtN(totalGlobal)}</div><div class="kpi-unit">período seleccionado</div></div>
+      <div class="kpi"><div class="kpi-lbl">Valor neto</div><div class="kpi-val" style="font-size:20px">${fmtARS(totales.neto)}</div><div class="kpi-unit">sin impuestos</div></div>
+      <div class="kpi"><div class="kpi-lbl">Imp. Interno + CO2</div><div class="kpi-val" style="font-size:20px">${fmtARS(totales.impInt+totales.co2)}</div><div class="kpi-unit">impuestos totales</div></div>
+      <div class="kpi" style="border-color:var(--orange)"><div class="kpi-lbl">Total valorizado</div><div class="kpi-val" style="font-size:20px;color:var(--orange)">${fmtARS(totales.total)}</div><div class="kpi-unit">neto + impuestos</div></div>
+    </div>
+    <div class="tbl-wrap fade">
+      <div class="tbl-hdr"><span class="tbl-title">Valorización por mes</span><span class="tbl-count">${keys.length} meses</span></div>
+      <table class="tabla-valorizacion">
+        <thead><tr><th>Mes</th><th>Litros</th><th>Valor neto</th><th>Imp. Interno</th><th>CO2</th><th>Total</th></tr></thead>
+        <tbody>
+          ${keys.map(k=>{
+            const[y,m]=k.split('-');
+            const nomMes=new Date(+y,+m-1,1).toLocaleString('es-AR',{month:'long',year:'numeric'});
+            return`<tr>
+              <td style="font-weight:500">${nomMes}</td>
+              <td>${fmtN(meses[k].lts)}</td>
+              <td>${fmtARS(meses[k].neto)}</td>
+              <td>${fmtARS(meses[k].impInt)}</td>
+              <td>${fmtARS(meses[k].co2)}</td>
+              <td style="font-weight:700;color:var(--orange)">${fmtARS(meses[k].total)}</td>
+            </tr>`;}).join('')}
+          <tr>
+            <td>TOTAL</td>
+            <td>${fmtN(totales.lts)}</td>
+            <td>${fmtARS(totales.neto)}</td>
+            <td>${fmtARS(totales.impInt)}</td>
+            <td>${fmtARS(totales.co2)}</td>
+            <td>${fmtARS(totales.total)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>`;
+}
+
+// ═══════════════════════════════════
+// TAB 4: CRUCE VH/CD
+// ═══════════════════════════════════
+async function cargarCruce(){
+  document.getElementById('resCruce').innerHTML='';
+  document.getElementById('loadingCruce').style.display='block';
+  const from=document.getElementById('cruceFrom').value,to=document.getElementById('cruceTo').value;
+  const filtPunto=document.getElementById('crucePunto').value;
+  const [rEst,rDC]=await Promise.allSettled([fetchGviz(FUENTES.AGTP.id,FUENTES.AGTP.ref),fetchGviz(FUENTES.VHCD.id,FUENTES.VHCD.ref)]);
+  document.getElementById('loadingCruce').style.display='none';
+  const errores=[];
+  const despEst=rEst.status==='fulfilled'?parsarFuente(rEst.value,FUENTES.AGTP,from,to).filter(d=>d.punto==='VH'||d.punto==='CD'):[];
+  const despDC=rDC.status==='fulfilled'?parsarFuente(rDC.value,FUENTES.VHCD,from,to):[];
+  if(rEst.status==='rejected') errores.push('Estaciones: '+rEst.reason?.message);
+  if(rDC.status==='rejected')  errores.push('Dat. Conductor: '+rDC.reason?.message);
+  const fEst=filtPunto==='ambos'?despEst:despEst.filter(d=>d.punto===filtPunto);
+  const fDC =filtPunto==='ambos'?despDC :despDC.filter(d=>d.punto===filtPunto);
+  const tEst=fEst.reduce((s,d)=>s+d.litros,0),tDC=fDC.reduce((s,d)=>s+d.litros,0);
+  const diff=tEst-tDC,diffPct=tDC?Math.abs(diff/tDC*100):0;
+  const diffCls=Math.abs(diff)<1?'diff-ok':diffPct<5?'diff-warn':'diff-err';
+  const pm={};
+  fEst.forEach(d=>{const k=d.pat||d.int;if(!pm[k])pm[k]={pat:d.pat,int:d.int,ltsEst:0,ltsDC:0,cEst:0,cDC:0,punto:d.punto};pm[k].ltsEst+=d.litros;pm[k].cEst++;});
+  fDC.forEach(d=>{const k=norm(d.pat)||d.int;if(!pm[k])pm[k]={pat:d.pat,int:d.int,ltsEst:0,ltsDC:0,cEst:0,cDC:0,punto:d.punto};pm[k].ltsDC+=d.litros;pm[k].cDC++;});
+  const rows=Object.values(pm).map(r=>({...r,diff:r.ltsEst-r.ltsDC})).sort((a,b)=>Math.abs(b.diff)-Math.abs(a.diff));
+
+  document.getElementById('resCruce').innerHTML=`
+    <div class="kpi-grid fade">
+      <div class="kpi"><div class="kpi-lbl">Estaciones Desp.</div><div class="kpi-val" style="color:var(--blue)">${fmtN(tEst)}</div><div class="kpi-unit">lts registrados</div></div>
+      <div class="kpi"><div class="kpi-lbl">Datos Conductor</div><div class="kpi-val" style="color:var(--gold)">${fmtN(tDC)}</div><div class="kpi-unit">lts registrados</div></div>
+      <div class="kpi"><div class="kpi-lbl">Diferencia total</div><div class="kpi-val ${diffCls}">${diff>=0?'+':''}${fmtN(diff)}</div><div class="kpi-unit">${diffPct.toFixed(1)}% variación</div></div>
+      <div class="kpi"><div class="kpi-lbl">Vehículos</div><div class="kpi-val">${rows.length}</div><div class="kpi-unit">con actividad</div></div>
+    </div>
+    <div style="display:flex;gap:14px;margin-bottom:14px;font-size:12px;color:var(--muted)" class="fade">
+      <span>● <span class="diff-ok">Verde</span> = coinciden</span>
+      <span>● <span class="diff-warn">Dorado</span> = &lt;5%</span>
+      <span>● <span class="diff-err">Rojo</span> = ≥5%</span>
+    </div>
+    ${errores.length?`<div class="alert alert-warn fade">⚠ ${errores.join(' | ')}</div>`:''}
+    <div class="tbl-wrap fade">
+      <div class="tbl-hdr"><span class="tbl-title">Cruce por patente</span><span class="tbl-count">${rows.length} vehículos</span></div>
+      ${rows.length===0?`<div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">Sin datos</div></div>`:`
+      <table class="dt"><thead><tr><th>Patente</th><th>Punto</th><th>Lts Estaciones</th><th>Lts Dat. Conductor</th><th>Diferencia</th><th>%</th></tr></thead><tbody>
+        ${rows.map(r=>{
+          const pct=r.ltsDC?Math.abs(r.diff/r.ltsDC*100):(r.ltsEst?100:0);
+          const cls=Math.abs(r.diff)<1?'diff-ok':pct<5?'diff-warn':'diff-err';
+          const vinfo=FLOTA.find(v=>norm(v.Dominio)===(r.pat||''));
+          return`<tr>
+            <td><span style="font-weight:600;font-size:13px">${r.pat||r.int}</span>${vinfo?`<div style="font-size:10px;color:var(--muted)">#${vinfo.Interno}</div>`:''}</td>
+            <td><span class="badge b-${(r.punto||'').toLowerCase().replace(/\s/g,'')}">${r.punto||'—'}</span></td>
+            <td><span style="font-weight:700;color:var(--blue)">${r.ltsEst?fmtN(r.ltsEst):'—'}</span>${r.cEst?`<div style="font-size:10px;color:var(--muted)">${r.cEst} cargas</div>`:''}</td>
+            <td><span style="font-weight:700;color:var(--gold)">${r.ltsDC?fmtN(r.ltsDC):'—'}</span>${r.cDC?`<div style="font-size:10px;color:var(--muted)">${r.cDC} cargas</div>`:''}</td>
+            <td><span class="${cls}">${r.diff>=0?'+':''}${fmtN(r.diff)}</span></td>
+            <td><span class="${cls}">${r.ltsDC||r.ltsEst?pct.toFixed(1)+'%':'—'}</span></td>
+          </tr>`;}).join('')}
+      </tbody></table>`}
+    </div>`;
+}
+
+function vehIcon(d){if(!d)return'🚗';d=d.toUpperCase();if(/IVECO|TECTOR/.test(d))return'🚛';if(/BUS|EUROBUS|MIDIBUS|SPRINTER/.test(d))return'🚐';if(/SCANIA|CAMION|CARGO|VOLKSWAGEN 3/.test(d))return'🚌';if(/ACOPLADO|SEMIRREMOLQUE/.test(d))return'🚜';return'🚗';}
+</script>
+</body>
+</html>
