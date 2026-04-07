@@ -221,7 +221,7 @@
         <div class="fg" style="flex:2;min-width:200px">
           <label class="lbl">Patente o Interno</label>
           <div class="ac-wrap">
-            <input type="text" id="vehSearch" placeholder="Cargando flota..." disabled autocomplete="off" oninput="acSearch(this.value)" onkeydown="acKey(event)">
+            <input type="text" id="vehSearch" placeholder="Ingresá patente o interno..." autocomplete="off" oninput="acSearch(this.value)" onkeydown="acKey(event)">
             <div class="ac-dd" id="acDd"></div>
           </div>
         </div>
@@ -462,7 +462,11 @@ async function consultarTodo(from,to,filtVeh=null) {
 // ═══════════════════════════════════
 async function cargarFlota() {
   try {
+    // Timeout de 8s para no bloquear la app
+    const controller = new AbortController();
+    const tid = setTimeout(()=>controller.abort(), 8000);
     const t=await fetchGviz(SHEET_RODADOS,'0');
+    clearTimeout(tid);
     if(!t?.rows) return;
     const seen=new Set();
     for(const row of t.rows) {
@@ -511,8 +515,16 @@ function selMes(el,cid,y,m){
   const now=new Date();
   document.getElementById('vehFrom').value=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
   document.getElementById('vehTo').value=now.toISOString().slice(0,10);
-  await cargarFlota();
   const inp=document.getElementById('vehSearch');
+  // Timeout: si tarda más de 5 segundos, habilitamos igual
+  const timeout = setTimeout(()=>{
+    inp.disabled=false;
+    inp.placeholder='Ingresá patente o interno';
+  }, 5000);
+  try {
+    await cargarFlota();
+  } catch(e) {}
+  clearTimeout(timeout);
   inp.disabled=false;
   inp.placeholder=FLOTA.length?`Buscar entre ${FLOTA.length} vehículos...`:'Ingresá patente o interno';
 })();
@@ -541,7 +553,17 @@ document.addEventListener('click',e=>{if(!e.target.closest('.ac-wrap'))closeAC()
 function limpiarVeh(){document.getElementById('vehSearch').value='';selVeh=null;document.getElementById('resVeh').innerHTML='<div class="empty"><div class="empty-icon">⛽</div><div class="empty-title">Ingresá una patente o interno</div></div>';document.getElementById('vehAlert').innerHTML='';}
 
 async function buscarVeh(){
-  if(!selVeh){const q=norm(document.getElementById('vehSearch').value);selVeh=FLOTA.find(v=>norm(v.Dominio)===q||String(v.Interno)===q);if(!selVeh){document.getElementById('vehAlert').innerHTML='<div class="alert alert-err">Seleccioná un vehículo del listado.</div>';return;}}
+  if(!selVeh){
+    const q=norm(document.getElementById('vehSearch').value);
+    selVeh=FLOTA.find(v=>norm(v.Dominio)===q||String(v.Interno)===q);
+    // Si no está en flota pero ingresó algo, crear objeto temporal para buscar igual
+    if(!selVeh && q.length>=3){
+      // Puede ser patente o interno numérico
+      const esNum=/^\d+$/.test(q);
+      selVeh={ Interno: esNum?+q:0, Dominio: q, Descripción:'Búsqueda directa' };
+    }
+    if(!selVeh){document.getElementById('vehAlert').innerHTML='<div class="alert alert-err">Ingresá al menos 3 caracteres de patente o interno.</div>';return;}
+  }
   document.getElementById('vehAlert').innerHTML='';
   document.getElementById('resVeh').innerHTML='';
   document.getElementById('loadingVeh').style.display='block';
