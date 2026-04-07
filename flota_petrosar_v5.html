@@ -250,12 +250,11 @@ const FUENTES = {
     filtroCliente:true, headerRows:0, punto:'CD' },
 
   // RESERO: gid=1798585939
-  // Row 1-6: headers (Desde/Hasta/etc), Row 7: col names
-  // A=TransaccionN(0) B=FechaInicio(1) G=Consola(6) H=Surtidor(7) I=MainID/Interno(8)
-  // O=Producto(14) R=Cantidad/Litros(17)
+  // Fila 1: "Consolas: Petrosar" (extra), Fila 2: encabezados (gviz la toma con headers=1)
+  // C=FechaInicio(2) J=MainID/Interno(9) O=Producto(14) R=Cantidad/Litros(17)
   RESERO: { nombre:'RESERO', id:SHEET_EST, ref:'1798585939',
-    iFecha:1, iLitros:17, iProducto:14, iPatente:-1, iInterno:8,
-    filtroCliente:false, headerRows:6, punto:'RESERO' },
+    iFecha:2, iLitros:17, iProducto:14, iPatente:-1, iInterno:9,
+    filtroCliente:false, headerRows:1, punto:'RESERO' },
 
   // VH: sheet Datos Conductor, producto = "EURO + DIESEL VH"
   // A=Fecha(0) C=NroVale/Interno(2) G=Patente(6) M=Producto(12) N=Cantidad(13)
