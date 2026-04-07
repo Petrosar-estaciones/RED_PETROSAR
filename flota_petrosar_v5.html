@@ -238,15 +238,15 @@ const FUENTES = {
     iFecha:1, iLitros:2, iProducto:3, iPatente:5, iInterno:6,
     filtroCliente: true,  // col R debe contener PETROSAR
     headerRows:0, punto:'TP' },
-  // AG: gid=1244583268, misma estructura
+  // AG: gid=1244583268 — todo es PETROSAR, sin filtro cliente
   AG: { nombre:'AG', id:SHEET_EST, ref:'1244583268',
     iFecha:1, iLitros:2, iProducto:3, iPatente:5, iInterno:6,
-    filtroCliente: true, headerRows:0, punto:'AG' },
-  // VH: solapa VH
+    filtroCliente: false, headerRows:0, punto:'AG' },
+  // VH: solapa VH — todo PETROSAR
   VH: { nombre:'VH', id:SHEET_EST, ref:'VH',
     iFecha:1, iLitros:2, iProducto:3, iPatente:5, iInterno:6,
-    filtroCliente: true, headerRows:0, punto:'VH' },
-  // CD: solapa CD
+    filtroCliente: false, headerRows:0, punto:'VH' },
+  // CD: solapa CD — filtrar PETROSAR (tiene clientes externos también)
   CD: { nombre:'CD', id:SHEET_EST, ref:'CD',
     iFecha:1, iLitros:2, iProducto:3, iPatente:5, iInterno:6,
     filtroCliente: true, headerRows:0, punto:'CD' },
@@ -292,14 +292,21 @@ function fmtDate(d){if(!d)return'—';const[y,m,day]=d.split('-');return`${day}/
 
 function parseFecha(row,i){
   const val=v(row,i),fmt=f(row,i);
+  // 1. Intentar desde el valor gviz directo (Date(y,m,d,...))
+  if(typeof val==='string'){
+    const m=val.match(/Date\((\d+),(\d+),(\d+)/);
+    if(m)return new Date(+m[1],+m[2],+m[3]);
+  }
+  // 2. Intentar desde el formato formateado (DD/MM/YYYY o YYYY-MM-DD)
   for(const src of [fmt,typeof val==='string'?val:'']){
     if(!src)continue;
-    let m=src.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
-    if(m){let[,a,b,c]=m;c=+c<100?2000+(+c):+c;if(+a<=31&&+b<=12)return new Date(c,+b-1,+a);}
-    m=src.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    let m=src.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
     if(m)return new Date(+m[1],+m[2]-1,+m[3]);
+    m=src.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+    if(m){let[,a,b,c]=m;c=+c<100?2000+(+c):+c;if(+a<=31&&+b<=12)return new Date(c,+b-1,+a);}
   }
-  if(typeof val==='string'){const m=val.match(/Date\((\d+),(\d+),(\d+)/);if(m)return new Date(+m[1],+m[2],+m[3]);}
+  // 3. Timestamp numérico
+  if(typeof val==='number')return new Date(val);
   return null;
 }
 
@@ -323,7 +330,7 @@ async function fetchGviz(id,ref='0'){
 function parsarFuente(table,fuente,from,to,filtVeh=null){
   if(!table?.rows)return[];
   const res=[];
-  let ri=0;
+  let ri=0,skipFecha=0,skipCliente=0,skipFiltro=0;
   for(const row of table.rows){
     ri++;
     if(ri<=fuente.headerRows)continue;
@@ -331,14 +338,14 @@ function parsarFuente(table,fuente,from,to,filtVeh=null){
     // Filtro cliente (PETROSAR en col R)
     if(fuente.filtroCliente){
       const cli=s(row,17).toUpperCase();
-      if(!cli.includes('PETROSAR'))continue;
+      if(!cli.includes('PETROSAR')){skipCliente++;continue;}
     }
     // Filtro internos específicos (Planta)
     if(fuente.filtroInternos){
-      if(!fuente.filtroInternos.includes(+v(row,fuente.iInterno)))continue;
+      if(!fuente.filtroInternos.includes(+v(row,fuente.iInterno))){skipFiltro++;continue;}
     }
     const fecha=parseFecha(row,fuente.iFecha);
-    if(!inRange(fecha,from,to))continue;
+    if(!inRange(fecha,from,to)){skipFecha++;continue;}
     let litros=0;
     if(fuente.iLitrosMulti)litros=fuente.iLitrosMulti.reduce((s,i)=>s+(+v(row,i)||0),0);
     else litros=parseFloat(v(row,fuente.iLitros))||0;
@@ -363,6 +370,7 @@ function parsarFuente(table,fuente,from,to,filtVeh=null){
     const interno=+int_||0;
     res.push({fecha,fechaStr:f(row,fuente.iFecha)||(fecha?fecha.toLocaleDateString('es-AR'):''),litros,prod,prodRaw,pat,int:int_,interno,punto,mes,fuente:fuente.nombre});
   }
+  console.log(`[${fuente.nombre}] total=${ri} headerSkip=${fuente.headerRows} clienteSkip=${skipCliente} fechaSkip=${skipFecha} filtroSkip=${skipFiltro} resultado=${res.length} lts=${res.reduce((s,d)=>s+d.litros,0).toFixed(2)}`);
   return res;
 }
 
