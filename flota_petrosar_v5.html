@@ -145,6 +145,8 @@
   .b-vh   { background: #fff3e0; color: #b45309; }
   .b-cd   { background: #e0f0ff; color: #1a5fa8; }
   .b-basecr { background: #fdecea; color: #b91c1c; }
+  .b-vh_dc  { background: #fff3e0; color: #b45309; }
+  .b-cd_dc  { background: #e0f0ff; color: #1a5fa8; }
   .b-resero { background: #f0fde4; color: #3a7d0a; }
   .b-planta { background: #e0f4ff; color: #0369a1; }
 
@@ -297,38 +299,74 @@
 // ═══════════════════════════════════
 // CONFIGURACIÓN FUENTES
 // ═══════════════════════════════════
+const SHEET_EST = '1418oEjkm9IVg6RsBIrygD42G2SaDa0yx0DmJtpZxBWE';
 const FUENTES = {
-  AGTP: {
-    nombre:'AG / TP', id:'1418oEjkm9IVg6RsBIrygD42G2SaDa0yx0DmJtpZxBWE', ref:'0',
-    iFecha:1, iLitros:2, iProducto:3,
+  // TP: solapa "TP", A=Operacion B=FechaHora C=Litros D=Producto E=Precio F=Patente G=Interno J=Sector R=Cliente
+  // Solo filas donde col R contiene PETROSAR
+  TP: {
+    nombre:'TP', id:SHEET_EST, ref:'TP',
+    iFecha:1, iLitros:2, iProducto:3, iPatente:5, iInterno:6,
     filtro: row => str(row,17).toUpperCase().includes('PETROSAR'),
-    punto:  row => { const s=str(row,9).toUpperCase(),g=str(row,6).toUpperCase(); return (s.includes('TRES PICOS')||s.includes('TP')||g==='TP')?'TP':'AG'; }
+    punto: ()=>'TP'
   },
+  // AG: solapa "AG", misma estructura
+  AG: {
+    nombre:'AG', id:SHEET_EST, ref:'AG',
+    iFecha:1, iLitros:2, iProducto:3, iPatente:5, iInterno:6,
+    filtro: row => str(row,17).toUpperCase().includes('PETROSAR'),
+    punto: ()=>'AG'
+  },
+  // VH: solapa "VH", misma estructura
+  VH: {
+    nombre:'VH', id:SHEET_EST, ref:'VH',
+    iFecha:1, iLitros:2, iProducto:3, iPatente:5, iInterno:6,
+    filtro: row => str(row,17).toUpperCase().includes('PETROSAR'),
+    punto: ()=>'VH'
+  },
+  // CD: solapa "CD", misma estructura
+  CD: {
+    nombre:'CD', id:SHEET_EST, ref:'CD',
+    iFecha:1, iLitros:2, iProducto:3, iPatente:5, iInterno:6,
+    filtro: row => str(row,17).toUpperCase().includes('PETROSAR'),
+    punto: ()=>'CD'
+  },
+  // RESERO: gid=1798585939, 6 filas de encabezado
+  // B=Fecha(1) H=MainID/Interno(7) R=Cantidad/Litros(17) — todos son PETROSAR
   RESERO: {
-    nombre:'Resero', id:'1418oEjkm9IVg6RsBIrygD42G2SaDa0yx0DmJtpZxBWE', ref:'Resero',
-    iFecha:1, iLitros:2, iProducto:3,
-    filtro: ()=>true, punto: ()=>'RESERO'
+    nombre:'RESERO', id:SHEET_EST, ref:'1798585939',
+    iFecha:1, iLitros:17, iProducto:14, iPatente:-1, iInterno:7,
+    headerRows:6,
+    filtro: row => { const v = val(row,17); return v!==null && v!=='' && !isNaN(+v) && +v>0; },
+    punto: ()=>'RESERO'
   },
+  // VH/CD Datos Conductor: sheet separado, solapa C
+  // A=Fecha C=Interno G=Patente M=Producto N=Cantidad(litros)
+  // Producto con "VH" → VH_DC, resto → CD_DC (para cruce)
   VHCD: {
-    nombre:'VH / CD', id:'1CvPGNJGlv64Vs1PtEqdUrj9pntw7at0HPboS7YYnIf8', ref:'578541772',
-    iFecha:0, iLitros:13, iProducto:12,
-    filtro: ()=>true, punto: row=>str(row,12).toUpperCase().includes('VH')?'VH':'CD'
+    nombre:'VH/CD Dat.Cond.', id:'1CvPGNJGlv64Vs1PtEqdUrj9pntw7at0HPboS7YYnIf8', ref:'578541772',
+    iFecha:0, iLitros:13, iProducto:12, iPatente:6, iInterno:2,
+    filtro: ()=>true,
+    punto: row=>str(row,12).toUpperCase().includes('VH')?'VH_DC':'CD_DC'
   },
+  // BASE CR
   BASECR: {
     nombre:'Base CR', id:'1A_0pcSuycTcTBcf8bAHXopHk_FrLSgcdbDSFbvZnLuQ', ref:'0',
-    iFecha:0, iLitros:4, iProducto:5,
-    filtro: ()=>true, punto: ()=>'BASE CR'
+    iFecha:0, iLitros:4, iProducto:5, iPatente:2, iInterno:1,
+    filtro: ()=>true,
+    punto: ()=>'BASE CR'
   },
+  // PLANTA: cols L+M+N = litros, solo internos 742/836/794
   PLANTA: {
     nombre:'Planta', id:'1NWUzcMuA5JmUXW5p3MiWwes8M4nb5EBNoTssFBU0ndE', ref:'1688777748',
-    iFecha:1, iLitrosMulti:[11,12,13], iProducto:2,
-    filtro: row=>[742,836,794].includes(+val(row,9)), punto: ()=>'PLANTA'
+    iFecha:1, iLitrosMulti:[11,12,13], iProducto:2, iPatente:-1, iInterno:9,
+    filtro: row=>[742,836,794].includes(+val(row,9)),
+    punto: ()=>'PLANTA'
   }
 };
 const SHEET_RODADOS = '1MUMqZlrP5-oce4oqHMEL6VvcFdGaLL3MzUDqYX8KevY';
-const PUNTO_ORDER   = ['AG','TP','VH','CD','BASE CR','RESERO','PLANTA'];
-const PUNTO_COLORS  = { AG:'#1a7a4a', TP:'#5b21b6', VH:'#b45309', CD:'#1a5fa8', 'BASE CR':'#b91c1c', RESERO:'#3a7d0a', PLANTA:'#0369a1' };
-const PUNTO_BG      = { AG:'#e8f7ee', TP:'#f0eafe', VH:'#fff3e0', CD:'#e0f0ff', 'BASE CR':'#fdecea', RESERO:'#f0fde4', PLANTA:'#e0f4ff' };
+const PUNTO_ORDER   = ['AG','TP','VH','CD','BASE CR','RESERO','PLANTA','VH_DC','CD_DC'];
+const PUNTO_COLORS  = { AG:'#1a7a4a', TP:'#5b21b6', VH:'#b45309', CD:'#1a5fa8', 'BASE CR':'#b91c1c', RESERO:'#3a7d0a', PLANTA:'#0369a1', VH_DC:'#b45309', CD_DC:'#1a5fa8' };
+const PUNTO_BG      = { AG:'#e8f7ee', TP:'#f0eafe', VH:'#fff3e0', CD:'#e0f0ff', 'BASE CR':'#fdecea', RESERO:'#f0fde4', PLANTA:'#e0f4ff', VH_DC:'#fff3e0', CD_DC:'#e0f0ff' };
 
 // ═══════════════════════════════════
 // UTILIDADES
@@ -376,7 +414,11 @@ async function fetchGviz(id,ref='0') {
 function parsarFuente(table,fuente,from,to,filtVeh=null) {
   if(!table?.rows) return [];
   const res=[];
+  const skipRows = fuente.headerRows||0;
+  let rowIdx = 0;
   for(const row of table.rows) {
+    rowIdx++;
+    if(rowIdx <= skipRows) continue;
     if(!row.c) continue;
     if(!fuente.filtro(row)) continue;
     const fecha=parseFecha(row,fuente.iFecha);
@@ -401,12 +443,7 @@ function parsarFuente(table,fuente,from,to,filtVeh=null) {
   return res;
 }
 
-// AGTP: agregar iPatente e iInterno
-FUENTES.AGTP.iPatente=5; FUENTES.AGTP.iInterno=6;
-FUENTES.RESERO.iPatente=5; FUENTES.RESERO.iInterno=9;
-FUENTES.VHCD.iPatente=6; FUENTES.VHCD.iInterno=2;
-FUENTES.BASECR.iPatente=2; FUENTES.BASECR.iInterno=1;
-FUENTES.PLANTA.iPatente=-1; FUENTES.PLANTA.iInterno=9;
+// Configuración de columnas ya incluida en FUENTES
 
 async function consultarTodo(from,to,filtVeh=null) {
   const keys=Object.keys(FUENTES);
@@ -572,7 +609,7 @@ async function cargarTotales(){
   const map={};
   despachos.forEach(d=>{if(!map[d.punto])map[d.punto]={lts:0,cargas:0};map[d.punto].lts+=d.litros;map[d.punto].cargas++;});
   const total=despachos.reduce((s,d)=>s+d.litros,0);
-  const puntos=PUNTO_ORDER.filter(p=>map[p]);
+  const puntos=PUNTO_ORDER.filter(p=>map[p] && !p.includes('_DC'));
 
   document.getElementById('resTot').innerHTML=`
     ${errores.length?`<div class="alert alert-warn fade">⚠ ${errores.join(' | ')}</div>`:''}
@@ -691,15 +728,23 @@ async function cargarCruce(){
   document.getElementById('loadingCruce').style.display='block';
   const from=document.getElementById('cruceFrom').value,to=document.getElementById('cruceTo').value;
   const filtPunto=document.getElementById('crucePunto').value;
-  const [rEst,rDC]=await Promise.allSettled([fetchGviz(FUENTES.AGTP.id,FUENTES.AGTP.ref),fetchGviz(FUENTES.VHCD.id,FUENTES.VHCD.ref)]);
+  const [rEst,rDC]=await Promise.allSettled([fetchGviz(FUENTES.VH.id,FUENTES.VH.ref),fetchGviz(FUENTES.VHCD.id,FUENTES.VHCD.ref)]);
   document.getElementById('loadingCruce').style.display='none';
   const errores=[];
-  const despEst=rEst.status==='fulfilled'?parsarFuente(rEst.value,FUENTES.AGTP,from,to).filter(d=>d.punto==='VH'||d.punto==='CD'):[];
-  const despDC=rDC.status==='fulfilled'?parsarFuente(rDC.value,FUENTES.VHCD,from,to):[];
+  // Estaciones: leer VH y CD desde sus solapas propias
+  const [rVH, rCD, rDC] = await Promise.allSettled([
+    fetchGviz(FUENTES.VH.id, FUENTES.VH.ref),
+    fetchGviz(FUENTES.CD.id, FUENTES.CD.ref),
+    fetchGviz(FUENTES.VHCD.id, FUENTES.VHCD.ref)
+  ]);
   if(rEst.status==='rejected') errores.push('Estaciones: '+rEst.reason?.message);
   if(rDC.status==='rejected')  errores.push('Dat. Conductor: '+rDC.reason?.message);
-  const fEst=filtPunto==='ambos'?despEst:despEst.filter(d=>d.punto===filtPunto);
-  const fDC =filtPunto==='ambos'?despDC :despDC.filter(d=>d.punto===filtPunto);
+  const despVHest = rVH.status==='fulfilled'?parsarFuente(rVH.value,FUENTES.VH,from,to):[];
+  const despCDest = rCD.status==='fulfilled'?parsarFuente(rCD.value,FUENTES.CD,from,to):[];
+  const despDC    = rDC.status==='fulfilled'?parsarFuente(rDC.value,FUENTES.VHCD,from,to):[];
+  const despEst = [...despVHest, ...despCDest];
+  const fEst = filtPunto==='ambos'?despEst:despEst.filter(d=>d.punto===filtPunto);
+  const fDC  = filtPunto==='ambos'?despDC:despDC.filter(d=>d.punto===(filtPunto==='VH'?'VH_DC':'CD_DC'));
   const tEst=fEst.reduce((s,d)=>s+d.litros,0),tDC=fDC.reduce((s,d)=>s+d.litros,0);
   const diff=tEst-tDC,diffPct=tDC?Math.abs(diff/tDC*100):0;
   const diffCls=Math.abs(diff)<1?'diff-ok':diffPct<5?'diff-warn':'diff-err';
