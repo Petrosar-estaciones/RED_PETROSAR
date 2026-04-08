@@ -736,6 +736,15 @@ function selValCC(cc){
 // AUTOCOMPLETE
 // ═══════════════════════════════════
 let selVeh=null,acItems=[],acIdx=-1;
+function poblarLineas(){
+  const lineas=[...new Set(FLOTA.map(v=>v.LineaNegocio).filter(l=>l&&l!=='undefined'))].sort();
+  const sel=document.getElementById('vehLinea');
+  if(!sel) return;
+  sel.innerHTML='<option value="">Todas las líneas</option>'+
+    lineas.map(l=>`<option value="${l}">${l}</option>`).join('');
+  console.log('Líneas de negocio pobladas:', lineas);
+}
+
 function getFlotaFiltrada(){
   const linea=document.getElementById('vehLinea')?.value||'';
   if(!linea) return FLOTA;
