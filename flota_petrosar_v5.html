@@ -762,12 +762,20 @@ function filtrarPorLinea(){
   if(!linea){
     lista.style.display='none';
     document.getElementById('vehSearch').placeholder=`Buscar entre ${FLOTA.length} vehículos...`;
+    document.getElementById('resVeh').innerHTML='<div class="empty"><div class="empty-icon">⛽</div><div class="empty-title">Ingresá una patente o interno</div></div>';
     return;
   }
   const vehsFiltrados=getFlotaFiltrada();
-  document.getElementById('vehSearch').placeholder=`Buscar entre ${vehsFiltrados.length} vehículos...`;
-  // Mostrar chips de vehículos
-  items.innerHTML=vehsFiltrados.map(v=>`
+  document.getElementById('vehSearch').placeholder=`Opcional: filtrá por interno...`;
+  // Mostrar botón para ver totales + chips de vehículos
+  items.innerHTML=`
+    <div style="width:100%;margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="buscarLinea()">
+        📊 Ver totales de <strong style="margin-left:4px">${linea}</strong>
+      </button>
+      <span style="font-size:12px;color:var(--muted)">${vehsFiltrados.length} vehículos — o elegí uno:</span>
+    </div>
+    ${vehsFiltrados.map(v=>`
     <div onclick="selVehDirecto(${v.Interno})" style="
       background:var(--bg);border:1.5px solid var(--border);border-radius:6px;
       padding:5px 10px;cursor:pointer;font-size:12px;font-weight:600;
@@ -776,8 +784,70 @@ function filtrarPorLinea(){
       onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--bg)'">
       <span style="color:var(--orange)">${v.Interno}</span>
       <span style="color:var(--muted);margin-left:4px">${v.Dominio}</span>
-    </div>`).join('');
+    </div>`).join('')}`;
   lista.style.display='block';
+}
+
+async function buscarLinea(){
+  const linea=document.getElementById('vehLinea')?.value||'';
+  if(!linea) return;
+  const vehsFiltrados=getFlotaFiltrada();
+  const from=document.getElementById('vehFrom').value;
+  const to=document.getElementById('vehTo').value;
+  document.getElementById('vehAlert').innerHTML='';
+  document.getElementById('listaLinea').style.display='none';
+  document.getElementById('loadingVeh').style.display='block';
+  document.getElementById('resVeh').innerHTML='';
+
+  // Buscar todos los despachos del período y filtrar por internos de la línea
+  const internosLinea=new Set(vehsFiltrados.map(v=>v.Interno));
+  const {despachos,errores}=await consultarTodo(from,to);
+  const filtrados=despachos.filter(d=>internosLinea.has(d.interno)||internosLinea.has(+d.int));
+  document.getElementById('loadingVeh').style.display='none';
+
+  // Renderizar como resumen de línea
+  const total=filtrados.reduce((s,d)=>s+d.litros,0);
+  const euro=filtrados.filter(d=>d.prod==='EURO').reduce((s,d)=>s+d.litros,0);
+  const gasoil=filtrados.filter(d=>d.prod==='GASOIL').reduce((s,d)=>s+d.litros,0);
+  const porVeh={};
+  filtrados.forEach(d=>{
+    const k=d.interno||d.int;
+    if(!porVeh[k])porVeh[k]={interno:k,pat:d.pat,lts:0,euro:0,gasoil:0,cargas:0};
+    porVeh[k].lts+=d.litros;porVeh[k].cargas++;
+    if(d.prod==='GASOIL')porVeh[k].gasoil+=d.litros;
+    else porVeh[k].euro+=d.litros;
+  });
+  const vehs=Object.values(porVeh).sort((a,b)=>b.lts-a.lts);
+
+  document.getElementById('resVeh').innerHTML=`
+    <div class="veh-card fade">
+      <div style="font-size:28px">🏢</div>
+      <div>
+        <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:20px;color:var(--orange)">${linea}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">${vehsFiltrados.length} vehículos · ${fmtDate(from)} → ${fmtDate(to)}</div>
+      </div>
+    </div>
+    <div class="kpi-grid fade">
+      <div class="kpi accent"><div class="kpi-lbl">Total litros</div><div class="kpi-val">${fmtN(total)}</div><div class="kpi-unit">${filtrados.length} despachos</div></div>
+      <div class="kpi"><div class="kpi-lbl">Euro Diesel</div><div class="kpi-val">${fmtN(euro)}</div><div class="kpi-unit">lts</div></div>
+      <div class="kpi"><div class="kpi-lbl">Gasoil</div><div class="kpi-val">${fmtN(gasoil)}</div><div class="kpi-unit">lts</div></div>
+      <div class="kpi"><div class="kpi-lbl">Vehículos activos</div><div class="kpi-val">${vehs.length}</div><div class="kpi-unit">con despachos</div></div>
+    </div>
+    ${errores.length?`<div class="alert alert-warn fade">⚠ Sin datos de: ${errores.map(e=>e.split(':')[0]).join(', ')}</div>`:''}
+    <div class="tbl-wrap fade">
+      <div class="tbl-hdr"><span class="tbl-title">Detalle por vehículo</span><span class="tbl-count">${vehs.length} vehículos</span></div>
+      ${vehs.length===0?`<div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">Sin despachos en el período</div></div>`:`
+      <table class="dt"><thead><tr><th>Interno</th><th>Patente</th><th>Euro Diesel</th><th>Gasoil</th><th>Total lts</th><th>Despachos</th></tr></thead><tbody>
+        ${vehs.map(v=>`<tr>
+          <td style="font-weight:700;color:var(--orange)">#${v.interno}</td>
+          <td><span style="font-weight:600;font-size:12px;background:var(--blue-pale);color:var(--blue);padding:2px 8px;border-radius:4px">${v.pat||'—'}</span></td>
+          <td>${v.euro?fmtN(v.euro):'—'}</td>
+          <td>${v.gasoil?fmtN(v.gasoil):'—'}</td>
+          <td><span class="lts-val">${fmtN(v.lts)}</span></td>
+          <td>${v.cargas}</td>
+        </tr>`).join('')}
+      </tbody></table>`}
+    </div>`;
 }
 
 function selVehDirecto(interno){
