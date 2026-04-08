@@ -678,11 +678,7 @@ function selMesDrop(cid, fromId, toId) {
       const [y,m] = mesKey.split('-');
       const d = new Date(+y, +m-1, 1);
       const lbl = d.toLocaleString('es-AR',{month:'long',year:'numeric'});
-      // Guardar para exportar
-  window._lastValData = {meses, keys, from, to, ccVal,
-    pEuro, pGasoil, pImpEuro, pImpGasoil, pCO2Euro, pCO2Gasoil,
-    totalLts, totalNeto, totalImp, totalCO2, totalVal, tot};
-  document.getElementById('resVal').innerHTML=`<div class="alert alert-warn" style="margin-bottom:0">
+      document.getElementById('resVal').innerHTML=`<div class="alert alert-warn" style="margin-bottom:0">
         ✓ Precios de <strong>${lbl.charAt(0).toUpperCase()+lbl.slice(1)}</strong> cargados desde el sheet.
       </div>`;
     }
@@ -1151,6 +1147,10 @@ async function cargarValorizacion(){
 
   const keys=Object.keys(meses).sort();
   if(!keys.length){document.getElementById('resVal').innerHTML='<div class="empty"><div class="empty-icon">📭</div><div class="empty-title">Sin datos en el período</div></div>';return;}
+  // Guardar para exportar
+  window._lastValData = {meses, keys, from, to, ccVal,
+    pEuro, pGasoil, pImpEuro, pImpGasoil, pCO2Euro, pCO2Gasoil,
+    totalLts, totalNeto, totalImp, totalCO2, totalVal, tot};
 
   const tot={ltsEuro:0,ltsGasoil:0,netoEuro:0,netoGasoil:0,impEuro:0,impGasoil:0,co2Euro:0,co2Gasoil:0};
   keys.forEach(k=>Object.keys(tot).forEach(f=>tot[f]+=meses[k][f]));
