@@ -164,6 +164,12 @@
             <div class="ac-dd" id="acDd"></div>
           </div>
         </div>
+        <div class="fg" style="min-width:180px">
+          <label class="lbl">Línea de Negocio</label>
+          <select id="vehLinea" onchange="filtrarPorLinea()">
+            <option value="">Todas las líneas</option>
+          </select>
+        </div>
         <div class="fg"><label class="lbl">Desde</label><input type="date" id="vehFrom"></div>
         <div class="fg"><label class="lbl">Hasta</label><input type="date" id="vehTo"></div>
         <div style="display:flex;gap:8px;align-items:flex-end">
@@ -572,7 +578,7 @@ function aplicarPreciosMes(mesKey){
 
 async function cargarFlota(){
   try{
-    const t=await fetchGviz(SHEET_RODADOS,'0');
+    const t=await fetchGviz(SHEET_RODADOS,'766085002');
     if(!t?.rows)return;
     const seen=new Set();
     for(const row of t.rows){
@@ -582,7 +588,8 @@ async function cargarFlota(){
       const k=String(interno);
       if(seen.has(k))continue;
       seen.add(k);
-      FLOTA.push({Interno:+interno,Dominio:dominio,Descripción:desc});
+      const linea = String(row.c[7]?.v||'').trim();
+      FLOTA.push({Interno:+interno,Dominio:dominio,Descripción:desc,LineaNegocio:linea});
     }
     FLOTA.sort((a,b)=>a.Interno-b.Interno);
   }catch(e){console.warn('Flota:',e.message);}
@@ -711,10 +718,28 @@ function selValCC(cc){
 // AUTOCOMPLETE
 // ═══════════════════════════════════
 let selVeh=null,acItems=[],acIdx=-1;
+function getFlotaFiltrada(){
+  const linea=document.getElementById('vehLinea')?.value||'';
+  if(!linea) return FLOTA;
+  return FLOTA.filter(v=>v.LineaNegocio===linea);
+}
+
+function filtrarPorLinea(){
+  // Limpiar búsqueda actual y mostrar info de la línea
+  selVeh=null;
+  document.getElementById('vehSearch').value='';
+  closeAC();
+  const linea=document.getElementById('vehLinea')?.value||'';
+  const count=getFlotaFiltrada().length;
+  document.getElementById('vehSearch').placeholder=
+    linea?`Buscar entre ${count} vehículos de ${linea}...`:`Buscar entre ${FLOTA.length} vehículos...`;
+}
+
 function acSearch(val){
   selVeh=null;const q=norm(val);
   if(q.length<2){closeAC();return;}
-  acItems=FLOTA.filter(x=>norm(x.Dominio).includes(q)||String(x.Interno).startsWith(q)).slice(0,10);
+  const base=getFlotaFiltrada();
+  acItems=base.filter(x=>norm(x.Dominio).includes(q)||String(x.Interno).startsWith(q)).slice(0,10);
   if(!acItems.length){closeAC();return;}
   document.getElementById('acDd').innerHTML=acItems.map((x,i)=>`<div class="ac-item" onclick="acSel(${i})"><span class="ac-int">${x.Interno}</span><span class="ac-pat">${x.Dominio}</span><span class="ac-desc">${x.Descripción||''}</span></div>`).join('');
   document.getElementById('acDd').style.display='block';acIdx=-1;
