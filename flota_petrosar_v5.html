@@ -139,6 +139,11 @@
     <div class="hdr-title">Consumo Flota Interna</div>
     <div class="hdr-sub">Control de combustible · Todas las fuentes</div>
   </div>
+  <div style="margin-left:auto">
+    <button onclick="limpiarCache();cargarTotales()" class="btn" style="background:rgba(255,255,255,.1);color:#fff;font-size:12px;padding:6px 14px;height:auto">
+      ↺ Actualizar datos
+    </button>
+  </div>
 </header>
 <nav class="tabs">
   <div class="tab active" onclick="switchTab('totales')">Totales por Sector</div>
@@ -450,9 +455,28 @@ function filtrarCC(despachos,cc){
   return despachos.filter(d=>d.punto!=='EESS CD');
 }
 
+// Cache global de tablas crudas por fuente (no expira en la sesión)
+const _tableCache = {};
+
+async function fetchGvizCached(id, ref){
+  const key = id+'|'+ref;
+  if(_tableCache[key]) return _tableCache[key];
+  const t = await fetchGviz(id, ref);
+  _tableCache[key] = t;
+  return t;
+}
+
+function limpiarCache(){
+  Object.keys(_tableCache).forEach(k=>delete _tableCache[k]);
+  cachedDespachos=null; cachedFrom=null; cachedTo=null;
+}
+
 async function consultarTodo(from,to,filtVeh=null){
   const keys=Object.keys(FUENTES);
-  const results=await Promise.allSettled(keys.map(k=>fetchGviz(FUENTES[k].id,FUENTES[k].ref)));
+  // Usar cache de tablas para no re-descargar sheets ya consultados
+  const results=await Promise.allSettled(
+    keys.map(k=>fetchGvizCached(FUENTES[k].id,FUENTES[k].ref))
+  );
   const despachos=[],errores=[];
   results.forEach((r,i)=>{
     const k=keys[i];
@@ -471,19 +495,30 @@ async function cargarPreciosSheet(){
     if(!t?.rows) return;
     for(const row of t.rows){
       if(!row.c || !row.c[0]?.v) continue;
-      const mes = String(row.c[0].v).trim(); // ej: "2026-03"
+      const mes = String(row.c[0].v).trim();
       if(!mes.match(/\d{4}-\d{2}/)) continue;
       preciosHistorial[mes] = {
-        pEuro:     +row.c[1]?.v || 0,
-        pGasoil:   +row.c[2]?.v || 0,
-        pImpEuro:  +row.c[3]?.v || 0,
-        pImpGasoil:+row.c[4]?.v || 0,
-        pCO2Euro:  +row.c[5]?.v || 0,
-        pCO2Gasoil:+row.c[6]?.v || 0
+        pEuro:     parsePrecio(row.c[1]),
+        pGasoil:   parsePrecio(row.c[2]),
+        pImpEuro:  parsePrecio(row.c[3]),
+        pImpGasoil:parsePrecio(row.c[4]),
+        pCO2Euro:  parsePrecio(row.c[5]),
+        pCO2Gasoil:parsePrecio(row.c[6])
       };
     }
-    console.log('Precios cargados:', Object.keys(preciosHistorial));
+    console.log('Precios cargados:', preciosHistorial);
   } catch(e){ console.warn('Precios:', e.message); }
+}
+
+function parsePrecio(cell){
+  if(!cell) return 0;
+  // Preferir valor numérico directo
+  if(typeof cell.v === 'number') return cell.v;
+  // Si viene como string con formato "$1.610,027" → 1610.027
+  const src = String(cell.f || cell.v || '');
+  // Quitar $, espacios, luego: punto=miles, coma=decimal (formato AR)
+  const clean = src.replace(/\$/g,'').replace(/\s/g,'').replace(/\./g,'').replace(',','.');
+  return parseFloat(clean) || 0;
 }
 
 function aplicarPreciosMes(mesKey){
