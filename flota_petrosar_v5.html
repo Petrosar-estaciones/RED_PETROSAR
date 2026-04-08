@@ -177,6 +177,11 @@
           <button class="btn btn-ghost" onclick="limpiarVeh()">✕</button>
         </div>
       </div>
+      <!-- Lista de vehículos por línea -->
+      <div id="listaLinea" style="display:none;margin-top:14px">
+        <div class="lbl" style="margin-bottom:8px">Vehículos de la línea seleccionada — hacé clic para seleccionar:</div>
+        <div id="listaLineaItems" style="display:flex;flex-wrap:wrap;gap:6px;max-height:150px;overflow-y:auto"></div>
+      </div>
       <div id="vehAlert"></div>
     </div>
     <div id="loadingVeh" class="loading"><div class="spinner"></div>Consultando todas las fuentes...</div>
@@ -725,14 +730,44 @@ function getFlotaFiltrada(){
 }
 
 function filtrarPorLinea(){
-  // Limpiar búsqueda actual y mostrar info de la línea
   selVeh=null;
   document.getElementById('vehSearch').value='';
   closeAC();
   const linea=document.getElementById('vehLinea')?.value||'';
-  const count=getFlotaFiltrada().length;
-  document.getElementById('vehSearch').placeholder=
-    linea?`Buscar entre ${count} vehículos de ${linea}...`:`Buscar entre ${FLOTA.length} vehículos...`;
+  const lista=document.getElementById('listaLinea');
+  const items=document.getElementById('listaLineaItems');
+  if(!linea){
+    lista.style.display='none';
+    document.getElementById('vehSearch').placeholder=`Buscar entre ${FLOTA.length} vehículos...`;
+    return;
+  }
+  const vehsFiltrados=getFlotaFiltrada();
+  document.getElementById('vehSearch').placeholder=`Buscar entre ${vehsFiltrados.length} vehículos...`;
+  // Mostrar chips de vehículos
+  items.innerHTML=vehsFiltrados.map(v=>`
+    <div onclick="selVehDirecto(${v.Interno})" style="
+      background:var(--bg);border:1.5px solid var(--border);border-radius:6px;
+      padding:5px 10px;cursor:pointer;font-size:12px;font-weight:600;
+      transition:all .15s;white-space:nowrap"
+      onmouseover="this.style.borderColor='var(--orange)';this.style.background='var(--orange-pale)'"
+      onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--bg)'">
+      <span style="color:var(--orange)">${v.Interno}</span>
+      <span style="color:var(--muted);margin-left:4px">${v.Dominio}</span>
+    </div>`).join('');
+  lista.style.display='block';
+}
+
+function selVehDirecto(interno){
+  const v=FLOTA.find(x=>x.Interno===interno);
+  if(!v) return;
+  selVeh=v;
+  document.getElementById('vehSearch').value=`${v.Interno} — ${v.Dominio}`;
+  document.getElementById('listaLinea').style.display='none';
+  // Resaltar el seleccionado
+  document.querySelectorAll('#listaLineaItems div').forEach(el=>{
+    el.style.borderColor=el.textContent.trim().startsWith(String(interno))?'var(--orange)':'var(--border)';
+    el.style.background=el.textContent.trim().startsWith(String(interno))?'var(--orange-pale)':'var(--bg)';
+  });
 }
 
 function acSearch(val){
@@ -760,7 +795,16 @@ document.addEventListener('click',e=>{if(!e.target.closest('.ac-wrap'))closeAC()
 // ═══════════════════════════════════
 // TAB 1: POR VEHÍCULO
 // ═══════════════════════════════════
-function limpiarVeh(){document.getElementById('vehSearch').value='';selVeh=null;document.getElementById('resVeh').innerHTML='<div class="empty"><div class="empty-icon">⛽</div><div class="empty-title">Ingresá una patente o interno</div></div>';document.getElementById('vehAlert').innerHTML='';}
+function limpiarVeh(){
+  document.getElementById('vehSearch').value='';
+  selVeh=null;
+  document.getElementById('resVeh').innerHTML='<div class="empty"><div class="empty-icon">⛽</div><div class="empty-title">Ingresá una patente o interno</div></div>';
+  document.getElementById('vehAlert').innerHTML='';
+  const ll=document.getElementById('listaLinea');
+  if(ll) ll.style.display='none';
+  const sel=document.getElementById('vehLinea');
+  if(sel) sel.value='';
+}
 
 async function buscarVeh(){
   if(!selVeh){
