@@ -212,10 +212,18 @@
         <div class="precio-inp"><label>CO2 Euro ($/lts)</label><input type="number" id="pCO2Euro" value="38" step="1"></div>
         <div class="precio-inp"><label>CO2 Gasoil ($/lts)</label><input type="number" id="pCO2Gasoil" value="32" step="1"></div>
       </div>
-      <div class="row">
+      <div class="row" style="margin-bottom:14px">
         <div class="fg"><label class="lbl">Desde</label><input type="date" id="valFrom"></div>
         <div class="fg"><label class="lbl">Hasta</label><input type="date" id="valTo"></div>
         <div style="align-self:flex-end"><button class="btn btn-primary" onclick="cargarValorizacion()">Calcular</button></div>
+      </div>
+      <div>
+        <div class="lbl" style="margin-bottom:8px">Centro de costo</div>
+        <div class="seg" style="max-width:320px">
+          <button class="seg-btn active" id="valcc-petrosar" onclick="selValCC('PETROSAR')">PETROSAR</button>
+          <button class="seg-btn" id="valcc-eess" onclick="selValCC('EESS')">EESS CD</button>
+          <button class="seg-btn" id="valcc-todos" onclick="selValCC('TODOS')">Todos</button>
+        </div>
       </div>
     </div>
     <div class="mes-tabs" id="mesTabsVal"></div>
@@ -306,7 +314,8 @@ const SECTOR_ORDER  = ['AG','TP','VH','CD','BASE CR','RESERO','EESS CD'];
 const SECTOR_COLOR  = {AG:'#1a7a4a',TP:'#5b21b6',VH:'#b45309',CD:'#1a5fa8','BASE CR':'#b91c1c',RESERO:'#3a7d0a',PLANTA:'#0369a1','EESS CD':'#0891b2'};
 const SECTOR_BG     = {AG:'#e8f7ee',TP:'#f0eafe',VH:'#fff3e0',CD:'#e0f0ff','BASE CR':'#fdecea',RESERO:'#f0fde4',PLANTA:'#e0f4ff','EESS CD':'#e0f9ff'};
 
-let ccActual = 'PETROSAR';
+let ccActual  = 'PETROSAR';
+let ccVal     = 'PETROSAR'; // CC para valorización
 
 // ═══════════════════════════════════
 // UTILIDADES
@@ -606,13 +615,12 @@ function selMesDrop(cid, fromId, toId) {
     const mesKey = from.slice(0,7);
     // Primero intentar precios del sheet, luego localStorage
     const fromSheet = aplicarPreciosMes(mesKey);
-    if(!fromSheet) cargarPreciosMes(mesKey);
-    if(fromSheet || preciosHistorial[mesKey]){
+    if(fromSheet){
       const [y,m] = mesKey.split('-');
       const d = new Date(+y, +m-1, 1);
       const lbl = d.toLocaleString('es-AR',{month:'long',year:'numeric'});
       document.getElementById('resVal').innerHTML=`<div class="alert alert-warn" style="margin-bottom:0">
-        📋 Precios de <strong>${lbl.charAt(0).toUpperCase()+lbl.slice(1)}</strong> cargados desde historial. Hacé clic en Calcular.
+        ✓ Precios de <strong>${lbl.charAt(0).toUpperCase()+lbl.slice(1)}</strong> cargados desde el sheet.
       </div>`;
     }
     cargarValorizacion();
@@ -625,9 +633,16 @@ function selCC(cc){
   ['PETROSAR','EESS','TODOS'].forEach(x=>{
     document.getElementById('cc-'+x.toLowerCase()).classList.toggle('active',x===cc);
   });
-  // Limpiar cache para que recargue con todas las fuentes
   cachedDespachos=null; cachedFrom=null; cachedTo=null;
   cargarTotales();
+}
+
+function selValCC(cc){
+  ccVal=cc;
+  ['PETROSAR','EESS','TODOS'].forEach(x=>{
+    document.getElementById('valcc-'+x.toLowerCase()).classList.toggle('active',x===cc);
+  });
+  cargarValorizacion();
 }
 
 // INIT
@@ -639,7 +654,17 @@ function selCC(cc){
     const inp=document.getElementById('vehSearch');
     inp.placeholder=FLOTA.length?`Buscar entre ${FLOTA.length} vehículos...`:'Ingresá patente o interno';
   });
-  cargarPreciosSheet();
+  cargarPreciosSheet().then(()=>{
+    // Aplicar precios del mes actual al init
+    const now=new Date();
+    const mesKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    if(!aplicarPreciosMes(mesKey)){
+      // Si no hay precios para este mes, probar el anterior
+      const prev=new Date(now.getFullYear(),now.getMonth()-1,1);
+      const prevKey=`${prev.getFullYear()}-${String(prev.getMonth()+1).padStart(2,'0')}`;
+      aplicarPreciosMes(prevKey);
+    }
+  });
   // Arrancar en Totales por Sector
   buildMesesDesplegable('mesTabs','totFrom','totTo',cargarTotales);
   setDates('totFrom','totTo');
@@ -747,6 +772,7 @@ async function cargarTotales(){
   const from=document.getElementById('totFrom').value,to=document.getElementById('totTo').value;
   // Usar cache si mismo período
   let despachos,errores;
+  // Aplicar filtro de CC
   if(cachedDespachos&&cachedFrom===from&&cachedTo===to){
     despachos=cachedDespachos;errores=[];
   }else{
@@ -869,10 +895,8 @@ async function cargarValorizacion(){
   document.getElementById('resVal').innerHTML='';
   document.getElementById('loadingVal').style.display='block';
   const from=document.getElementById('valFrom').value,to=document.getElementById('valTo').value;
-  // Aplicar precios del sheet si existen, sino usar los campos actuales
   const mesKey=from.slice(0,7);
-  if(preciosHistorial[mesKey]) aplicarPreciosMes(mesKey);
-  guardarPrecios(mesKey); // también guardar en localStorage como backup
+  guardarPrecios(mesKey);
   const pEuro=+document.getElementById('pEuro').value||0;
   const pGasoil=+document.getElementById('pGasoil').value||0;
   const pImpEuro=+document.getElementById('pImpEuro').value||0;
@@ -889,6 +913,8 @@ async function cargarValorizacion(){
     cachedDespachos=despachos;cachedFrom=from;cachedTo=to;
   }
   document.getElementById('loadingVal').style.display='none';
+  // Filtrar por centro de costo
+  despachos=filtrarCC(despachos,ccVal);
 
   // Agrupar por mes y producto
   const meses={};
