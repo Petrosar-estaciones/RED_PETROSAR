@@ -509,12 +509,25 @@ async function consultarTodo(from,to,filtVeh=null){
 // ═══════════════════════════════════
 async function cargarPreciosSheet(){
   try {
+    console.log('Cargando precios desde sheet:', SHEET_PRECIOS, 'gid:', GID_PRECIOS);
     const t = await fetchGviz(SHEET_PRECIOS, GID_PRECIOS);
-    if(!t?.rows) return;
+    console.log('Tabla precios recibida:', t?.rows?.length, 'filas');
+    if(!t?.rows) { console.warn('Sin filas en sheet de precios'); return; }
     for(const row of t.rows){
-      if(!row.c || !row.c[0]?.v) continue;
-      const mes = String(row.c[0].v).trim();
-      if(!mes.match(/\d{4}-\d{2}/)) continue;
+      if(!row.c) continue;
+      console.log('Fila precios raw:', row.c.map(c=>c?`v=${c.v} f=${c.f}`:'null').join(' | '));
+      if(!row.c[0]?.v) continue;
+      // El mes puede venir como string "2026-03", como fecha, o como número
+      let mes = '';
+      const mesCell = row.c[0];
+      if(mesCell.f) mes = String(mesCell.f).trim();
+      else if(mesCell.v) mes = String(mesCell.v).trim();
+      // Si viene como "2026-03-01" tomar solo año-mes
+      if(mes.match(/\d{4}-\d{2}-\d{2}/)) mes = mes.slice(0,7);
+      // Si viene como "Date(2026,2,1)" convertir
+      const dm = typeof mesCell.v==='string' ? mesCell.v.match(/Date\((\d+),(\d+)/) : null;
+      if(dm) mes = `${dm[1]}-${String(+dm[2]+1).padStart(2,'0')}`;
+      if(!mes.match(/\d{4}-\d{2}/)) { console.log('Mes no reconocido:', mes, 'raw:', JSON.stringify(mesCell)); continue; }
       preciosHistorial[mes] = {
         pEuro:     parsePrecio(row.c[1]),
         pGasoil:   parsePrecio(row.c[2]),
@@ -523,9 +536,9 @@ async function cargarPreciosSheet(){
         pCO2Euro:  parsePrecio(row.c[5]),
         pCO2Gasoil:parsePrecio(row.c[6])
       };
+      console.log('Precios guardados para', mes, ':', preciosHistorial[mes]);
     }
-    console.log('Precios cargados:', preciosHistorial);
-  } catch(e){ console.warn('Precios:', e.message); }
+  } catch(e){ console.error('Error cargando precios:', e.message); }
 }
 
 function parsePrecio(cell){
@@ -582,7 +595,16 @@ function switchTab(t){
   ['veh','totales','valorizacion'].forEach(id=>document.getElementById('tab-'+id).style.display=id===t?'block':'none');
   document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['totales','veh','valorizacion'][i]===t));
   if(t==='totales'&&!document.getElementById('mesTabs').children.length){buildMesesDesplegable('mesTabs','totFrom','totTo',cargarTotales);}
-  if(t==='valorizacion'&&!document.getElementById('mesTabsVal').children.length){buildMesesDesplegable('mesTabsVal','valFrom','valTo',cargarValorizacion);}
+  if(t==='valorizacion'&&!document.getElementById('mesTabsVal').children.length){
+    buildMesesDesplegable('mesTabsVal','valFrom','valTo',cargarValorizacion);
+    // Aplicar precios del mes actual
+    const now=new Date();
+    const mesKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    if(!aplicarPreciosMes(mesKey)){
+      const keys=Object.keys(preciosHistorial).sort();
+      if(keys.length>0) aplicarPreciosMes(keys[keys.length-1]);
+    }
+  }
 }
 function setDates(f,t){const now=new Date();document.getElementById(f).value=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);document.getElementById(t).value=now.toISOString().slice(0,10);}
 function buildMesesDesplegable(cid, fromId, toId, callback) {
@@ -668,11 +690,15 @@ function selValCC(cc){
     // Aplicar precios del mes actual al init
     const now=new Date();
     const mesKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    console.log('Intentando aplicar precios para mes:', mesKey, '| disponibles:', Object.keys(preciosHistorial));
     if(!aplicarPreciosMes(mesKey)){
-      // Si no hay precios para este mes, probar el anterior
-      const prev=new Date(now.getFullYear(),now.getMonth()-1,1);
-      const prevKey=`${prev.getFullYear()}-${String(prev.getMonth()+1).padStart(2,'0')}`;
-      aplicarPreciosMes(prevKey);
+      // Si no hay precios para este mes, probar los últimos disponibles
+      const keys = Object.keys(preciosHistorial).sort();
+      if(keys.length > 0){
+        const lastKey = keys[keys.length-1];
+        console.log('Aplicando precios del último mes disponible:', lastKey);
+        aplicarPreciosMes(lastKey);
+      }
     }
   });
   // Arrancar en Totales por Sector
