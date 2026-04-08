@@ -244,17 +244,16 @@ const FUENTES = {
     iFecha:1, iLitros:2, iProducto:3, iPatente:5, iInterno:6,
     filtroCliente:true, headerRows:0, punto:'AG' },
 
-  // CD: misma estructura que TP/AG, filtrar PETROSAR en col R
-  CD: { nombre:'CD', id:SHEET_EST, ref:'CD',
-    iFecha:1, iLitros:2, iProducto:3, iPatente:5, iInterno:6,
-    filtroCliente:true, headerRows:0, punto:'CD' },
+  // CD viene solo de Datos Conductor (CD_DC) — no de Estaciones
 
   // RESERO: gid=1798585939
-  // Fila 1: "Consolas: Petrosar" (extra), Fila 2: encabezados (gviz la toma con headers=1)
-  // C=FechaInicio(2) J=MainID/Interno(9) O=Producto(14) R=Cantidad/Litros(17)
+  // Sheet tiene filtros en filas 1-6 (Desde/Hasta/Consolas), fila 7=encabezados de col
+  // gviz con headers=1 toma fila 7 como header → filas 1-6 quedan como headerRows
+  // Datos reales desde fila 15 del sheet → headerRows=8 en gviz
+  // C=FechaInicio(2) J=MainID/Interno(9) R=Cantidad/Litros(17)
   RESERO: { nombre:'RESERO', id:SHEET_EST, ref:'1798585939',
     iFecha:2, iLitros:17, iProducto:14, iPatente:-1, iInterno:9,
-    filtroCliente:false, headerRows:1, punto:'RESERO' },
+    filtroCliente:false, headerRows:6, punto:'RESERO' },
 
   // VH: sheet Datos Conductor, producto = "EURO + DIESEL VH"
   // A=Fecha(0) C=NroVale/Interno(2) G=Patente(6) M=Producto(12) N=Cantidad(13)
@@ -299,35 +298,34 @@ function fmtARS(n){return '$'+fmtN(n,0);}
 function fmtDate(d){if(!d)return'—';const[y,m,day]=d.split('-');return`${day}/${m}/${y}`;}
 
 function parseFecha(row,i){
-  const val=v(row,i),fmt=f(row,i);
-  // gviz datetime viene como objeto con .v = "Date(y,m,d,h,min,s)"
-  // o como string directo
-  const tryStr = s => {
-    if(!s) return null;
-    // Date(2026,2,1,8,30,0) — mes base 0
-    let m=s.match(/Date\((\d+),(\d+),(\d+)/);
+  const val=v(row,i), fmt=f(row,i);
+  const tryStr = src => {
+    if(!src) return null;
+    src = String(src);
+    // Date(2026,2,1,...) — mes base 0
+    let m=src.match(/Date\((\d+),(\d+),(\d+)/);
     if(m) return new Date(+m[1],+m[2],+m[3]);
-    // YYYY-MM-DD o YYYY/MM/DD
-    m=s.match(/(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+    // YYYY-MM-DD (con o sin hora: "2026-03-01" o "2026-03-01 20:29:00")
+    m=src.match(/(\d{4})-(\d{2})-(\d{2})/);
     if(m) return new Date(+m[1],+m[2]-1,+m[3]);
-    // DD/MM/YYYY o DD-MM-YYYY
-    m=s.match(/(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+    // DD/MM/YYYY
+    m=src.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if(m) return new Date(+m[3],+m[2]-1,+m[1]);
+    // DD-MM-YYYY
+    m=src.match(/(\d{1,2})-(\d{1,2})-(\d{4})/);
     if(m) return new Date(+m[3],+m[2]-1,+m[1]);
     return null;
   };
-  // 1. Valor raw de gviz (puede ser string "Date(...)" o número)
-  if(val!==null){
-    const r=tryStr(String(val));
+  // 1. Valor raw
+  if(val!==null && val!==undefined){
+    const r=tryStr(val);
     if(r&&!isNaN(r)) return r;
     if(typeof val==='number') return new Date(val);
   }
-  // 2. Formato display (f)
+  // 2. Formato display
   if(fmt){
     const r=tryStr(fmt);
     if(r&&!isNaN(r)) return r;
-    // formato "(DD/MM/YYYY, HH:MM:SS)" que usan algunas celdas datetime
-    const m=fmt.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-    if(m) return new Date(+m[3],+m[2]-1,+m[1]);
   }
   return null;
 }
