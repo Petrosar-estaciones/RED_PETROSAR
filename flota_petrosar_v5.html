@@ -419,10 +419,8 @@ function parsarFuente(table,fuente,from,to,filtVeh=null){
     // Filtro receptor (Planta por col G: busca el número 742/794/836 en el texto)
     if(fuente.filtroReceptor){
       const rec=s(row,fuente.iReceptor).toUpperCase().replace(/\s+/g,'');
-      const matchedN=fuente.filtroReceptor.find(n=>rec.includes(String(n)));
-      if(!matchedN){skipFiltro++;continue;}
-      // Guardar el número matcheado como interno para búsquedas por línea
-      int_=String(matchedN);
+      const match=fuente.filtroReceptor.some(n=>rec.includes(String(n)));
+      if(!match){skipFiltro++;continue;}
     }
     // Filtro por producto exacto (VH)
     if(fuente.filtroProducto){
@@ -807,24 +805,8 @@ async function buscarLinea(){
 
   // Buscar todos los despachos del período y filtrar por internos de la línea
   const internosLinea=new Set(vehsFiltrados.map(v=>v.Interno));
-
   const {despachos,errores}=await consultarTodo(from,to);
-  console.log('buscarLinea internos:', [...internosLinea]);
-  console.log('PLANTA en despachos:', despachos.filter(d=>d.fuente==='PLANTA').map(d=>({interno:d.interno,int:d.int,lts:d.litros})));
-  // Re-parsear PLANTA fresco para obtener int_ correcto del receptor
-  const tablaPlanta = await fetchGvizCached(FUENTES.PLANTA.id, FUENTES.PLANTA.ref);
-  const despPlantaFresh = parsarFuente(tablaPlanta, FUENTES.PLANTA, from, to);
-  
-  // Combinar: despachos sin PLANTA + PLANTA fresco
-  const despSinPlanta = despachos.filter(d=>d.fuente!=='PLANTA');
-  const todosDespachos = [...despSinPlanta, ...despPlantaFresh];
-  
-  const filtrados=todosDespachos.filter(d=>{
-    if(internosLinea.has(d.interno)) return true;
-    const intNum=parseInt(d.int);
-    if(!isNaN(intNum) && internosLinea.has(intNum)) return true;
-    return false;
-  });
+  const filtrados=despachos.filter(d=>internosLinea.has(d.interno));
   document.getElementById('loadingVeh').style.display='none';
 
   // Renderizar como resumen de línea
