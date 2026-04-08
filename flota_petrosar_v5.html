@@ -279,15 +279,17 @@ const FUENTES = {
     filtroProductoExcluir:'EURO + DIESEL VH' },
 
   // BASE CR: A=Fecha(0) B=Interno(1) C=Patente(2) E=Litros(4) F=Producto(5)
+  // Excluir internos 836/742/794 (son camiones que llevan combustible a EESS, no consumo propio)
   BASECR: { nombre:'BASE CR', id:'1A_0pcSuycTcTBcf8bAHXopHk_FrLSgcdbDSFbvZnLuQ', ref:'0',
     iFecha:0, iLitros:4, iProducto:5, iPatente:2, iInterno:1,
-    filtroCliente:false, headerRows:0, punto:'BASE CR' },
+    filtroCliente:false, headerRows:0, punto:'BASE CR',
+    excluirInternos:[836,742,794] },
 
   // PLANTA: gid=1688777748, B=Fecha(1) G=Receptor(6) L+M+N=litros
   // Filtro: col G contiene "INT 742", "INT 794" o "INT 836"
   PLANTA: { nombre:'PLANTA', id:'1NWUzcMuA5JmUXW5p3MiWwes8M4nb5EBNoTssFBU0ndE', ref:'1688777748',
-    iFecha:1, iLitros:null, iLitrosMulti:[11,12,13], iProducto:2, iPatente:-1, iInterno:9,
-    filtroCliente:false, headerRows:0, punto:'EESS CD',
+    iFecha:1, iLitrosMulti:[11,12,13], iProducto:2, iPatente:-1, iInterno:9,
+    filtroCliente:false, headerRows:2, punto:'EESS CD',
     filtroReceptor:[742,836,794], iReceptor:6 }
 }
 const SECTOR_ORDER  = ['AG','TP','VH','CD','BASE CR','RESERO','EESS CD'];
@@ -375,6 +377,10 @@ function parsarFuente(table,fuente,from,to,filtVeh=null){
     if(fuente.filtroInternos){
       if(!fuente.filtroInternos.includes(+v(row,fuente.iInterno))){skipFiltro++;continue;}
     }
+    // Excluir internos específicos (BASE CR: excluir camiones de EESS)
+    if(fuente.excluirInternos){
+      if(fuente.excluirInternos.includes(+v(row,fuente.iInterno))){skipFiltro++;continue;}
+    }
     // Filtro receptor (Planta por col G: "INT 742", "INT 794", "INT 836")
     if(fuente.filtroReceptor){
       const rec=s(row,fuente.iReceptor).toUpperCase();
@@ -459,6 +465,39 @@ async function consultarTodo(from,to,filtVeh=null){
 // ═══════════════════════════════════
 // FLOTA DINÁMICA
 // ═══════════════════════════════════
+async function cargarPreciosSheet(){
+  try {
+    const t = await fetchGviz(SHEET_PRECIOS, GID_PRECIOS);
+    if(!t?.rows) return;
+    for(const row of t.rows){
+      if(!row.c || !row.c[0]?.v) continue;
+      const mes = String(row.c[0].v).trim(); // ej: "2026-03"
+      if(!mes.match(/\d{4}-\d{2}/)) continue;
+      preciosHistorial[mes] = {
+        pEuro:     +row.c[1]?.v || 0,
+        pGasoil:   +row.c[2]?.v || 0,
+        pImpEuro:  +row.c[3]?.v || 0,
+        pImpGasoil:+row.c[4]?.v || 0,
+        pCO2Euro:  +row.c[5]?.v || 0,
+        pCO2Gasoil:+row.c[6]?.v || 0
+      };
+    }
+    console.log('Precios cargados:', Object.keys(preciosHistorial));
+  } catch(e){ console.warn('Precios:', e.message); }
+}
+
+function aplicarPreciosMes(mesKey){
+  const p = preciosHistorial[mesKey];
+  if(!p) return false;
+  document.getElementById('pEuro').value      = p.pEuro;
+  document.getElementById('pGasoil').value    = p.pGasoil;
+  document.getElementById('pImpEuro').value   = p.pImpEuro;
+  document.getElementById('pImpGasoil').value = p.pImpGasoil;
+  document.getElementById('pCO2Euro').value   = p.pCO2Euro;
+  document.getElementById('pCO2Gasoil').value = p.pCO2Gasoil;
+  return true;
+}
+
 async function cargarFlota(){
   try{
     const t=await fetchGviz(SHEET_RODADOS,'0');
@@ -523,15 +562,17 @@ function selMesDrop(cid, fromId, toId) {
   // Llamar al callback correcto
   if(cid==='mesTabs') cargarTotales();
   else {
-    // Intentar cargar precios guardados para ese mes
     const from = document.getElementById(fromId).value;
     const mesKey = from.slice(0,7);
-    const loaded = cargarPreciosMes(mesKey);
-    if(loaded){
-      const d = new Date(+val.split('-')[0], +val.split('-')[1], 1);
+    // Primero intentar precios del sheet, luego localStorage
+    const fromSheet = aplicarPreciosMes(mesKey);
+    if(!fromSheet) cargarPreciosMes(mesKey);
+    if(fromSheet || preciosHistorial[mesKey]){
+      const [y,m] = mesKey.split('-');
+      const d = new Date(+y, +m-1, 1);
       const lbl = d.toLocaleString('es-AR',{month:'long',year:'numeric'});
       document.getElementById('resVal').innerHTML=`<div class="alert alert-warn" style="margin-bottom:0">
-        📋 Precios de <strong>${lbl.charAt(0).toUpperCase()+lbl.slice(1)}</strong> cargados desde historial. Hacé clic en Calcular para ver la valorización.
+        📋 Precios de <strong>${lbl.charAt(0).toUpperCase()+lbl.slice(1)}</strong> cargados desde historial. Hacé clic en Calcular.
       </div>`;
     }
     cargarValorizacion();
@@ -558,6 +599,7 @@ function selCC(cc){
     const inp=document.getElementById('vehSearch');
     inp.placeholder=FLOTA.length?`Buscar entre ${FLOTA.length} vehículos...`:'Ingresá patente o interno';
   });
+  cargarPreciosSheet();
   // Arrancar en Totales por Sector
   buildMesesDesplegable('mesTabs','totFrom','totTo',cargarTotales);
   setDates('totFrom','totTo');
@@ -787,9 +829,10 @@ async function cargarValorizacion(){
   document.getElementById('resVal').innerHTML='';
   document.getElementById('loadingVal').style.display='block';
   const from=document.getElementById('valFrom').value,to=document.getElementById('valTo').value;
-  // Guardar precios para este mes antes de calcular
+  // Aplicar precios del sheet si existen, sino usar los campos actuales
   const mesKey=from.slice(0,7);
-  guardarPrecios(mesKey);
+  if(preciosHistorial[mesKey]) aplicarPreciosMes(mesKey);
+  guardarPrecios(mesKey); // también guardar en localStorage como backup
   const pEuro=+document.getElementById('pEuro').value||0;
   const pGasoil=+document.getElementById('pGasoil').value||0;
   const pImpEuro=+document.getElementById('pImpEuro').value||0;
