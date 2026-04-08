@@ -585,15 +585,27 @@ async function cargarFlota(){
   try{
     const t=await fetchGviz(SHEET_RODADOS,'766085002');
     if(!t?.rows)return;
+    // Detectar índice de columna por nombre
+    const cols=t.cols||[];
+    const iInterno  = cols.findIndex(c=>/^interno$/i.test(c.label));
+    const iDominio  = cols.findIndex(c=>/^dominio$/i.test(c.label));
+    const iDesc     = cols.findIndex(c=>/^descripci/i.test(c.label));
+    const iLinea    = cols.findIndex(c=>/^linea/i.test(c.label));
+    console.log('Rodados cols:', cols.map(c=>c.label), '| iLinea:', iLinea);
+    // Fallback a índices fijos si no encuentra
+    const ci = iInterno>=0?iInterno:0;
+    const cd = iDominio>=0?iDominio:1;
+    const ce = iDesc>=0?iDesc:3;
+    const cl = iLinea>=0?iLinea:7;
     const seen=new Set();
     for(const row of t.rows){
       if(!row.c)continue;
-      const interno=row.c[0]?.v,dominio=String(row.c[1]?.v||'').trim().toUpperCase(),desc=String(row.c[3]?.v||'').trim();
+      const interno=row.c[ci]?.v,dominio=String(row.c[cd]?.v||'').trim().toUpperCase(),desc=String(row.c[ce]?.v||'').trim();
       if(!interno||!dominio||dominio==='NAN')continue;
       const k=String(interno);
       if(seen.has(k))continue;
       seen.add(k);
-      const linea = String(row.c[7]?.v||'').trim();
+      const linea = String(row.c[cl]?.v||'').trim();
       FLOTA.push({Interno:+interno,Dominio:dominio,Descripción:desc,LineaNegocio:linea});
     }
     FLOTA.sort((a,b)=>a.Interno-b.Interno);
