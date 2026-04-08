@@ -204,13 +204,17 @@
   <div id="tab-valorizacion" style="display:none">
     <div class="card">
       <div class="card-title">Precios de referencia por litro</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
+        Los precios se cargan automáticamente desde el sheet de Rodados (hoja Precios). 
+        <span id="preciosMesLabel" style="color:var(--orange);font-weight:600"></span>
+      </div>
       <div class="precio-grid">
-        <div class="precio-inp"><label>Euro Diesel ($/lts neto)</label><input type="number" id="pEuro" value="2065" step="1"></div>
-        <div class="precio-inp"><label>Gasoil ($/lts neto)</label><input type="number" id="pGasoil" value="1848" step="1"></div>
-        <div class="precio-inp"><label>Impuesto Interno Euro ($/lts)</label><input type="number" id="pImpEuro" value="120" step="1"></div>
-        <div class="precio-inp"><label>Impuesto Interno Gasoil ($/lts)</label><input type="number" id="pImpGasoil" value="95" step="1"></div>
-        <div class="precio-inp"><label>CO2 Euro ($/lts)</label><input type="number" id="pCO2Euro" value="38" step="1"></div>
-        <div class="precio-inp"><label>CO2 Gasoil ($/lts)</label><input type="number" id="pCO2Gasoil" value="32" step="1"></div>
+        <div class="precio-inp"><label>Euro Diesel ($/lts neto)</label><input type="number" id="pEuro" value="0" step="0.001" readonly style="background:#f0f4f8;color:var(--txt);font-weight:600"></div>
+        <div class="precio-inp"><label>Gasoil ($/lts neto)</label><input type="number" id="pGasoil" value="0" step="0.001" readonly style="background:#f0f4f8;color:var(--txt);font-weight:600"></div>
+        <div class="precio-inp"><label>Imp. Interno Euro ($/lts)</label><input type="number" id="pImpEuro" value="0" step="0.001" readonly style="background:#f0f4f8;color:var(--txt);font-weight:600"></div>
+        <div class="precio-inp"><label>Imp. Interno Gasoil ($/lts)</label><input type="number" id="pImpGasoil" value="0" step="0.001" readonly style="background:#f0f4f8;color:var(--txt);font-weight:600"></div>
+        <div class="precio-inp"><label>CO2 Euro ($/lts)</label><input type="number" id="pCO2Euro" value="0" step="0.001" readonly style="background:#f0f4f8;color:var(--txt);font-weight:600"></div>
+        <div class="precio-inp"><label>CO2 Gasoil ($/lts)</label><input type="number" id="pCO2Gasoil" value="0" step="0.001" readonly style="background:#f0f4f8;color:var(--txt);font-weight:600"></div>
       </div>
       <div class="row" style="margin-bottom:14px">
         <div class="fg"><label class="lbl">Desde</label><input type="date" id="valFrom"></div>
@@ -544,6 +548,12 @@ function aplicarPreciosMes(mesKey){
   document.getElementById('pImpGasoil').value = p.pImpGasoil;
   document.getElementById('pCO2Euro').value   = p.pCO2Euro;
   document.getElementById('pCO2Gasoil').value = p.pCO2Gasoil;
+  // Actualizar label
+  const [y,m] = mesKey.split('-');
+  const d = new Date(+y,+m-1,1);
+  const lbl = d.toLocaleString('es-AR',{month:'long',year:'numeric'});
+  const el = document.getElementById('preciosMesLabel');
+  if(el) el.textContent = '— Precios de '+lbl.charAt(0).toUpperCase()+lbl.slice(1);
   return true;
 }
 
@@ -896,7 +906,8 @@ async function cargarValorizacion(){
   document.getElementById('loadingVal').style.display='block';
   const from=document.getElementById('valFrom').value,to=document.getElementById('valTo').value;
   const mesKey=from.slice(0,7);
-  guardarPrecios(mesKey);
+  // Aplicar precios del sheet (siempre, no editable)
+  aplicarPreciosMes(mesKey);
   const pEuro=+document.getElementById('pEuro').value||0;
   const pGasoil=+document.getElementById('pGasoil').value||0;
   const pImpEuro=+document.getElementById('pImpEuro').value||0;
