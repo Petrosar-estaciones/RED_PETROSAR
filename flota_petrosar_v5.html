@@ -249,10 +249,11 @@ const FUENTES = {
 
   // DEBO CD: gid=1093517494 — consumos EESS CD
   // A=Comprobante(0) B=Fecha(1) C=Cliente(2) D=FormaPago(3) E=Producto(4) F=Litros(5) H=Interno(7)
-  // Filtro: col C contiene "03007" (Estacion Cerro Dragon)
+  // Filtro: col C contiene "03007" Y col H (Interno) en [1009,836,742,794]
   DEBOCD: { nombre:'EESS CD', id:SHEET_EST, ref:'1093517494',
     iFecha:1, iLitros:5, iProducto:4, iPatente:-1, iInterno:7,
     filtroCliente:false, filtroClienteCol:2, filtroClienteVal:'03007',
+    filtroInternos:[1009,836,742,794],
     headerRows:0, punto:'EESS CD' },
 
   // RESERO: gid=1798585939
@@ -543,6 +544,8 @@ function selCC(cc){
   ['PETROSAR','EESS','TODOS'].forEach(x=>{
     document.getElementById('cc-'+x.toLowerCase()).classList.toggle('active',x===cc);
   });
+  // Limpiar cache para que recargue con todas las fuentes
+  cachedDespachos=null; cachedFrom=null; cachedTo=null;
   cargarTotales();
 }
 
@@ -689,7 +692,7 @@ function renderTotales(desp,errores,from,to){
   const totalGasoil=desp.filter(d=>d.prod==='GASOIL').reduce((s,d)=>s+d.litros,0);
   const sectores=SECTOR_ORDER.filter(p=>map[p]);
 
-  const ccLabel={'PETROSAR':'PETROSAR (flota propia)','EESS':'EESS CD (internos 1009/836/742/794)','TODOS':'Todos'}[ccActual];
+  const ccLabel={'PETROSAR':'PETROSAR (flota propia)','EESS':'EESS CD (Estación Cerro Dragón)','TODOS':'Todos'}[ccActual];
 
   document.getElementById('resTot').innerHTML=`
     ${errores.length?`<div class="alert alert-warn fade">⚠ Sin datos de: ${errores.map(e=>e.split(':')[0]).join(', ')}</div>`:''}
