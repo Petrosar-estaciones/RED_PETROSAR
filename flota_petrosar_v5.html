@@ -419,8 +419,10 @@ function parsarFuente(table,fuente,from,to,filtVeh=null){
     // Filtro receptor (Planta por col G: busca el número 742/794/836 en el texto)
     if(fuente.filtroReceptor){
       const rec=s(row,fuente.iReceptor).toUpperCase().replace(/\s+/g,'');
-      const match=fuente.filtroReceptor.some(n=>rec.includes(String(n)));
-      if(!match){skipFiltro++;continue;}
+      const matchedN=fuente.filtroReceptor.find(n=>rec.includes(String(n)));
+      if(!matchedN){skipFiltro++;continue;}
+      // Guardar el número matcheado como interno para búsquedas por línea
+      int_=String(matchedN);
     }
     // Filtro por producto exacto (VH)
     if(fuente.filtroProducto){
@@ -805,16 +807,17 @@ async function buscarLinea(){
 
   // Buscar todos los despachos del período y filtrar por internos de la línea
   const internosLinea=new Set(vehsFiltrados.map(v=>v.Interno));
-  // Limpiar cache de tablas para que PLANTA se reconsulte con el fix de receptor
-  Object.keys(_tableCache).forEach(k=>{ if(k.includes('1NWUzc')) delete _tableCache[k]; });
+
   const {despachos,errores}=await consultarTodo(from,to);
   console.log('buscarLinea internos:', [...internosLinea]);
   console.log('PLANTA en despachos:', despachos.filter(d=>d.fuente==='PLANTA').map(d=>({interno:d.interno,int:d.int,lts:d.litros})));
-  const filtrados=despachos.filter(d=>
-    internosLinea.has(d.interno) ||
-    internosLinea.has(+d.int) ||
-    internosLinea.has(+d.interno)
-  );
+  const filtrados=despachos.filter(d=>{
+    if(internosLinea.has(d.interno)) return true;
+    // Para PLANTA: interno=0, el número está en d.int como string "742"
+    const intNum=parseInt(d.int);
+    if(!isNaN(intNum) && internosLinea.has(intNum)) return true;
+    return false;
+  });
   document.getElementById('loadingVeh').style.display='none';
 
   // Renderizar como resumen de línea
