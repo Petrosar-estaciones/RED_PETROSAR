@@ -238,7 +238,12 @@ function normProd(s) {
   return 'EURO';
 }
 
-const SHEET_DC = '1CvPGNJGlv64Vs1PtEqdUrj9pntw7at0HPboS7YYnIf8';
+const SHEET_DC       = '1CvPGNJGlv64Vs1PtEqdUrj9pntw7at0HPboS7YYnIf8';
+const SHEET_RODADOS  = '1MUMqZlrP5-oce4oqHMEL6VvcFdGaLL3MzUDqYX8KevY';
+const SHEET_PRECIOS  = '1MUMqZlrP5-oce4oqHMEL6VvcFdGaLL3MzUDqYX8KevY';
+const GID_PRECIOS    = '1112510098';
+let preciosHistorial = {};
+let cachedDespachos  = null, cachedFrom = null, cachedTo = null;
 const FUENTES = {
   // TP: gid=0 — B=Fecha C=Litros D=Producto F=Patente G=Interno R=Cliente(col17)
   TP: { nombre:'TP', id:SHEET_EST, ref:'0',
@@ -736,7 +741,7 @@ function renderVeh(veh,desp,errores,from,to){
 // ═══════════════════════════════════
 // TAB 2: TOTALES POR SECTOR
 // ═══════════════════════════════════
-let cachedDespachos=null,cachedFrom=null,cachedTo=null;
+// cachedDespachos declarado arriba
 
 async function cargarTotales(){
   const from=document.getElementById('totFrom').value,to=document.getElementById('totTo').value;
