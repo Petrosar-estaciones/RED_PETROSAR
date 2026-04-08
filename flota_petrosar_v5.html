@@ -454,7 +454,7 @@ function parsarFuente(table,fuente,from,to,filtVeh=null){
     }
     if(!litros)continue;
     const pat=fuente.iPatente>=0?norm(s(row,fuente.iPatente)):'';
-    const int_=String(v(row,fuente.iInterno)||'').trim();
+    let int_=String(v(row,fuente.iInterno)||'').trim();
     const prodRaw=s(row,fuente.iProducto);
     const prod=normProd(prodRaw);
     // Punto: dinámico para VHCD
@@ -467,7 +467,10 @@ function parsarFuente(table,fuente,from,to,filtVeh=null){
     if(filtVeh){
       const okP=pat&&pat===norm(filtVeh.Dominio);
       const okI=int_&&int_===String(filtVeh.Interno);
-      if(!okP&&!okI)continue;
+      // Para fuentes con filtroReceptor (PLANTA): matchear por receptor col G
+      const okR=fuente.filtroReceptor?
+        s(row,fuente.iReceptor).replace(/\s/g,'').toUpperCase().includes(String(filtVeh.Interno)):false;
+      if(!okP&&!okI&&!okR)continue;
     }
     const mes=fecha?`${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,'0')}`:null;
     const interno=+int_||0;
