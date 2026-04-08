@@ -619,6 +619,7 @@ async function cargarFlota(){
 function switchTab(t){
   ['veh','totales','valorizacion'].forEach(id=>document.getElementById('tab-'+id).style.display=id===t?'block':'none');
   document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['totales','veh','valorizacion'][i]===t));
+  if(t==='veh') poblarLineas();
   if(t==='totales'&&!document.getElementById('mesTabs').children.length){buildMesesDesplegable('mesTabs','totFrom','totTo',cargarTotales);}
   if(t==='valorizacion'&&!document.getElementById('mesTabsVal').children.length){
     buildMesesDesplegable('mesTabsVal','valFrom','valTo',cargarValorizacion);
