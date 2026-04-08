@@ -381,10 +381,10 @@ function parsarFuente(table,fuente,from,to,filtVeh=null){
     if(fuente.excluirInternos){
       if(fuente.excluirInternos.includes(+v(row,fuente.iInterno))){skipFiltro++;continue;}
     }
-    // Filtro receptor (Planta por col G: "INT 742", "INT 794", "INT 836")
+    // Filtro receptor (Planta por col G: busca el número 742/794/836 en el texto)
     if(fuente.filtroReceptor){
-      const rec=s(row,fuente.iReceptor).toUpperCase();
-      const match=fuente.filtroReceptor.some(n=>rec.includes('INT '+n)||rec.includes('INT'+n));
+      const rec=s(row,fuente.iReceptor).toUpperCase().replace(/\s+/g,'');
+      const match=fuente.filtroReceptor.some(n=>rec.includes(String(n)));
       if(!match){skipFiltro++;continue;}
     }
     // Filtro por producto exacto (VH)
