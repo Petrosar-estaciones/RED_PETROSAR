@@ -678,7 +678,11 @@ function selMesDrop(cid, fromId, toId) {
       const [y,m] = mesKey.split('-');
       const d = new Date(+y, +m-1, 1);
       const lbl = d.toLocaleString('es-AR',{month:'long',year:'numeric'});
-      document.getElementById('resVal').innerHTML=`<div class="alert alert-warn" style="margin-bottom:0">
+      // Guardar para exportar
+  window._lastValData = {meses, keys, from, to, ccVal,
+    pEuro, pGasoil, pImpEuro, pImpGasoil, pCO2Euro, pCO2Gasoil,
+    totalLts, totalNeto, totalImp, totalCO2, totalVal, tot};
+  document.getElementById('resVal').innerHTML=`<div class="alert alert-warn" style="margin-bottom:0">
         ✓ Precios de <strong>${lbl.charAt(0).toUpperCase()+lbl.slice(1)}</strong> cargados desde el sheet.
       </div>`;
     }
@@ -1166,7 +1170,13 @@ async function cargarValorizacion(){
       <div class="kpi" style="border-color:var(--orange)"><div class="kpi-lbl">Total valorizado</div><div class="kpi-val" style="font-size:19px;color:var(--orange)">${fmtARS(totalVal)}</div><div class="kpi-unit">neto + impuestos</div></div>
     </div>
     <div class="tbl-wrap fade">
-      <div class="tbl-hdr"><span class="tbl-title">Valorización por mes y producto</span><span class="tbl-count">${keys.length} meses</span></div>
+      <div class="tbl-hdr">
+        <span class="tbl-title">Valorización por mes y producto</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="tbl-count">${keys.length} meses</span>
+          <button class="btn btn-ghost" style="font-size:11px;padding:4px 12px;height:auto" onclick="exportValorizacion()">⬇ Excel</button>
+        </div>
+      </div>
       <table class="dt">
         <thead><tr><th>Mes</th><th>Producto</th><th>Litros</th><th>Neto</th><th>Imp. Interno</th><th>CO2</th><th>Total</th></tr></thead>
         <tbody>
@@ -1259,6 +1269,66 @@ function exportLinea(linea, vehs, despachos, from, to){
   XLSX.utils.book_append_sheet(wb, ws2, 'Detalle Despachos');
 
   const fname = `Consumo_${linea.replace(/\s+/g,'_')}_${from}_${to}`;
+  XLSX.writeFile(wb, fname+'.xlsx');
+}
+
+function exportValorizacion(){
+  const d = window._lastValData;
+  if(!d){ alert('Primero calculá la valorización'); return; }
+
+  const wb = XLSX.utils.book_new();
+
+  // ── Hoja 1: Resumen por mes ─────────────────────────────────────
+  const h1 = ['Mes','Producto','Litros','Neto ($)','Imp. Interno ($)','CO2 ($)','Total ($)'];
+  const r1 = [];
+  d.keys.forEach(k=>{
+    const m=d.meses[k];
+    const [y,mo]=k.split('-');
+    const nom=new Date(+y,+mo-1,1).toLocaleString('es-AR',{month:'long',year:'numeric'});
+    const nomCap=nom.charAt(0).toUpperCase()+nom.slice(1);
+    if(m.ltsEuro>0) r1.push([nomCap,'Euro Diesel',m.ltsEuro,m.netoEuro,m.impEuro,m.co2Euro,m.netoEuro+m.impEuro+m.co2Euro]);
+    if(m.ltsGasoil>0) r1.push([nomCap,'Gasoil',m.ltsGasoil,m.netoGasoil,m.impGasoil,m.co2Gasoil,m.netoGasoil+m.impGasoil+m.co2Gasoil]);
+  });
+  r1.push([]);
+  r1.push(['TOTAL','',d.totalLts,d.totalNeto,d.totalImp,d.totalCO2,d.totalVal]);
+
+  const ws1 = XLSX.utils.aoa_to_sheet([h1,...r1]);
+  ws1['!cols']=[{wch:22},{wch:14},{wch:14},{wch:18},{wch:18},{wch:14},{wch:18}];
+  XLSX.utils.book_append_sheet(wb, ws1, 'Valorización');
+
+  // ── Hoja 2: Precios utilizados ──────────────────────────────────
+  const h2 = ['Concepto','Euro Diesel','Gasoil'];
+  const r2 = [
+    ['Precio neto ($/lts)', d.pEuro, d.pGasoil],
+    ['Imp. Interno ($/lts)', d.pImpEuro, d.pImpGasoil],
+    ['CO2 ($/lts)', d.pCO2Euro, d.pCO2Gasoil],
+    ['Total ($/lts)', d.pEuro+d.pImpEuro+d.pCO2Euro, d.pGasoil+d.pImpGasoil+d.pCO2Gasoil],
+  ];
+  const ws2 = XLSX.utils.aoa_to_sheet([h2,...r2]);
+  ws2['!cols']=[{wch:24},{wch:16},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Precios');
+
+  // ── Hoja 3: Resumen ejecutivo ───────────────────────────────────
+  const ccNom={'PETROSAR':'PETROSAR','EESS':'EESS CD','TODOS':'Todos'}[d.ccVal]||d.ccVal;
+  const h3 = ['Concepto','Valor'];
+  const r3 = [
+    ['Centro de Costo', ccNom],
+    ['Período', `${d.from} → ${d.to}`],
+    [''],
+    ['Total Litros', d.totalLts],
+    ['  Euro Diesel (lts)', d.tot.ltsEuro],
+    ['  Gasoil (lts)', d.tot.ltsGasoil],
+    [''],
+    ['Valor Neto ($)', d.totalNeto],
+    ['Imp. Interno ($)', d.totalImp],
+    ['CO2 ($)', d.totalCO2],
+    ['TOTAL VALORIZADO ($)', d.totalVal],
+  ];
+  const ws3 = XLSX.utils.aoa_to_sheet([h3,...r3]);
+  ws3['!cols']=[{wch:28},{wch:20}];
+  XLSX.utils.book_append_sheet(wb, ws3, 'Resumen');
+
+  const fname = `Valorizacion_${ccNom}_${d.from}_${d.to}`;
   XLSX.writeFile(wb, fname+'.xlsx');
 }
 
