@@ -806,7 +806,11 @@ async function buscarLinea(){
   // Buscar todos los despachos del período y filtrar por internos de la línea
   const internosLinea=new Set(vehsFiltrados.map(v=>v.Interno));
   const {despachos,errores}=await consultarTodo(from,to);
-  const filtrados=despachos.filter(d=>internosLinea.has(d.interno)||internosLinea.has(+d.int));
+  const filtrados=despachos.filter(d=>
+    internosLinea.has(d.interno) ||
+    internosLinea.has(+d.int) ||
+    internosLinea.has(+d.interno)
+  );
   document.getElementById('loadingVeh').style.display='none';
 
   // Renderizar como resumen de línea
