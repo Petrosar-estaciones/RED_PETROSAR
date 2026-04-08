@@ -311,8 +311,8 @@ const FUENTES = {
     filtroCliente:false, headerRows:0, punto:'CD',
     filtroProductoExcluir:'EURO + DIESEL VH' },
 
-  // BASE CR: A=Fecha(0) B=Interno(1) C=Patente(2) E=Litros(4) F=Producto(5)
-  // Excluir internos 836/742/794 (son camiones que llevan combustible a EESS, no consumo propio)
+  // BASE CR: A=Fecha(0) B=Interno(1) C=Patente(2) D=Chofer(3) E=Litros(4) F=Producto(5)
+  // Excluir internos 836/742/794
   BASECR: { nombre:'BASE CR', id:'1A_0pcSuycTcTBcf8bAHXopHk_FrLSgcdbDSFbvZnLuQ', ref:'0',
     iFecha:0, iLitros:4, iProducto:5, iPatente:2, iInterno:1,
     filtroCliente:false, headerRows:0, punto:'BASE CR',
@@ -605,7 +605,8 @@ async function cargarFlota(){
       const k=String(interno);
       if(seen.has(k))continue;
       seen.add(k);
-      const linea = String(row.c[cl]?.v||'').trim();
+      const lineaRaw = row.c[cl];
+      const linea = lineaRaw ? String(lineaRaw.f||lineaRaw.v||'').trim() : '';
       FLOTA.push({Interno:+interno,Dominio:dominio,Descripción:desc,LineaNegocio:linea});
     }
     FLOTA.sort((a,b)=>a.Interno-b.Interno);
