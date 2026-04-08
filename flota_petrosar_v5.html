@@ -105,6 +105,7 @@
   .b-basecr{background:#fdecea;color:#b91c1c}
   .b-resero{background:#f0fde4;color:#3a7d0a}
   .b-planta{background:#e0f4ff;color:#0369a1}
+  .b-eesscd{background:#e0f9ff;color:#0891b2}
   .b-euro{background:#fff3e0;color:#92400e}
   .b-gasoil{background:#e0f0ff;color:#1e40af}
   /* VEH CARD */
@@ -140,14 +141,14 @@
   </div>
 </header>
 <nav class="tabs">
-  <div class="tab active" onclick="switchTab('veh')">Por Vehículo</div>
-  <div class="tab" onclick="switchTab('totales')">Totales por Sector</div>
+  <div class="tab active" onclick="switchTab('totales')">Totales por Sector</div>
+  <div class="tab" onclick="switchTab('veh')">Por Vehículo</div>
   <div class="tab" onclick="switchTab('valorizacion')">Valorización</div>
 </nav>
 <main class="main">
 
   <!-- TAB VEH -->
-  <div id="tab-veh">
+  <div id="tab-veh" style="display:none">
     <div class="card">
       <div class="card-title">Buscar vehículo</div>
       <div class="row">
@@ -172,7 +173,7 @@
   </div>
 
   <!-- TAB TOTALES -->
-  <div id="tab-totales" style="display:none">
+  <div id="tab-totales">
     <div class="card">
       <div class="card-title">Filtrar período y centro de costo</div>
       <div class="row" style="margin-bottom:14px">
@@ -246,6 +247,14 @@ const FUENTES = {
 
   // CD viene solo de Datos Conductor (CD_DC) — no de Estaciones
 
+  // DEBO CD: gid=1093517494 — consumos EESS CD
+  // A=Comprobante(0) B=Fecha(1) C=Cliente(2) D=FormaPago(3) E=Producto(4) F=Litros(5) H=Interno(7)
+  // Filtro: col C contiene "03007" (Estacion Cerro Dragon)
+  DEBOCD: { nombre:'EESS CD', id:SHEET_EST, ref:'1093517494',
+    iFecha:1, iLitros:5, iProducto:4, iPatente:-1, iInterno:7,
+    filtroCliente:false, filtroClienteCol:2, filtroClienteVal:'03007',
+    headerRows:0, punto:'EESS CD' },
+
   // RESERO: gid=1798585939
   // Sheet tiene filtros en filas 1-6 (Desde/Hasta/Consolas), fila 7=encabezados de col
   // gviz con headers=1 toma fila 7 como header → filas 1-6 quedan como headerRows
@@ -273,15 +282,16 @@ const FUENTES = {
     iFecha:0, iLitros:4, iProducto:5, iPatente:2, iInterno:1,
     filtroCliente:false, headerRows:0, punto:'BASE CR' },
 
-  // PLANTA: gid=1688777748, B=Fecha(1) J=Interno(9) L+M+N=litros, solo 742/836/794
+  // PLANTA: gid=1688777748, B=Fecha(1) G=Receptor(6) L+M+N=litros
+  // Filtro: col G contiene "INT 742", "INT 794" o "INT 836"
   PLANTA: { nombre:'PLANTA', id:'1NWUzcMuA5JmUXW5p3MiWwes8M4nb5EBNoTssFBU0ndE', ref:'1688777748',
     iFecha:1, iLitros:null, iLitrosMulti:[11,12,13], iProducto:2, iPatente:-1, iInterno:9,
     filtroCliente:false, headerRows:0, punto:'PLANTA',
-    filtroInternos:[742,836,794] }
+    filtroReceptor:[742,836,794], iReceptor:6 }
 }
-const SECTOR_ORDER  = ['AG','TP','VH','CD','BASE CR','RESERO','PLANTA'];
-const SECTOR_COLOR  = {AG:'#1a7a4a',TP:'#5b21b6',VH:'#b45309',CD:'#1a5fa8','BASE CR':'#b91c1c',RESERO:'#3a7d0a',PLANTA:'#0369a1'};
-const SECTOR_BG     = {AG:'#e8f7ee',TP:'#f0eafe',VH:'#fff3e0',CD:'#e0f0ff','BASE CR':'#fdecea',RESERO:'#f0fde4',PLANTA:'#e0f4ff'};
+const SECTOR_ORDER  = ['AG','TP','VH','CD','BASE CR','RESERO','PLANTA','EESS CD'];
+const SECTOR_COLOR  = {AG:'#1a7a4a',TP:'#5b21b6',VH:'#b45309',CD:'#1a5fa8','BASE CR':'#b91c1c',RESERO:'#3a7d0a',PLANTA:'#0369a1','EESS CD':'#0891b2'};
+const SECTOR_BG     = {AG:'#e8f7ee',TP:'#f0eafe',VH:'#fff3e0',CD:'#e0f0ff','BASE CR':'#fdecea',RESERO:'#f0fde4',PLANTA:'#e0f4ff','EESS CD':'#e0f9ff'};
 
 let ccActual = 'PETROSAR';
 
@@ -360,9 +370,15 @@ function parsarFuente(table,fuente,from,to,filtVeh=null){
       const cli=s(row,17).toUpperCase();
       if(!cli.includes('PETROSAR')){skipCliente++;continue;}
     }
-    // Filtro internos específicos (Planta)
+    // Filtro internos específicos (Planta por col J)
     if(fuente.filtroInternos){
       if(!fuente.filtroInternos.includes(+v(row,fuente.iInterno))){skipFiltro++;continue;}
+    }
+    // Filtro receptor (Planta por col G: "INT 742", "INT 794", "INT 836")
+    if(fuente.filtroReceptor){
+      const rec=s(row,fuente.iReceptor).toUpperCase();
+      const match=fuente.filtroReceptor.some(n=>rec.includes('INT '+n)||rec.includes('INT'+n));
+      if(!match){skipFiltro++;continue;}
     }
     // Filtro por producto exacto (VH)
     if(fuente.filtroProducto){
@@ -422,9 +438,9 @@ function parsarFuente(table,fuente,from,to,filtVeh=null){
 // Filtro centro de costo
 function filtrarCC(despachos,cc){
   if(cc==='TODOS')return despachos;
-  if(cc==='EESS')return despachos.filter(d=>EESS_INTERNOS.includes(d.interno));
-  // PETROSAR = todos los que NO son EESS
-  return despachos.filter(d=>!EESS_INTERNOS.includes(d.interno));
+  if(cc==='EESS')return despachos.filter(d=>d.punto==='EESS CD');
+  // PETROSAR = todos los que NO son EESS CD
+  return despachos.filter(d=>d.punto!=='EESS CD');
 }
 
 async function consultarTodo(from,to,filtVeh=null){
@@ -465,27 +481,60 @@ async function cargarFlota(){
 // ═══════════════════════════════════
 function switchTab(t){
   ['veh','totales','valorizacion'].forEach(id=>document.getElementById('tab-'+id).style.display=id===t?'block':'none');
-  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['veh','totales','valorizacion'][i]===t));
-  if(t==='totales'&&!document.getElementById('mesTabs').children.length){buildMeses('mesTabs');setDates('totFrom','totTo');}
-  if(t==='valorizacion'&&!document.getElementById('mesTabsVal').children.length){buildMeses('mesTabsVal');setDates('valFrom','valTo');}
+  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['totales','veh','valorizacion'][i]===t));
+  if(t==='totales'&&!document.getElementById('mesTabs').children.length){buildMesesDesplegable('mesTabs','totFrom','totTo',cargarTotales);}
+  if(t==='valorizacion'&&!document.getElementById('mesTabsVal').children.length){buildMesesDesplegable('mesTabsVal','valFrom','valTo',cargarValorizacion);}
 }
 function setDates(f,t){const now=new Date();document.getElementById(f).value=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);document.getElementById(t).value=now.toISOString().slice(0,10);}
-function buildMeses(cid){
-  const now=new Date();let html='';
-  for(let i=5;i>=0;i--){
-    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
-    const lbl=d.toLocaleString('es-AR',{month:'short',year:'2-digit'}).toUpperCase();
-    html+=`<div class="mes-tab${i===0?' active':''}" onclick="selMes(this,'${cid}',${d.getFullYear()},${d.getMonth()})">${lbl}</div>`;
+function buildMesesDesplegable(cid, fromId, toId, callback) {
+  const container = document.getElementById(cid);
+  // Select con meses disponibles (últimos 12 meses + opción custom)
+  const now = new Date();
+  let opts = '<option value="custom">Período personalizado</option>';
+  for(let i=0; i<=11; i++){
+    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    const y = d.getFullYear(), m = d.getMonth();
+    const lbl = d.toLocaleString('es-AR',{month:'long',year:'numeric'});
+    const sel = i===0 ? 'selected' : '';
+    opts += `<option value="${y}-${m}" ${sel}>${lbl.charAt(0).toUpperCase()+lbl.slice(1)}</option>`;
   }
-  html+=`<div class="mes-tab" onclick="selMes(this,'${cid}',-1,-1)">Todo</div>`;
-  document.getElementById(cid).innerHTML=html;
+  container.innerHTML = `<div style="display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap">
+    <select id="${cid}-sel" onchange="selMesDrop('${cid}','${fromId}','${toId}')" style="max-width:220px;font-weight:600">
+      ${opts}
+    </select>
+    <span style="font-size:12px;color:var(--muted)">o usá el filtro de fechas arriba</span>
+  </div>`;
+  // Setear fechas del mes actual
+  const from = new Date(now.getFullYear(), now.getMonth(), 1);
+  const to   = new Date(now.getFullYear(), now.getMonth()+1, 0);
+  document.getElementById(fromId).value = from.toISOString().slice(0,10);
+  document.getElementById(toId).value   = to.toISOString().slice(0,10);
 }
-function selMes(el,cid,y,m){
-  document.querySelectorAll(`#${cid} .mes-tab`).forEach(t=>t.classList.remove('active'));el.classList.add('active');
-  if(y===-1)return;
-  const from=new Date(y,m,1),to=new Date(y,m+1,0),fmt=d=>d.toISOString().slice(0,10);
-  if(cid==='mesTabs'){document.getElementById('totFrom').value=fmt(from);document.getElementById('totTo').value=fmt(to);cargarTotales();}
-  else{document.getElementById('valFrom').value=fmt(from);document.getElementById('valTo').value=fmt(to);cargarValorizacion();}
+
+function selMesDrop(cid, fromId, toId) {
+  const val = document.getElementById(cid+'-sel').value;
+  if(val==='custom') return;
+  const [y,m] = val.split('-').map(Number);
+  const from = new Date(y,m,1), to = new Date(y,m+1,0);
+  const fmt = d => d.toISOString().slice(0,10);
+  document.getElementById(fromId).value = fmt(from);
+  document.getElementById(toId).value   = fmt(to);
+  // Llamar al callback correcto
+  if(cid==='mesTabs') cargarTotales();
+  else {
+    // Intentar cargar precios guardados para ese mes
+    const from = document.getElementById(fromId).value;
+    const mesKey = from.slice(0,7);
+    const loaded = cargarPreciosMes(mesKey);
+    if(loaded){
+      const d = new Date(+val.split('-')[0], +val.split('-')[1], 1);
+      const lbl = d.toLocaleString('es-AR',{month:'long',year:'numeric'});
+      document.getElementById('resVal').innerHTML=`<div class="alert alert-warn" style="margin-bottom:0">
+        📋 Precios de <strong>${lbl.charAt(0).toUpperCase()+lbl.slice(1)}</strong> cargados desde historial. Hacé clic en Calcular para ver la valorización.
+      </div>`;
+    }
+    cargarValorizacion();
+  }
 }
 
 // CC selector
@@ -506,6 +555,10 @@ function selCC(cc){
     const inp=document.getElementById('vehSearch');
     inp.placeholder=FLOTA.length?`Buscar entre ${FLOTA.length} vehículos...`:'Ingresá patente o interno';
   });
+  // Arrancar en Totales por Sector
+  buildMesesDesplegable('mesTabs','totFrom','totTo',cargarTotales);
+  setDates('totFrom','totTo');
+  cargarTotales();
 })();
 
 // ═══════════════════════════════════
@@ -700,10 +753,40 @@ function pct(a,b){return b?(a/b*100).toFixed(1)+'%':'—';}
 // ═══════════════════════════════════
 // TAB 3: VALORIZACIÓN
 // ═══════════════════════════════════
+function guardarPrecios(mesKey){
+  const precios={
+    pEuro:document.getElementById('pEuro').value,
+    pGasoil:document.getElementById('pGasoil').value,
+    pImpEuro:document.getElementById('pImpEuro').value,
+    pImpGasoil:document.getElementById('pImpGasoil').value,
+    pCO2Euro:document.getElementById('pCO2Euro').value,
+    pCO2Gasoil:document.getElementById('pCO2Gasoil').value
+  };
+  try{ localStorage.setItem('precios_'+mesKey, JSON.stringify(precios)); }catch(e){}
+}
+
+function cargarPreciosMes(mesKey){
+  try{
+    const saved=localStorage.getItem('precios_'+mesKey);
+    if(!saved) return false;
+    const p=JSON.parse(saved);
+    document.getElementById('pEuro').value=p.pEuro;
+    document.getElementById('pGasoil').value=p.pGasoil;
+    document.getElementById('pImpEuro').value=p.pImpEuro;
+    document.getElementById('pImpGasoil').value=p.pImpGasoil;
+    document.getElementById('pCO2Euro').value=p.pCO2Euro;
+    document.getElementById('pCO2Gasoil').value=p.pCO2Gasoil;
+    return true;
+  }catch(e){ return false; }
+}
+
 async function cargarValorizacion(){
   document.getElementById('resVal').innerHTML='';
   document.getElementById('loadingVal').style.display='block';
   const from=document.getElementById('valFrom').value,to=document.getElementById('valTo').value;
+  // Guardar precios para este mes antes de calcular
+  const mesKey=from.slice(0,7);
+  guardarPrecios(mesKey);
   const pEuro=+document.getElementById('pEuro').value||0;
   const pGasoil=+document.getElementById('pGasoil').value||0;
   const pImpEuro=+document.getElementById('pImpEuro').value||0;
