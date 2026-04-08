@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PETROSAR · Consumo Flota</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root {
     --bg:#f5f6fa;--white:#ffffff;--navy:#0f2044;--orange:#e85d20;--orange-l:#ff7a40;
@@ -819,6 +820,10 @@ async function buscarLinea(){
   });
   const vehs=Object.values(porVeh).sort((a,b)=>b.lts-a.lts);
 
+  // Guardar para exportar — agregar desc a vehs
+  vehs.forEach(v=>{ const f=FLOTA.find(x=>x.Interno===+v.interno); v.desc=f?.Descripción||''; });
+  window._lastLineaVehs = vehs;
+  window._lastLineaDesp = filtrados;
   document.getElementById('resVeh').innerHTML=`
     <div class="veh-card fade">
       <div style="font-size:28px">🏢</div>
@@ -835,7 +840,13 @@ async function buscarLinea(){
     </div>
     ${errores.length?`<div class="alert alert-warn fade">⚠ Sin datos de: ${errores.map(e=>e.split(':')[0]).join(', ')}</div>`:''}
     <div class="tbl-wrap fade">
-      <div class="tbl-hdr"><span class="tbl-title">Detalle por vehículo</span><span class="tbl-count">${vehs.length} vehículos</span></div>
+      <div class="tbl-hdr">
+        <span class="tbl-title">Detalle por vehículo</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="tbl-count">${vehs.length} vehículos</span>
+          <button class="btn btn-ghost" style="font-size:11px;padding:4px 12px;height:auto" onclick="exportLinea('${linea}',_lastLineaVehs,_lastLineaDesp,'${from}','${to}')">⬇ Excel</button>
+        </div>
+      </div>
       ${vehs.length===0?`<div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">Sin despachos en el período</div></div>`:`
       <table class="dt"><thead><tr><th>Interno</th><th>Patente</th><th>Euro Diesel</th><th>Gasoil</th><th>Total lts</th><th>Despachos</th></tr></thead><tbody>
         ${vehs.map(v=>`<tr>
@@ -917,6 +928,7 @@ async function buscarVeh(){
 }
 
 function renderVeh(veh,desp,errores,from,to){
+  window._lastDesp = desp; window._lastVeh = veh;
   const total=desp.reduce((s,d)=>s+d.litros,0),cant=desp.length;
   const dias=Math.max(1,Math.round((new Date(to)-new Date(from))/86400000)+1);
   const porPunto={},porProd={EURO:0,GASOIL:0};
@@ -1194,6 +1206,60 @@ async function cargarValorizacion(){
         </tr></tfoot>
       </table>
     </div>`;
+}
+
+function exportToExcel(rows, headers, filename, sheetName='Datos'){
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  // Ancho de columnas
+  ws['!cols'] = headers.map(h=>({wch:Math.max(h.length+2, 14)}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  XLSX.writeFile(wb, filename+'.xlsx');
+}
+
+function exportVeh(veh, despachos, from, to){
+  const headers = ['Fecha','Litros','Producto','Sector','Fuente'];
+  const rows = despachos.map(d=>[
+    d.fechaStr,
+    d.litros,
+    d.prod,
+    d.punto,
+    d.fuente
+  ]);
+  // Agregar totales
+  rows.push([]);
+  rows.push(['TOTAL LITROS', despachos.reduce((s,d)=>s+d.litros,0), '', '', '']);
+  const fname = `Consumo_${veh.Interno}_${veh.Dominio}_${from}_${to}`;
+  exportToExcel(rows, headers, fname, 'Despachos');
+}
+
+function exportLinea(linea, vehs, despachos, from, to){
+  // Hoja 1: resumen por vehículo
+  const headers1 = ['Interno','Patente','Descripción','Euro Diesel (lts)','Gasoil (lts)','Total (lts)','Despachos'];
+  const rows1 = vehs.map(v=>[v.interno, v.pat||'', v.desc||'', v.euro||0, v.gasoil||0, v.lts, v.cargas]);
+  rows1.push([]);
+  rows1.push(['TOTAL','','', 
+    vehs.reduce((s,v)=>s+(v.euro||0),0),
+    vehs.reduce((s,v)=>s+(v.gasoil||0),0),
+    vehs.reduce((s,v)=>s+v.lts,0),
+    vehs.reduce((s,v)=>s+v.cargas,0)
+  ]);
+
+  // Hoja 2: detalle de despachos
+  const headers2 = ['Fecha','Interno','Patente','Litros','Producto','Sector','Fuente'];
+  const rows2 = despachos.map(d=>[d.fechaStr, d.interno, d.pat||'', d.litros, d.prod, d.punto, d.fuente]);
+
+  const wb = XLSX.utils.book_new();
+  const ws1 = XLSX.utils.aoa_to_sheet([headers1, ...rows1]);
+  ws1['!cols'] = headers1.map(h=>({wch:Math.max(h.length+2,14)}));
+  XLSX.utils.book_append_sheet(wb, ws1, 'Resumen por Vehículo');
+
+  const ws2 = XLSX.utils.aoa_to_sheet([headers2, ...rows2]);
+  ws2['!cols'] = headers2.map(h=>({wch:Math.max(h.length+2,14)}));
+  XLSX.utils.book_append_sheet(wb, ws2, 'Detalle Despachos');
+
+  const fname = `Consumo_${linea.replace(/\s+/g,'_')}_${from}_${to}`;
+  XLSX.writeFile(wb, fname+'.xlsx');
 }
 
 function vehIcon(d){if(!d)return'🚗';d=d.toUpperCase();if(/IVECO|TECTOR/.test(d))return'🚛';if(/BUS|EUROBUS|MIDIBUS|SPRINTER/.test(d))return'🚐';if(/SCANIA|CAMION|CARGO|VOLKSWAGEN 3/.test(d))return'🚌';if(/ACOPLADO|SEMIRREMOLQUE/.test(d))return'🚜';return'🚗';}
