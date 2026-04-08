@@ -805,7 +805,11 @@ async function buscarLinea(){
 
   // Buscar todos los despachos del período y filtrar por internos de la línea
   const internosLinea=new Set(vehsFiltrados.map(v=>v.Interno));
+  // Limpiar cache de tablas para que PLANTA se reconsulte con el fix de receptor
+  Object.keys(_tableCache).forEach(k=>{ if(k.includes('1NWUzc')) delete _tableCache[k]; });
   const {despachos,errores}=await consultarTodo(from,to);
+  console.log('buscarLinea internos:', [...internosLinea]);
+  console.log('PLANTA en despachos:', despachos.filter(d=>d.fuente==='PLANTA').map(d=>({interno:d.interno,int:d.int,lts:d.litros})));
   const filtrados=despachos.filter(d=>
     internosLinea.has(d.interno) ||
     internosLinea.has(+d.int) ||
