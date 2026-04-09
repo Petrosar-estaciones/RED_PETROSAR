@@ -417,10 +417,12 @@ function parsarFuente(table,fuente,from,to,filtVeh=null){
       if(fuente.excluirInternos.includes(+v(row,fuente.iInterno))){skipFiltro++;continue;}
     }
     // Filtro receptor (Planta por col G: busca el número 742/794/836 en el texto)
+    let receptorN=null;
     if(fuente.filtroReceptor){
       const rec=s(row,fuente.iReceptor).toUpperCase().replace(/\s+/g,'');
-      const match=fuente.filtroReceptor.some(n=>rec.includes(String(n)));
-      if(!match){skipFiltro++;continue;}
+      const matchedN=fuente.filtroReceptor.find(n=>rec.includes(String(n)));
+      if(!matchedN){skipFiltro++;continue;}
+      receptorN=matchedN; // guardar el número: 742, 836 o 794
     }
     // Filtro por producto exacto (VH)
     if(fuente.filtroProducto){
@@ -474,7 +476,7 @@ function parsarFuente(table,fuente,from,to,filtVeh=null){
     }
     const mes=fecha?`${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,'0')}`:null;
     const interno=+int_||0;
-    res.push({fecha,fechaStr:f(row,fuente.iFecha)||(fecha?fecha.toLocaleDateString('es-AR'):''),litros,prod,prodRaw,pat,int:int_,interno,punto,mes,fuente:fuente.nombre});
+    res.push({fecha,fechaStr:f(row,fuente.iFecha)||(fecha?fecha.toLocaleDateString('es-AR'):''),litros,prod,prodRaw,pat,int:int_,interno,punto,mes,fuente:fuente.nombre,receptorN});
   }
   console.log(`[${fuente.nombre}] total=${ri} headerSkip=${fuente.headerRows} clienteSkip=${skipCliente} fechaSkip=${skipFecha} filtroSkip=${skipFiltro} resultado=${res.length} lts=${res.reduce((s,d)=>s+d.litros,0).toFixed(2)}`);
   return res;
@@ -806,7 +808,12 @@ async function buscarLinea(){
   // Buscar todos los despachos del período y filtrar por internos de la línea
   const internosLinea=new Set(vehsFiltrados.map(v=>v.Interno));
   const {despachos,errores}=await consultarTodo(from,to);
-  const filtrados=despachos.filter(d=>internosLinea.has(d.interno));
+  const filtrados=despachos.filter(d=>{
+    if(internosLinea.has(d.interno)) return true;
+    // PLANTA: receptor guardado en d.receptorN
+    if(d.receptorN && internosLinea.has(d.receptorN)) return true;
+    return false;
+  });
   document.getElementById('loadingVeh').style.display='none';
 
   // Renderizar como resumen de línea
