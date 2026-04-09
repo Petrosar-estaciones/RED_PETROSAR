@@ -822,8 +822,8 @@ async function buscarLinea(){
   const gasoil=filtrados.filter(d=>d.prod==='GASOIL').reduce((s,d)=>s+d.litros,0);
   const porVeh={};
   filtrados.forEach(d=>{
-    const k=d.interno||d.int;
-    if(!porVeh[k])porVeh[k]={interno:k,pat:d.pat,lts:0,euro:0,gasoil:0,cargas:0};
+    const k=d.interno||d.receptorN||d.int;
+    if(!porVeh[k])porVeh[k]={interno:d.interno||0,receptorN:d.receptorN||null,pat:d.pat,lts:0,euro:0,gasoil:0,cargas:0};
     porVeh[k].lts+=d.litros;porVeh[k].cargas++;
     if(d.prod==='GASOIL')porVeh[k].gasoil+=d.litros;
     else porVeh[k].euro+=d.litros;
@@ -860,7 +860,7 @@ async function buscarLinea(){
       ${vehs.length===0?`<div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">Sin despachos en el período</div></div>`:`
       <table class="dt"><thead><tr><th>Interno</th><th>Patente</th><th>Euro Diesel</th><th>Gasoil</th><th>Total lts</th><th>Despachos</th></tr></thead><tbody>
         ${vehs.map(v=>`<tr>
-          <td style="font-weight:700;color:var(--orange)">#${v.interno}</td>
+          <td style="font-weight:700;color:var(--orange)">#${v.interno||v.receptorN||'?'}</td>
           <td><span style="font-weight:600;font-size:12px;background:var(--blue-pale);color:var(--blue);padding:2px 8px;border-radius:4px">${v.pat||'—'}</span></td>
           <td>${v.euro?fmtN(v.euro):'—'}</td>
           <td>${v.gasoil?fmtN(v.gasoil):'—'}</td>
