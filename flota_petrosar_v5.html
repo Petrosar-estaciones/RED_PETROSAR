@@ -184,6 +184,11 @@
         <div id="listaLineaItems" style="display:flex;flex-wrap:wrap;gap:6px;max-height:150px;overflow-y:auto"></div>
       </div>
       <div id="vehAlert"></div>
+      <div style="margin-top:10px">
+        <button class="btn btn-ghost" style="font-size:12px" onclick="buscarSinIdentificar()">
+          🔍 Ver despachos sin vehículo identificado en Rodados
+        </button>
+      </div>
     </div>
     <div id="loadingVeh" class="loading"><div class="spinner"></div>Consultando todas las fuentes...</div>
     <div id="resVeh"><div class="empty"><div class="empty-icon">⛽</div><div class="empty-title">Ingresá una patente o interno</div><div style="font-size:13px;margin-top:4px">para ver el historial de consumo</div></div></div>
@@ -1341,6 +1346,74 @@ function exportValorizacion(){
 
   const fname = `Valorizacion_${ccNom}_${d.from}_${d.to}`;
   XLSX.writeFile(wb, fname+'.xlsx');
+}
+
+async function buscarSinIdentificar(){
+  const from=document.getElementById('vehFrom').value;
+  const to=document.getElementById('vehTo').value;
+  document.getElementById('loadingVeh').style.display='block';
+  document.getElementById('resVeh').innerHTML='';
+  document.getElementById('vehAlert').innerHTML='';
+
+  const {despachos,errores}=await consultarTodo(from,to);
+  // Internos conocidos de Rodados
+  const internosConocidos=new Set(FLOTA.map(v=>v.Interno));
+  // Despachos donde el interno NO está en Rodados
+  const sinIdent=despachos.filter(d=>{
+    if(!d.interno && !d.receptorN) return true;
+    if(d.interno && !internosConocidos.has(d.interno)) return true;
+    if(d.receptorN && !internosConocidos.has(d.receptorN)) return true;
+    return false;
+  });
+
+  document.getElementById('loadingVeh').style.display='none';
+
+  if(!sinIdent.length){
+    document.getElementById('resVeh').innerHTML='<div class="empty"><div class="empty-icon">✅</div><div class="empty-title">Todos los despachos tienen vehículo identificado</div></div>';
+    return;
+  }
+
+  const total=sinIdent.reduce((s,d)=>s+d.litros,0);
+  const porInt={};
+  sinIdent.forEach(d=>{
+    const k=d.interno||d.receptorN||d.int||'Sin interno';
+    if(!porInt[k])porInt[k]={int:k,lts:0,cargas:0,prod:{},fuentes:new Set()};
+    porInt[k].lts+=d.litros;
+    porInt[k].cargas++;
+    porInt[k].prod[d.prod]=(porInt[k].prod[d.prod]||0)+d.litros;
+    porInt[k].fuentes.add(d.fuente);
+  });
+  const items=Object.values(porInt).sort((a,b)=>b.lts-a.lts);
+
+  document.getElementById('resVeh').innerHTML=`
+    <div class="alert alert-warn fade">
+      ⚠ Se encontraron <strong>${sinIdent.length} despachos</strong> con interno no identificado en Rodados — 
+      <strong>${fmtN(total)} lts</strong> en total
+    </div>
+    <div class="tbl-wrap fade">
+      <div class="tbl-hdr">
+        <span class="tbl-title">Despachos sin vehículo en Rodados</span>
+        <span class="tbl-count">${items.length} internos distintos</span>
+      </div>
+      <table class="dt">
+        <thead><tr><th>Interno</th><th>Litros</th><th>Despachos</th><th>Producto</th><th>Fuente</th></tr></thead>
+        <tbody>
+          ${items.map(v=>`<tr>
+            <td style="font-weight:700;color:var(--orange)">${v.int}</td>
+            <td><span class="lts-val">${fmtN(v.lts)}</span></td>
+            <td>${v.cargas}</td>
+            <td>${Object.entries(v.prod).map(([p,l])=>`<span class="badge b-${p.toLowerCase()}">${p}: ${fmtN(l)}</span>`).join(' ')}</td>
+            <td style="font-size:12px;color:var(--muted)">${[...v.fuentes].join(', ')}</td>
+          </tr>`).join('')}
+        </tbody>
+        <tfoot><tr>
+          <td>TOTAL</td>
+          <td><span class="lts-val">${fmtN(total)}</span></td>
+          <td>${sinIdent.length}</td>
+          <td colspan="2"></td>
+        </tr></tfoot>
+      </table>
+    </div>`;
 }
 
 function vehIcon(d){if(!d)return'🚗';d=d.toUpperCase();if(/IVECO|TECTOR/.test(d))return'🚛';if(/BUS|EUROBUS|MIDIBUS|SPRINTER/.test(d))return'🚐';if(/SCANIA|CAMION|CARGO|VOLKSWAGEN 3/.test(d))return'🚌';if(/ACOPLADO|SEMIRREMOLQUE/.test(d))return'🚜';return'🚗';}
