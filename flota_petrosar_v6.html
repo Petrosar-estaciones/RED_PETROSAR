@@ -1321,7 +1321,7 @@ async function cargarValorizacion(){
 
     <!-- KPIs resumen -->
     <div style="margin-bottom:8px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">PETROSAR — Consumo Interno Flota</div>
-    <div class="kpi-grid fade" style="margin-bottom:6px">
+    <div class="kpi-grid fade" style="margin-bottom:6px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));max-width:900px">
       <div class="kpi">
         <div class="kpi-lbl">Litros Petrosar</div>
         <div class="kpi-val">${fmtN(totP.ltsEuro+totP.ltsGasoil)}</div>
@@ -1337,11 +1337,6 @@ async function cargarValorizacion(){
         <div class="kpi-val" style="font-size:19px;color:var(--green)">${fmtARS(totVta)}</div>
         <div class="kpi-unit" style="color:var(--muted)">a precio neto venta ESCD</div>
       </div>
-      <div class="kpi accent" style="background:var(--green);border-color:var(--green)">
-        <div class="kpi-lbl">INGRESO ESCD x VTA</div>
-        <div class="kpi-val" style="font-size:20px">${fmtARS(ingresoEscd)}</div>
-        <div class="kpi-unit">neto vta − neto costo Petrosar</div>
-      </div>
     </div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:6px;padding:6px 10px;background:var(--bg);border-radius:6px;border:1px solid var(--border)">
       ℹ Imp. Interno Petrosar: <strong>${fmtARS((totP.costoImpEuro+totP.costoImpGasoil)+(totP.costoCO2Euro+totP.costoCO2Gasoil))}</strong> 
@@ -1349,7 +1344,7 @@ async function cargarValorizacion(){
       Total costo c/imp: <strong>${fmtARS(totPCostoTotal)}</strong>
     </div>
     <div style="margin-bottom:8px;margin-top:18px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">EESS CD — Consumo Interno Estación</div>
-    <div class="kpi-grid fade" style="margin-bottom:4px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));max-width:700px">
+    <div class="kpi-grid fade" style="margin-bottom:4px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));max-width:600px">
       <div class="kpi" style="border-left:3px solid #0891b2">
         <div class="kpi-lbl">Litros EESS CD</div>
         <div class="kpi-val">${fmtN(totE.ltsEuro+totE.ltsGasoil)}</div>
@@ -1359,11 +1354,6 @@ async function cargarValorizacion(){
         <div class="kpi-lbl">Neto Costo EESS CD</div>
         <div class="kpi-val" style="font-size:19px;color:#0891b2">${fmtARS(totE.costoNetoEuro+totE.costoNetoGasoil)}</div>
         <div class="kpi-unit" style="color:var(--muted)">a precio compra neto · sin imp.</div>
-      </div>
-      <div class="kpi" style="background:var(--bg)">
-        <div class="kpi-lbl">Imp. Interno EESS CD</div>
-        <div class="kpi-val" style="font-size:16px;color:var(--muted)">${fmtARS((totE.costoImpEuro+totE.costoImpGasoil)+(totE.costoCO2Euro+totE.costoCO2Gasoil))}</div>
-        <div class="kpi-unit">ITC + CO2 (informativo)</div>
       </div>
     </div>
 
