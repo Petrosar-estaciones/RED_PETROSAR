@@ -703,7 +703,6 @@ function App(){
     finally{setLoadingClientes(false);}
   }
 
-  // Top clientes Planta Granel filtrado por mes seleccionado — frontend only
   const topClientesPlantaMes=useMemo(()=>{
     if(!plantaData?.despachos) return [];
     const DEST_INT=["REMOTA VH","REMOTA TP","BASE CR","RESERO","ESTACION CD","REMOTA AG","INT 742","INT 836","INT 794"];
@@ -712,16 +711,9 @@ function App(){
     plantaData.despachos
       .filter(d=>!["RTO","FAC"].includes(d.ref))
       .filter(d=>{ const t=(d.receptor+" "+(d.destino||"")).toUpperCase(); return !DEST_INT.some(x=>t.includes(x)); })
-      .filter(d=>{
-        if(!d.fecha) return false;
-        const mx=String(d.fecha).match(/(\d{4})-(\d{2})/);
-        return mx && +mx[1]===yy && +mx[2]===mm;
-      })
+      .filter(d=>{ const mx=String(d.fecha||"").match(/(\d{4})-(\d{2})/); return mx&&+mx[1]===yy&&+mx[2]===mm; })
       .forEach(d=>{ const c=(d.receptor||d.destino||"SIN NOMBRE").trim(); if(c) mapa[c]=(mapa[c]||0)+d.litros; });
-    return Object.entries(mapa)
-      .map(([cliente,litros])=>({cliente,litros:Math.round(litros)}))
-      .sort((a,b)=>b.litros-a.litros)
-      .slice(0,10);
+    return Object.entries(mapa).map(([cliente,litros])=>({cliente,litros:Math.round(litros)})).sort((a,b)=>b.litros-a.litros).slice(0,10);
   },[plantaData,mesTopClientes]);
 
   useEffect(()=>{ if(tab==="despachos") fetchClientes(); },[tab]);
