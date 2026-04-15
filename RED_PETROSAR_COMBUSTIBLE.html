@@ -752,6 +752,26 @@ function App(){
 
   useEffect(()=>{ if(tab==="despachos") fetchClientes(mesActual()); },[tab]);
 
+  // Top clientes Planta filtrado por el mes seleccionado en el selector
+  const topClientesPlantaMes=useMemo(()=>{
+    if(!plantaData?.despachos) return [];
+    const DEST_INT=["REMOTA VH","REMOTA TP","BASE CR","RESERO","ESTACION CD","REMOTA AG","INT 742","INT 836","INT 794"];
+    const [yy,mm]=mesSeleccionado.split("-").map(Number);
+    const mapa={};
+    plantaData.despachos
+      .filter(d=>!["RTO","FAC"].includes(d.ref))
+      .filter(d=>{ const t=(d.receptor+" "+(d.destino||"")).toUpperCase(); return !DEST_INT.some(x=>t.includes(x)); })
+      .filter(d=>{
+        const s=String(d.fecha||"").trim();
+        // ISO: 2026-04-06
+        const mx=s.match(/^(\d{4})-(\d{2})/);
+        if(mx) return +mx[1]===yy&&+mx[2]===mm;
+        return false;
+      })
+      .forEach(d=>{ const c=(d.receptor||d.destino||"SIN NOMBRE").trim(); if(c) mapa[c]=(mapa[c]||0)+d.litros; });
+    return Object.entries(mapa).map(([cliente,litros])=>({cliente,litros:Math.round(litros)})).sort((a,b)=>b.litros-a.litros).slice(0,10);
+  },[plantaData,mesSeleccionado]);
+
   // Cargar config de estaciones desde Sheets al inicio
   useEffect(()=>{
     gasGet("getEstConfig")
@@ -1154,7 +1174,7 @@ function App(){
                   {key:"TP", nombre:"Tres Picos",        color:"#3a8fd4", lista:clientesData?.TP||[]},
                   {key:"VH", nombre:"Valle Hermoso",     color:"#8b5cf6", lista:clientesData?.VH||[]},
                   {key:"CD", nombre:"Estación CD",       color:"#20c0a0", lista:clientesData?.CD||[]},
-                  {key:"PG", nombre:"Planta Granel",     color:"#e87030", lista:plantaData?.topClientesPlanta||[]},
+                  {key:"PG", nombre:"Planta Granel",     color:"#e87030", lista:topClientesPlantaMes},
                 ].map(({key,nombre,color,lista})=>{
                   const totalTop=lista.reduce((a,b)=>a+b.litros,0);
                   return(
