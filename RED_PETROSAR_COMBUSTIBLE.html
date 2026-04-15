@@ -281,10 +281,20 @@ async function fetchEstacion(estId){
 
 // Fetch Base CR — lee stock vivo y total despachos del período
 async function fetchBaseCR(){
+  // getResumen: stock vivo + total histórico (para el card de estación)
   const res=await fetch(GAS_URL_BASECR+"?action=getResumen&nocache="+Date.now());
   if(!res.ok) throw new Error("HTTP "+res.status);
   const data=await res.json();
   return {stockVivo:data.stockVivo||0, totalDespachos:data.totalDespachos||0, totalMovs:data.totalMovs||0};
+}
+
+async function fetchBaseCRMes(mes){
+  // getResumenMes: solo despachos del mes filtrado (para el dashboard)
+  const m=mes||mesActual();
+  const res=await fetch(GAS_URL_BASECR+"?action=getResumenMes&mes="+m+"&nocache="+Date.now());
+  if(!res.ok) throw new Error("HTTP "+res.status);
+  const data=await res.json();
+  return data.totalDespachos||0;
 }
 
 // Helpers para comunicarse con el Apps Script de Planta
@@ -673,6 +683,7 @@ function App(){
   const [plantaData,setPlantaData]=useState(null);
   const [plantaLoading,setPlantaLoading]=useState(false);
   const [baseCRData,setBaseCRData]=useState(null);
+  const [baseCRMes,setBaseCRMes]=useState(0);
   const [baseCRLoading,setBaseCRLoading]=useState(false);
   const [estLoading,setEstLoading]=useState({});
   const [uploading,setUploading]=useState({});
@@ -704,7 +715,9 @@ function App(){
     // Estaciones
     Object.keys(EST_SHEET_ID).forEach(estId=>{
       setEstLoading(p=>({...p,[estId]:true}));
-      fetchEstacion(estId).then(d=>setDataPorEst(p=>({...p,[estId]:d}))).catch(()=>{}).finally(()=>setEstLoading(p=>({...p,[estId]:false})));
+      // Pasar mes actual al GAS para que RESERO filtre por mes
+      const url=GAS_URL_ESTACIONES+"?action=getDespachos&estacion="+EST_SHEET_ID[estId]+"&mes="+mesActual()+"&nocache="+Date.now();
+      fetch(url).then(r=>r.json()).then(d=>{ if(!d.error) setDataPorEst(p=>({...p,[estId]:d})); }).catch(()=>{}).finally(()=>setEstLoading(p=>({...p,[estId]:false})));
     });
     // Timestamp
     const ahora=new Date();
@@ -744,7 +757,11 @@ function App(){
   },[]);
 
   // Carga inicial de datos — también carga clientes del mes actual para la card del dashboard
-  useEffect(()=>{ syncTodo(true); fetchClientes(mesActual()); },[]);
+  useEffect(()=>{
+    syncTodo(true);
+    fetchClientes(mesActual());
+    fetchBaseCRMes(mesActual()).then(v=>setBaseCRMes(v)).catch(()=>{});
+  },[]);
 
   // Guardar config automáticamente cuando cambia stockInicial o alarmas
   const saveEstConfigTimer=React.useRef(null);
@@ -758,8 +775,11 @@ function App(){
   // Sincronizar una estación manualmente
   const handleSyncEst=(estId)=>{
     setEstLoading(p=>({...p,[estId]:true}));
-    fetchEstacion(estId)
+    const shId=EST_SHEET_ID[estId];
+    const url=GAS_URL_ESTACIONES+"?action=getDespachos&estacion="+shId+"&mes="+mesActual()+"&nocache="+Date.now();
+    fetch(url).then(r=>r.json())
       .then(d=>{
+        if(d.error) throw new Error(d.error);
         setDataPorEst(p=>({...p,[estId]:d}));
         showToast(`✓ ${ESTACIONES_CONFIG[estId].nombre} actualizada`,"ok");
       })
@@ -1018,7 +1038,16 @@ function App(){
                 {
                   label: mesLabel(mesActual()),
                   val: clientesData
-                    ? fmt(["AG","TP","VH","CD"].reduce((s,k)=>(clientesData[k]||[]).reduce((a,b)=>a+b.litros,s),0)+(plantaData?.despachoExternoMes??plantaData?.despachoExterno??0))+" L"
+                    ? fmt(
+                        // Estaciones con GAS getClientes (ya filtrado por mes)
+                        ["AG","TP","VH","CD"].reduce((s,k)=>(clientesData[k]||[]).reduce((a,b)=>a+b.litros,s),0)
+                        // RESERO: filtrado por mes (el GAS ahora filtra con e.parameter.mes)
+                        +(dataPorEst?.RESERO?.total||0)
+                        // BASE CR: filtrado por mes via getResumenMes
+                        +baseCRMes
+                        // Planta: solo externos del mes actual
+                        +(plantaData?.despachoExternoMes??plantaData?.despachoExterno??0)
+                      )+" L"
                     : "Cargando...",
                   sub: clientesData ? "despachos mes en curso" : "cargando...",
                   color:"#16a34a"
