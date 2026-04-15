@@ -281,17 +281,18 @@ async function fetchEstacion(estId, mes){
   const sheetId=EST_SHEET_ID[estId];
   if(!sheetId) throw new Error("Estación no configurada: "+estId);
   const m=mes||mesActual();
-  const res=await fetch(GAS_URL_ESTACIONES+"?action=getDespachos&estacion="+sheetId+"&mes="+m+"&nocache="+Date.now());
+  const res=await fetch(GAS_URL_ESTACIONES+"?action=getDespachos&estacion="+sheetId+"&nocache="+Date.now());
   if(!res.ok) throw new Error("HTTP "+res.status);
   const data=await res.json();
   if(data.error) throw new Error(data.error);
-  // Si el GAS ya filtra por mes, viene totalDespachos filtrado.
-  // Si no (devuelve despachos[]), recalculamos:
-  if(data.despachos){
-    const cfg=ESTACIONES_CONFIG[estId];
+  const cfg=ESTACIONES_CONFIG[estId];
+  // Siempre filtrar en el frontend — independiente de lo que devuelva el GAS
+  if(Array.isArray(data.despachos)){
     return agregarTotalesMes(data, cfg, m);
   }
-  return data;
+  // GAS devuelve solo totalDespachos (sin array): no podemos filtrar por mes
+  // Marcamos totalMes como undefined para que el fallback use totalDespachos
+  return {...data, totalMes:undefined};
 }
 
 async function fetchBaseCR(){
@@ -445,21 +446,29 @@ function despachosDeMes(despachos, mes){
   const [yy,mm]=mes.split("-").map(Number);
   return (despachos||[]).filter(d=>{
     const f=d.fecha;
-    if(!f) return false;
+    if(!f||f==="auto") return false;
+    // Objeto Date (XLSX con cellDates:true)
     if(f instanceof Date) return f.getFullYear()===yy&&f.getMonth()+1===mm;
-    const s=String(f);
-    // ISO: "2025-04-03" o "2025-04-03T..."
-    let mx=s.match(/^(\d{4})-(\d{2})/);
+    const s=String(f).trim();
+    if(!s) return false;
+    // ISO completo: "2025-04-03" o "2025-04-03T10:00:00"
+    let mx=s.match(/^(\d{4})-(\d{1,2})/);
     if(mx) return +mx[1]===yy&&+mx[2]===mm;
-    // DD/MM/YYYY o D/M/YYYY  (formato argentino)
+    // DD/MM/YYYY o D/M/YYYY (argentino, Debo, Cintelink)
     mx=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
     if(mx) return +mx[3]===yy&&+mx[2]===mm;
+    // Número serial de Excel (días desde 1900-01-01)
+    const n=Number(s);
+    if(!isNaN(n)&&n>40000&&n<60000){
+      const d=new Date(Math.round((n-25569)*86400*1000));
+      return d.getUTCFullYear()===yy&&d.getUTCMonth()+1===mm;
+    }
     return false;
   });
 }
 
 /* Recalcula totalMes sobre el resultado de cualquier parser.
-   Solo toca totalMes — NO modifica porTanque ni total (stock sigue igual). */
+   porTanque (histórico) no se toca — lo usa el cálculo de stock. */
 function agregarTotalesMes(resultado, estConfig, mes){
   if(!resultado) return resultado;
   const despMes=despachosDeMes(resultado.despachos||[], mes);
@@ -557,9 +566,10 @@ function EstacionCard({est,data,ingresos,stockInicial,onUpload,uploading,idx,pla
   const totalStock=Object.values(stocks).reduce((a,b)=>a+b,0);
   const totalCap=cfg.tanques.reduce((a,tk)=>a+tk.cap,0);
   const pctTotal=totalCap>0?Math.min(100,(totalStock/totalCap)*100):0;
-  // Usar totalMes (mes en curso) si está disponible; fallback a total histórico
+  // totalMes = número filtrado al mes → usar
+  // totalMes = undefined → GAS sin array, fallback a totalDespachos/total histórico
   const totalDesp=est==="BASECR"?(baseCRData?.totalDespachos||0):
-    (data?.totalMes!=null ? data.totalMes : (data?.total)||0);
+    (data?.totalMes!==undefined ? data.totalMes : (data?.totalDespachos||(data?.total)||0));
 
   const diasPeriodo=data?.diasPeriodo||0;
   const nOps=data?.registros||data?.despachos?.length||0;
@@ -849,7 +859,10 @@ function App(){
       if(estId==="PLANTAGRANEL" && plantaData){
         totalDesp+=(plantaData.despachoExternoMes!=null ? plantaData.despachoExternoMes : plantaData.despachoExterno||0);
       } else if(estId!=="PLANTAGRANEL" && estId!=="BASECR"){
-        totalDesp+=(data?.totalMes!=null ? data.totalMes : (data?.total)||0);
+        // totalMes existe y es numero (puede ser 0 legítimamente) → usar
+        // totalMes undefined → GAS no devolvió array, usar totalDespachos o total
+        const tMes=data?.totalMes;
+        totalDesp+=(tMes!==undefined ? tMes : (data?.totalDespachos||(data?.total)||0));
       } else if(estId==="BASECR"){
         totalDesp+=(baseCRData?.totalDespachos)||0;
       }
@@ -862,7 +875,7 @@ function App(){
       id,nombre:cfg.nombre,color:cfg.color,
       total: id==="PLANTAGRANEL"?(plantaData?.despachoExternoMes!=null?plantaData.despachoExternoMes:(plantaData?.despachoExterno||0)):
              id==="BASECR"?(baseCRData?.totalDespachos||baseCRData?.stockVivo||0):
-             (dataPorEst[id]?.totalMes!=null ? dataPorEst[id].totalMes : (dataPorEst[id]?.total)||0),
+             (dataPorEst[id]?.totalMes!==undefined ? dataPorEst[id].totalMes : (dataPorEst[id]?.totalDespachos||(dataPorEst[id]?.total)||0)),
       cap:cfg.tanques.reduce((a,tk)=>a+tk.cap,0),
     })).sort((a,b)=>b.total-a.total)
   ,[dataPorEst,plantaData,baseCRData]);
