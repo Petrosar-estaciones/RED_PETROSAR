@@ -743,8 +743,8 @@ function App(){
       .catch(()=>{});
   },[]);
 
-  // Carga inicial de datos
-  useEffect(()=>{ syncTodo(true); },[]);
+  // Carga inicial de datos — también carga clientes del mes actual para la card del dashboard
+  useEffect(()=>{ syncTodo(true); fetchClientes(mesActual()); },[]);
 
   // Guardar config automáticamente cuando cambia stockInicial o alarmas
   const saveEstConfigTimer=React.useRef(null);
