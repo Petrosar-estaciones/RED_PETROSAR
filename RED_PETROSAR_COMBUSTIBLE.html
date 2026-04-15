@@ -684,6 +684,7 @@ function App(){
   const [plantaLoading,setPlantaLoading]=useState(false);
   const [baseCRData,setBaseCRData]=useState(null);
   const [baseCRMes,setBaseCRMes]=useState(0);
+  const [reseroMes,setReseroMes]=useState(0);
   const [baseCRLoading,setBaseCRLoading]=useState(false);
   const [estLoading,setEstLoading]=useState({});
   const [uploading,setUploading]=useState({});
@@ -715,8 +716,8 @@ function App(){
     // Estaciones
     Object.keys(EST_SHEET_ID).forEach(estId=>{
       setEstLoading(p=>({...p,[estId]:true}));
-      // Pasar mes actual al GAS para que RESERO filtre por mes
-      const url=GAS_URL_ESTACIONES+"?action=getDespachos&estacion="+EST_SHEET_ID[estId]+"&mes="+mesActual()+"&nocache="+Date.now();
+      // Sin &mes= para que devuelva histórico completo (necesario para cálculo de stock)
+      const url=GAS_URL_ESTACIONES+"?action=getDespachos&estacion="+EST_SHEET_ID[estId]+"&nocache="+Date.now();
       fetch(url).then(r=>r.json()).then(d=>{ if(!d.error) setDataPorEst(p=>({...p,[estId]:d})); }).catch(()=>{}).finally(()=>setEstLoading(p=>({...p,[estId]:false})));
     });
     // Timestamp
@@ -761,6 +762,9 @@ function App(){
     syncTodo(true);
     fetchClientes(mesActual());
     fetchBaseCRMes(mesActual()).then(v=>setBaseCRMes(v)).catch(()=>{});
+    // RESERO filtrado por mes (separado del histórico usado para stock)
+    fetch(GAS_URL_ESTACIONES+"?action=getDespachos&estacion=RESERO&mes="+mesActual()+"&nocache="+Date.now())
+      .then(r=>r.json()).then(d=>setReseroMes(d.total||0)).catch(()=>{});
   },[]);
 
   // Guardar config automáticamente cuando cambia stockInicial o alarmas
@@ -776,7 +780,7 @@ function App(){
   const handleSyncEst=(estId)=>{
     setEstLoading(p=>({...p,[estId]:true}));
     const shId=EST_SHEET_ID[estId];
-    const url=GAS_URL_ESTACIONES+"?action=getDespachos&estacion="+shId+"&mes="+mesActual()+"&nocache="+Date.now();
+    const url=GAS_URL_ESTACIONES+"?action=getDespachos&estacion="+shId+"&nocache="+Date.now();
     fetch(url).then(r=>r.json())
       .then(d=>{
         if(d.error) throw new Error(d.error);
@@ -1041,8 +1045,8 @@ function App(){
                     ? fmt(
                         // Estaciones con GAS getClientes (ya filtrado por mes)
                         ["AG","TP","VH","CD"].reduce((s,k)=>(clientesData[k]||[]).reduce((a,b)=>a+b.litros,s),0)
-                        // RESERO: filtrado por mes (el GAS ahora filtra con e.parameter.mes)
-                        +(dataPorEst?.RESERO?.total||0)
+                        // RESERO: filtrado por mes (llamada separada con &mes=)
+                        +reseroMes
                         // BASE CR: filtrado por mes via getResumenMes
                         +baseCRMes
                         // Planta: solo externos del mes actual
