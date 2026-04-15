@@ -436,6 +436,40 @@ function mesActual(){
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`;
 }
 
+/* ─────────────────────────────────────────────────────
+   Filtra array de despachos al mes "YYYY-MM".
+   Soporta: ISO "YYYY-MM-DD", argentino "DD/MM/YYYY",
+            "D/M/YYYY", objetos Date de XLSX.
+   ───────────────────────────────────────────────────── */
+function despachosDeMes(despachos, mes){
+  const [yy,mm]=mes.split("-").map(Number);
+  return (despachos||[]).filter(d=>{
+    const f=d.fecha;
+    if(!f) return false;
+    if(f instanceof Date) return f.getFullYear()===yy&&f.getMonth()+1===mm;
+    const s=String(f);
+    // ISO: "2025-04-03" o "2025-04-03T..."
+    let mx=s.match(/^(\d{4})-(\d{2})/);
+    if(mx) return +mx[1]===yy&&+mx[2]===mm;
+    // DD/MM/YYYY o D/M/YYYY  (formato argentino)
+    mx=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if(mx) return +mx[3]===yy&&+mx[2]===mm;
+    return false;
+  });
+}
+
+/* Recalcula totalMes sobre el resultado de cualquier parser.
+   Solo toca totalMes — NO modifica porTanque ni total (stock sigue igual). */
+function agregarTotalesMes(resultado, estConfig, mes){
+  if(!resultado) return resultado;
+  const despMes=despachosDeMes(resultado.despachos||[], mes);
+  return {
+    ...resultado,
+    totalMes: despMes.reduce((a,d)=>a+d.litros,0),
+    mesFiltrado: mes,
+  };
+}
+
 /* ══════════════════════════════════════════════════════
    COMPONENTES UI
    ══════════════════════════════════════════════════════ */
