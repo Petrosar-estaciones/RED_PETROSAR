@@ -281,10 +281,20 @@ async function fetchEstacion(estId){
 
 // Fetch Base CR — lee stock vivo y total despachos del período
 async function fetchBaseCR(){
+  // getResumen: stock vivo + total histórico (para el card de estación)
   const res=await fetch(GAS_URL_BASECR+"?action=getResumen&nocache="+Date.now());
   if(!res.ok) throw new Error("HTTP "+res.status);
   const data=await res.json();
   return {stockVivo:data.stockVivo||0, totalDespachos:data.totalDespachos||0, totalMovs:data.totalMovs||0};
+}
+
+async function fetchBaseCRMes(mes){
+  // getResumenMes: solo despachos del mes filtrado (para el dashboard)
+  const m=mes||mesActual();
+  const res=await fetch(GAS_URL_BASECR+"?action=getResumenMes&mes="+m+"&nocache="+Date.now());
+  if(!res.ok) throw new Error("HTTP "+res.status);
+  const data=await res.json();
+  return data.totalDespachos||0;
 }
 
 // Helpers para comunicarse con el Apps Script de Planta
@@ -381,20 +391,34 @@ async function fetchPlantaGranel(stockInicial){
   });
 
   const DESTINOS_INTERNOS=["REMOTA VH","REMOTA TP","BASE CR","RESERO","ESTACION CD","REMOTA AG","INT 742","INT 836","INT 794"];
+
+  // Helper: filtrar despachos de Planta por mes "YYYY-MM" (fecha formato ISO "2026-04-06")
+  const _mesActual=(()=>{ const n=new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`; })();
+  const esMesActual=(fecha)=>{
+    const s=String(fecha||"").trim();
+    return s.startsWith(_mesActual);
+  };
+
+  // Despachos externos históricos (para stock)
   const despachoExterno=despachos
     .filter(d=>!["RTO","FAC"].includes(d.ref))
     .filter(d=>{ const dest=(d.receptor+" "+d.destino).toUpperCase(); return !DESTINOS_INTERNOS.some(di=>dest.includes(di)); })
     .reduce((a,d)=>a+d.litros,0);
 
-  // Top clientes externos de Planta
-  const mapaClientes={};
-  despachos
+  // Despachos externos SOLO del mes actual (para dashboard y top clientes)
+  const despExternosMes=despachos
     .filter(d=>!["RTO","FAC"].includes(d.ref))
     .filter(d=>{ const dest=(d.receptor+" "+d.destino).toUpperCase(); return !DESTINOS_INTERNOS.some(di=>dest.includes(di)); })
-    .forEach(d=>{
-      const cliente=(d.receptor||d.destino||"SIN NOMBRE").trim();
-      if(cliente) mapaClientes[cliente]=(mapaClientes[cliente]||0)+d.litros;
-    });
+    .filter(d=>esMesActual(d.fecha));
+
+  const despachoExternoMes=despExternosMes.reduce((a,d)=>a+d.litros,0);
+
+  // Top clientes externos del mes actual (excluye entregas a puntos propios)
+  const mapaClientes={};
+  despExternosMes.forEach(d=>{
+    const cliente=(d.receptor||d.destino||"SIN NOMBRE").trim();
+    if(cliente) mapaClientes[cliente]=(mapaClientes[cliente]||0)+d.litros;
+  });
   const topClientesPlanta=Object.entries(mapaClientes)
     .map(([cliente,litros])=>({cliente,litros:Math.round(litros)}))
     .sort((a,b)=>b.litros-a.litros)
@@ -406,6 +430,7 @@ async function fetchPlantaGranel(stockInicial){
     porTanque:{tk1:0,tk2:0,tk3:0},
     total:despachos.filter(d=>!["RTO","FAC"].includes(d.ref)).reduce((a,d)=>a+d.litros,0),
     despachoExterno,
+    despachoExternoMes,
     topClientesPlanta,
     ingresosAuto,
   };
@@ -417,6 +442,18 @@ async function fetchPlantaGranel(stockInicial){
 const fmt  = n=>Math.round(n||0).toLocaleString("es-AR");
 const fmtD = n=>(n||0).toFixed(1);
 
+/* helper: mes actual como "YYYY-MM" */
+function mesActual(){
+  const n=new Date();
+  return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`;
+}
+/* label legible de un "YYYY-MM" */
+function mesLabel(val){
+  const [y,m]=val.split("-").map(Number);
+  const d=new Date(y,m-1,1);
+  const l=d.toLocaleString("es-AR",{month:"long",year:"numeric"});
+  return l.charAt(0).toUpperCase()+l.slice(1);
+}
 /* ══════════════════════════════════════════════════════
    COMPONENTES UI
    ══════════════════════════════════════════════════════ */
@@ -491,7 +528,7 @@ function TankBar({nombre,stock,cap,color,idx=0,alarma=0,producto=""}){
   return <TankGauge nombre={nombre} stock={stock} cap={cap} color={color} idx={idx} alarma={alarma} producto={producto}/>;
 }
 
-function EstacionCard({est,data,ingresos,stockInicial,onUpload,uploading,idx,plantaData,onSyncPlanta,plantaLoading,alarmas,baseCRData,onSyncBaseCR,baseCRLoading,onSyncEst,estLoading}){
+function EstacionCard({est,data,ingresos,stockInicial,onUpload,uploading,idx,plantaData,onSyncPlanta,plantaLoading,alarmas,baseCRData,onSyncBaseCR,baseCRLoading,onSyncEst,estLoading,clientesData,reseroMes,baseCRMes}){
   const cfg=ESTACIONES_CONFIG[est];
   const fileRef=useRef();
 
@@ -511,13 +548,20 @@ function EstacionCard({est,data,ingresos,stockInicial,onUpload,uploading,idx,pla
   const totalStock=Object.values(stocks).reduce((a,b)=>a+b,0);
   const totalCap=cfg.tanques.reduce((a,tk)=>a+tk.cap,0);
   const pctTotal=totalCap>0?Math.min(100,(totalStock/totalCap)*100):0;
-  const totalDesp=est==="BASECR"?(baseCRData?.totalDespachos||0):(data?.total)||0;
+  // Despachos del mes actual según la fuente de cada estación
+  const totalDesp=est==="BASECR" ? (baseCRMes||0)
+    : est==="PLANTAGRANEL" ? (plantaData?.despachoExternoMes??plantaData?.despachoExterno??0)
+    : est==="RESERO" ? (reseroMes||0)
+    : est==="ANTICLINAL" ? (clientesData?.AG_total||0)
+    : est==="TRESPICOS" ? (clientesData?.TP_total||0)
+    : est==="VALLE" ? (clientesData?.VH_total||0)
+    : est==="ESTACIONCD" ? (clientesData?.CD_total||0)
+    : (data?.total)||0;
 
-  // Consumo diario estimado — usar días del período si está disponible
-  const diasPeriodo=data?.diasPeriodo||0;
-  const nOps=data?.registros||data?.despachos?.length||0;
-  const dias = diasPeriodo>0 ? diasPeriodo : nOps>0 ? 16 : 1;
-  const consumoDiario=dias>0?totalDesp/dias:0;
+  // Consumo diario del mes actual (días transcurridos en el mes)
+  const hoy=new Date();
+  const diasMes=hoy.getDate(); // días transcurridos en el mes actual
+  const consumoDiario=diasMes>0?totalDesp/diasMes:0;
 
   // Días de autonomía
   const autonomia=consumoDiario>0?Math.floor(totalStock/consumoDiario):999;
@@ -563,7 +607,7 @@ function EstacionCard({est,data,ingresos,stockInicial,onUpload,uploading,idx,pla
       {/* stats */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:1,borderTop:"1px solid #f1f5f9",background:"#f8fafc"}}>
         {[
-          ["DESPACHOS",fmt(totalDesp)+" L","período"],
+          ["DESPACHOS",fmt(totalDesp)+" L","mes actual"],
           ["CONSUMO/DÍA",fmt(consumoDiario)+" L","estimado"],
           ["AUTONOMÍA",autonomia>90?"90+ d":autonomia+" d","aprox"],
         ].map(([label,val,sub])=>(
@@ -646,6 +690,8 @@ function App(){
   const [plantaData,setPlantaData]=useState(null);
   const [plantaLoading,setPlantaLoading]=useState(false);
   const [baseCRData,setBaseCRData]=useState(null);
+  const [baseCRMes,setBaseCRMes]=useState(0);
+  const [reseroMes,setReseroMes]=useState(0);
   const [baseCRLoading,setBaseCRLoading]=useState(false);
   const [estLoading,setEstLoading]=useState({});
   const [uploading,setUploading]=useState({});
@@ -656,16 +702,11 @@ function App(){
   const [detalleEst,setDetalleEst]=useState(null);
   const [clientesData,setClientesData]=useState(null);
   const [loadingClientes,setLoadingClientes]=useState(false);
-  const [mesFiltro,setMesFiltro]=useState("");
-  const [mesesDisponibles,setMesesDisponibles]=useState([]);
+  const [mesSeleccionado,setMesSeleccionado]=useState(mesActual);
 
-  const [ultimaConsulta,setUltimaConsulta]=useState(null);
-  const [ultimoCambio,setUltimoCambio]=useState(null);
-  const stockAnterior=React.useRef(null);
+  const [ultimaActualizacion,setUltimaActualizacion]=useState(null);
 
   const showToast=(msg,type="ok",ms=3000)=>{setToast({msg,type});setTimeout(()=>setToast({msg:"",type:""}),ms);};
-
-  const horaActual=()=>{const n=new Date();return `${String(n.getHours()).padStart(2,"0")}:${String(n.getMinutes()).padStart(2,"0")} hs`;};
 
   // Función central de sincronización de todos los datos
   const syncTodo=React.useCallback((silencioso=false)=>{
@@ -674,16 +715,7 @@ function App(){
     // Planta
     setPlantaLoading(true);
     fetchPlantaGranel(si)
-      .then(d=>{
-        setPlantaData(d);
-        setIngresos(prev=>[...prev.filter(i=>!i.auto),...(d.ingresosAuto||[])]);
-        // Comparar stock total para detectar cambio real
-        const nuevoTotal=Object.values(d.stockVivo||{}).reduce((a,b)=>a+b,0);
-        if(stockAnterior.current===null || Math.abs(nuevoTotal-stockAnterior.current)>1){
-          setUltimoCambio(horaActual());
-          stockAnterior.current=nuevoTotal;
-        }
-      })
+      .then(d=>{ setPlantaData(d); setIngresos(prev=>[...prev.filter(i=>!i.auto),...(d.ingresosAuto||[])]); })
       .catch(()=>{}).finally(()=>setPlantaLoading(false));
     // Base CR
     setBaseCRLoading(true);
@@ -691,10 +723,13 @@ function App(){
     // Estaciones
     Object.keys(EST_SHEET_ID).forEach(estId=>{
       setEstLoading(p=>({...p,[estId]:true}));
-      fetchEstacion(estId).then(d=>setDataPorEst(p=>({...p,[estId]:d}))).catch(()=>{}).finally(()=>setEstLoading(p=>({...p,[estId]:false})));
+      // Sin &mes= para que devuelva histórico completo (necesario para cálculo de stock)
+      const url=GAS_URL_ESTACIONES+"?action=getDespachos&estacion="+EST_SHEET_ID[estId]+"&nocache="+Date.now();
+      fetch(url).then(r=>r.json()).then(d=>{ if(!d.error) setDataPorEst(p=>({...p,[estId]:d})); }).catch(()=>{}).finally(()=>setEstLoading(p=>({...p,[estId]:false})));
     });
-    // Timestamp consulta
-    setUltimaConsulta(horaActual());
+    // Timestamp
+    const ahora=new Date();
+    setUltimaActualizacion(`${String(ahora.getHours()).padStart(2,"0")}:${String(ahora.getMinutes()).padStart(2,"0")} hs`);
   },[stockInicial]);
 
   // Auto-sync cada 5 minutos
@@ -703,22 +738,39 @@ function App(){
     return ()=>clearInterval(interval);
   },[syncTodo]);
 
-  const fetchClientes=React.useCallback(async(mes="")=>{
+  async function fetchClientes(mes){
+    const m=mes||mesActual();
+    setMesSeleccionado(m);
     setLoadingClientes(true);
     try{
-      const url=GAS_URL_ESTACIONES+"?action=getClientes"+(mes?"&mes="+mes:"")+"&nocache="+Date.now();
-      const res=await fetch(url);
+      const res=await fetch(GAS_URL_ESTACIONES+"?action=getClientes&mes="+m+"&nocache="+Date.now());
       const data=await res.json();
       setClientesData(data);
-      if(data.mesesDisponibles&&data.mesesDisponibles.length>0){
-        setMesesDisponibles(data.mesesDisponibles);
-        if(!mes) setMesFiltro(data.mesesDisponibles[0]);
-      }
     }catch(e){console.error("Error clientes",e);}
     finally{setLoadingClientes(false);}
-  },[]);
+  }
 
-  useEffect(()=>{ if(tab==="despachos") fetchClientes(mesFiltro); },[tab]);
+  useEffect(()=>{ if(tab==="despachos") fetchClientes(mesActual()); },[tab]);
+
+  // Top clientes Planta filtrado por el mes seleccionado en el selector
+  const topClientesPlantaMes=useMemo(()=>{
+    if(!plantaData?.despachos) return [];
+    const DEST_INT=["REMOTA VH","REMOTA TP","BASE CR","RESERO","ESTACION CD","REMOTA AG","INT 742","INT 836","INT 794"];
+    const [yy,mm]=mesSeleccionado.split("-").map(Number);
+    const mapa={};
+    plantaData.despachos
+      .filter(d=>!["RTO","FAC"].includes(d.ref))
+      .filter(d=>{ const t=(d.receptor+" "+(d.destino||"")).toUpperCase(); return !DEST_INT.some(x=>t.includes(x)); })
+      .filter(d=>{
+        const s=String(d.fecha||"").trim();
+        // ISO: 2026-04-06
+        const mx=s.match(/^(\d{4})-(\d{2})/);
+        if(mx) return +mx[1]===yy&&+mx[2]===mm;
+        return false;
+      })
+      .forEach(d=>{ const c=(d.receptor||d.destino||"SIN NOMBRE").trim(); if(c) mapa[c]=(mapa[c]||0)+d.litros; });
+    return Object.entries(mapa).map(([cliente,litros])=>({cliente,litros:Math.round(litros)})).sort((a,b)=>b.litros-a.litros).slice(0,10);
+  },[plantaData,mesSeleccionado]);
 
   // Cargar config de estaciones desde Sheets al inicio
   useEffect(()=>{
@@ -732,8 +784,15 @@ function App(){
       .catch(()=>{});
   },[]);
 
-  // Carga inicial de datos
-  useEffect(()=>{ syncTodo(true); },[]);
+  // Carga inicial de datos — también carga clientes del mes actual para la card del dashboard
+  useEffect(()=>{
+    syncTodo(true);
+    fetchClientes(mesActual());
+    fetchBaseCRMes(mesActual()).then(v=>setBaseCRMes(v)).catch(()=>{});
+    // RESERO filtrado por mes (separado del histórico usado para stock)
+    fetch(GAS_URL_ESTACIONES+"?action=getDespachos&estacion=RESERO&mes="+mesActual()+"&nocache="+Date.now())
+      .then(r=>r.json()).then(d=>setReseroMes(d.total||0)).catch(()=>{});
+  },[]);
 
   // Guardar config automáticamente cuando cambia stockInicial o alarmas
   const saveEstConfigTimer=React.useRef(null);
@@ -747,8 +806,11 @@ function App(){
   // Sincronizar una estación manualmente
   const handleSyncEst=(estId)=>{
     setEstLoading(p=>({...p,[estId]:true}));
-    fetchEstacion(estId)
+    const shId=EST_SHEET_ID[estId];
+    const url=GAS_URL_ESTACIONES+"?action=getDespachos&estacion="+shId+"&nocache="+Date.now();
+    fetch(url).then(r=>r.json())
       .then(d=>{
+        if(d.error) throw new Error(d.error);
         setDataPorEst(p=>({...p,[estId]:d}));
         showToast(`✓ ${ESTACIONES_CONFIG[estId].nombre} actualizada`,"ok");
       })
@@ -953,10 +1015,9 @@ function App(){
 
           {/* actions */}
           <div className="header-actions" style={{display:"flex",gap:6,alignItems:"center",marginLeft:8,flexShrink:0}}>
-            {(ultimaConsulta||ultimoCambio)&&(
-              <div style={{fontFamily:"'DM Mono'",fontSize:9,color:"#94a3b8",whiteSpace:"nowrap",marginRight:4,lineHeight:1.6}}>
-                {ultimaConsulta&&<div>⏱ Consulta: {ultimaConsulta}</div>}
-                {ultimoCambio&&<div style={{color:"#16a34a"}}>✓ Cambio: {ultimoCambio}</div>}
+            {ultimaActualizacion&&(
+              <div style={{fontFamily:"'DM Mono'",fontSize:9,color:"#94a3b8",whiteSpace:"nowrap",marginRight:4}}>
+                ⏱ {ultimaActualizacion}
               </div>
             )}
             <button onClick={()=>syncTodo(false)} style={{background:"#3a8fd4",border:"none",borderRadius:8,color:"#fff",fontFamily:"'DM Mono'",fontSize:10,letterSpacing:1,padding:"7px 10px",cursor:"pointer",textTransform:"uppercase",whiteSpace:"nowrap"}}>
@@ -1005,7 +1066,24 @@ function App(){
               {[
                 {label:"Stock total red",val:fmt(totales.totalStock)+" L",sub:`${totales.pct.toFixed(0)}% capacidad`,color:"#e87030"},
                 {label:"Capacidad total",val:fmt(totales.totalCap)+" L",sub:"todas las estaciones",color:"#3a8fd4"},
-                {label:"Despachos período",val:fmt(totales.totalDesp)+" L",sub:"archivos cargados",color:"#16a34a"},
+                {
+                  label: mesLabel(mesActual()),
+                  val: clientesData
+                    ? fmt(
+                        // Estaciones: usar X_total (todos los clientes del mes)
+                        (clientesData.AG_total||0)+(clientesData.TP_total||0)
+                        +(clientesData.VH_total||0)+(clientesData.CD_total||0)
+                        // RESERO: filtrado por mes (llamada separada con &mes=)
+                        +reseroMes
+                        // BASE CR: filtrado por mes via getResumenMes
+                        +baseCRMes
+                        // Planta: solo externos del mes actual
+                        +(plantaData?.despachoExternoMes??plantaData?.despachoExterno??0)
+                      )+" L"
+                    : "Cargando...",
+                  sub: clientesData ? "despachos mes en curso" : "cargando...",
+                  color:"#16a34a"
+                },
                 {label:"Estaciones activas",val:(Object.keys(dataPorEst).length+(plantaData?1:0)+(baseCRData?1:0))+"/"+Object.keys(ESTACIONES_CONFIG).length,sub:"con datos",color:"#a060e0"},
               ].map((item,i)=>(
                 <div key={item.label} className="fu" style={{animationDelay:`${i*0.07}s`,background:"#fff",border:"1px solid #e2e8f0",borderRadius:12,padding:"16px 20px",borderTop:`3px solid ${item.color}`}}>
@@ -1019,27 +1097,43 @@ function App(){
             {/* Cards de estaciones */}
             <div className="est-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:16}}>
               {Object.keys(ESTACIONES_CONFIG).map((estId,i)=>(
-                <EstacionCard key={estId} est={estId} data={estId==="PLANTAGRANEL"?plantaData:dataPorEst[estId]} ingresos={ingresos} stockInicial={stockInicial} onUpload={handleUpload} uploading={uploading[estId]} idx={i} plantaData={plantaData} onSyncPlanta={handleSyncPlanta} plantaLoading={plantaLoading} alarmas={alarmas} baseCRData={baseCRData} onSyncBaseCR={handleSyncBaseCR} baseCRLoading={baseCRLoading} onSyncEst={handleSyncEst} estLoading={estLoading}/>
+                <EstacionCard key={estId} est={estId} data={estId==="PLANTAGRANEL"?plantaData:dataPorEst[estId]} ingresos={ingresos} stockInicial={stockInicial} onUpload={handleUpload} uploading={uploading[estId]} idx={i} plantaData={plantaData} onSyncPlanta={handleSyncPlanta} plantaLoading={plantaLoading} alarmas={alarmas} baseCRData={baseCRData} onSyncBaseCR={handleSyncBaseCR} baseCRLoading={baseCRLoading} onSyncEst={handleSyncEst} estLoading={estLoading} clientesData={clientesData} reseroMes={reseroMes} baseCRMes={baseCRMes}/>
               ))}
             </div>
 
-            {/* Gráfico de barras consumo */}
-            {consumoPorEst.some(e=>e.total>0)&&(
+            {/* Gráfico de barras — despachos mes actual por estación */}
+            {clientesData&&(
               <div style={{marginTop:24,background:"#fff",border:"1px solid #e2e8f0",borderRadius:14,padding:"20px 24px",boxShadow:"0 1px 6px rgba(0,0,0,.05)"}}>
-                <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2,color:"#1e293b",marginBottom:18}}>Despachos del período por estación</div>
-                <div style={{display:"flex",gap:12,alignItems:"flex-end",height:100}}>
-                  {consumoPorEst.map(est=>{
-                    const maxDesp=Math.max(...consumoPorEst.map(e=>e.total),1);
-                    const h=(est.total/maxDesp)*100;
-                    return(
-                      <div key={est.id} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-                        <div style={{fontFamily:"'DM Mono'",fontSize:10,color:est.color,fontWeight:600}}>{fmt(est.total)}</div>
-                        <div style={{width:"100%",height:`${h}%`,background:`linear-gradient(180deg,${est.color},${est.color}66)`,borderRadius:"4px 4px 0 0",minHeight:4,transition:"height .8s cubic-bezier(.4,0,.2,1)"}}/>
-                        <div style={{fontFamily:"'DM Mono'",fontSize:9,color:"#94a3b8",letterSpacing:1,textAlign:"center"}}>{est.nombre.split(" ")[0]}</div>
-                      </div>
-                    );
-                  })}
+                <div style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",marginBottom:20}}>
+                  <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2,color:"#1e293b"}}>Despachos {mesLabel(mesActual())} por estación</div>
+                  <div style={{fontFamily:"'DM Mono'",fontSize:10,color:"#94a3b8"}}>mes en curso</div>
                 </div>
+                {(()=>{
+                  const barras=[
+                    {nombre:"Anticlinal",  color:"#e87030", val:clientesData.AG_total||0},
+                    {nombre:"Tres Picos",  color:"#3a8fd4", val:clientesData.TP_total||0},
+                    {nombre:"Resero",      color:"#2aaa6a", val:reseroMes||0},
+                    {nombre:"Valle Herm.", color:"#a060e0", val:clientesData.VH_total||0},
+                    {nombre:"Base CR",     color:"#0a9888", val:baseCRMes||0},
+                    {nombre:"Planta",      color:"#e8a020", val:plantaData?.despachoExternoMes??plantaData?.despachoExterno??0},
+                    {nombre:"Est. CD",     color:"#20c0a0", val:clientesData.CD_total||0},
+                  ].sort((a,b)=>b.val-a.val);
+                  const maxVal=Math.max(...barras.map(b=>b.val),1);
+                  return(
+                    <div style={{display:"flex",gap:10,alignItems:"flex-end",height:120}}>
+                      {barras.map((b,i)=>{
+                        const h=Math.max((b.val/maxVal)*100,2);
+                        return(
+                          <div key={b.nombre} className="fu" style={{animationDelay:`${i*0.08}s`,flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:5}}>
+                            <div style={{fontFamily:"'DM Mono'",fontSize:10,color:b.color,fontWeight:700,textAlign:"center"}}>{fmt(b.val)}</div>
+                            <div style={{width:"100%",height:`${h}%`,background:`linear-gradient(180deg,${b.color},${b.color}55)`,borderRadius:"6px 6px 0 0",minHeight:4,transition:"height .8s cubic-bezier(.4,0,.2,1)",boxShadow:`0 -2px 8px ${b.color}33`}}/>
+                            <div style={{fontFamily:"'DM Mono'",fontSize:9,color:"#64748b",letterSpacing:.5,textAlign:"center",lineHeight:1.3}}>{b.nombre}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>
@@ -1048,21 +1142,27 @@ function App(){
         {/* ── DESPACHOS ── */}
         {tab==="despachos"&&(
           <div>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,flexWrap:"wrap",gap:10}}>
-              <div style={{fontFamily:"'Bebas Neue'",fontSize:22,letterSpacing:2,color:"#1e293b"}}>Top 10 Clientes por Estación</div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,flexWrap:"wrap",gap:12}}>
+              <div>
+                <div style={{fontFamily:"'Bebas Neue'",fontSize:22,letterSpacing:2,color:"#1e293b"}}>Top 10 Clientes por Estación</div>
+                <div style={{fontFamily:"'DM Mono'",fontSize:11,color:"#16a34a",marginTop:2}}>
+                  📅 {mesLabel(mesSeleccionado)}
+                  {mesSeleccionado===mesActual()
+                    ?<span style={{color:"#94a3b8"}}> — mes en curso</span>
+                    :<span style={{color:"#f59e0b"}}> — mes anterior</span>}
+                </div>
+              </div>
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                {mesesDisponibles.length>0&&(
-                  <select value={mesFiltro} onChange={e=>{setMesFiltro(e.target.value);fetchClientes(e.target.value);}}
-                    style={{fontFamily:"'DM Mono'",fontSize:11,padding:"7px 12px",borderRadius:8,border:"1px solid #e2e8f0",color:"#1e293b",background:"#fff",cursor:"pointer"}}>
-                    {mesesDisponibles.map(m=>{
-                      const [y,mo]=m.split("-");
-                      const nombres=["","Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-                      return <option key={m} value={m}>{nombres[parseInt(mo)]} {y}</option>;
-                    })}
-                  </select>
-                )}
-                <button onClick={()=>fetchClientes(mesFiltro)} style={{background:"#3a8fd4",border:"none",borderRadius:8,color:"#fff",fontFamily:"'DM Mono'",fontSize:11,letterSpacing:1,padding:"9px 16px",cursor:"pointer",textTransform:"uppercase"}}>
-                  {loadingClientes?"Cargando...":"↻ Actualizar"}
+                <select
+                  value={mesSeleccionado}
+                  onChange={e=>fetchClientes(e.target.value)}
+                  style={{fontFamily:"'DM Mono'",fontSize:12,fontWeight:600,padding:"8px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",background:"#fff",color:"#1e293b",cursor:"pointer"}}>
+                  {(clientesData?.mesesDisponibles||[mesActual()]).map(m=>(
+                    <option key={m} value={m}>{mesLabel(m)}{m===mesActual()?" (actual)":""}</option>
+                  ))}
+                </select>
+                <button onClick={()=>fetchClientes(mesSeleccionado)} style={{background:"#3a8fd4",border:"none",borderRadius:8,color:"#fff",fontFamily:"'DM Mono'",fontSize:11,letterSpacing:1,padding:"9px 14px",cursor:"pointer",textTransform:"uppercase",display:"flex",alignItems:"center",gap:6}}>
+                  {loadingClientes?<span className="spin">⟳</span>:"↻"} {loadingClientes?"Cargando...":"Actualizar"}
                 </button>
               </div>
             </div>
@@ -1074,11 +1174,7 @@ function App(){
                   {key:"TP", nombre:"Tres Picos",        color:"#3a8fd4", lista:clientesData?.TP||[]},
                   {key:"VH", nombre:"Valle Hermoso",     color:"#8b5cf6", lista:clientesData?.VH||[]},
                   {key:"CD", nombre:"Estación CD",       color:"#20c0a0", lista:clientesData?.CD||[]},
-                  {key:"PG", nombre:"Planta Granel",     color:"#f59e0b", lista:(()=>{
-                    // Filtrar topClientesPlanta por mes seleccionado
-                    if(!mesFiltro||!plantaData?.topClientesPlanta) return plantaData?.topClientesPlanta||[];
-                    return plantaData?.topClientesPlanta||[];
-                  })()},
+                  {key:"PG", nombre:"Planta Granel",     color:"#e87030", lista:topClientesPlantaMes},
                 ].map(({key,nombre,color,lista})=>{
                   const totalTop=lista.reduce((a,b)=>a+b.litros,0);
                   return(
@@ -1113,7 +1209,8 @@ function App(){
             )}
             {!loadingClientes&&!clientesData&&(
               <div style={{textAlign:"center",padding:60,color:"#94a3b8",fontFamily:"'DM Mono'",fontSize:12}}>
-                Presioná "Actualizar" para cargar los datos de clientes
+                <span className="spin" style={{fontSize:20,display:"block",marginBottom:12}}>⟳</span>
+                Cargando datos del mes actual...
               </div>
             )}
           </div>
