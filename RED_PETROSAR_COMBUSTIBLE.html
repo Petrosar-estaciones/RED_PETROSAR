@@ -809,8 +809,26 @@ function App(){
         totalDesp+=(baseCRData?.totalDespachos)||0;
       }
     });
-    return{totalCap,totalStock,totalDesp,pct:totalCap>0?(totalStock/totalCap*100):0};
-  },[dataPorEst,ingresos,stockInicial,plantaData]);
+
+    // ── TOTAL MES ACTUAL desde clientesData (getClientes ya filtra por mes) ──
+    // Suma todos los litros de cada estación en el top de clientes del mes
+    // Planta: usar despachoExterno filtrado (excluye entregas a remotas propias)
+    let totalMesActual=null;
+    if(clientesData){
+      totalMesActual=0;
+      // Estaciones con sheet (AG, TP, VH, CD, RESERO)
+      ["AG","TP","VH","CD","RESERO"].forEach(key=>{
+        const lista=clientesData[key]||[];
+        totalMesActual+=lista.reduce((a,b)=>a+(b.litros||0),0);
+      });
+      // Planta: despachoExterno ya excluye entregas a remotas/estaciones propias
+      if(plantaData?.despachoExterno!=null){
+        totalMesActual+=plantaData.despachoExterno;
+      }
+    }
+
+    return{totalCap,totalStock,totalDesp,totalMesActual,pct:totalCap>0?(totalStock/totalCap*100):0};
+  },[dataPorEst,ingresos,stockInicial,plantaData,clientesData]);
 
   // Consumo por estación para gráfico
   const consumoPorEst=useMemo(()=>
@@ -985,7 +1003,12 @@ function App(){
               {[
                 {label:"Stock total red",val:fmt(totales.totalStock)+" L",sub:`${totales.pct.toFixed(0)}% capacidad`,color:"#e87030"},
                 {label:"Capacidad total",val:fmt(totales.totalCap)+" L",sub:"todas las estaciones",color:"#3a8fd4"},
-                {label:"Despachos período",val:fmt(totales.totalDesp)+" L",sub:"archivos cargados",color:"#16a34a"},
+                {
+                  label: (() => { const n=new Date(); return n.toLocaleString("es-AR",{month:"long",year:"numeric"}).replace(/^\w/,c=>c.toUpperCase()); })(),
+                  val: totales.totalMesActual!=null ? fmt(totales.totalMesActual)+" L" : "Cargando...",
+                  sub: totales.totalMesActual!=null ? "despachos mes en curso" : "esperando datos...",
+                  color:"#16a34a"
+                },
                 {label:"Estaciones activas",val:(Object.keys(dataPorEst).length+(plantaData?1:0)+(baseCRData?1:0))+"/"+Object.keys(ESTACIONES_CONFIG).length,sub:"con datos",color:"#a060e0"},
               ].map((item,i)=>(
                 <div key={item.label} className="fu" style={{animationDelay:`${i*0.07}s`,background:"#fff",border:"1px solid #e2e8f0",borderRadius:12,padding:"16px 20px",borderTop:`3px solid ${item.color}`}}>
@@ -1028,10 +1051,16 @@ function App(){
         {/* ── DESPACHOS ── */}
         {tab==="despachos"&&(
           <div>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
-              <div style={{fontFamily:"'Bebas Neue'",fontSize:22,letterSpacing:2,color:"#1e293b"}}>Top 10 Clientes por Estación</div>
-              <button onClick={fetchClientes} style={{background:"#3a8fd4",border:"none",borderRadius:8,color:"#fff",fontFamily:"'DM Mono'",fontSize:11,letterSpacing:1,padding:"9px 16px",cursor:"pointer",textTransform:"uppercase"}}>
-                {loadingClientes?"Cargando...":"↻ Actualizar"}
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,flexWrap:"wrap",gap:10}}>
+              <div>
+                <div style={{fontFamily:"'Bebas Neue'",fontSize:22,letterSpacing:2,color:"#1e293b"}}>Top 10 Clientes por Estación</div>
+                <div style={{fontFamily:"'DM Mono'",fontSize:11,color:"#16a34a",marginTop:2}}>
+                  📅 {(() => { const n=new Date(); return n.toLocaleString("es-AR",{month:"long",year:"numeric"}).replace(/^\w/,c=>c.toUpperCase()); })()}
+                  {" — "}<span style={{color:"#94a3b8"}}>datos del mes en curso</span>
+                </div>
+              </div>
+              <button onClick={fetchClientes} style={{background:"#3a8fd4",border:"none",borderRadius:8,color:"#fff",fontFamily:"'DM Mono'",fontSize:11,letterSpacing:1,padding:"9px 16px",cursor:"pointer",textTransform:"uppercase",display:"flex",alignItems:"center",gap:6}}>
+                {loadingClientes?<span className="spin">⟳</span>:"↻"} {loadingClientes?"Cargando...":"Actualizar"}
               </button>
             </div>
             {loadingClientes&&<div style={{textAlign:"center",padding:40,color:"#94a3b8",fontFamily:"'DM Mono'"}}>Cargando datos de clientes...</div>}
@@ -1077,7 +1106,8 @@ function App(){
             )}
             {!loadingClientes&&!clientesData&&(
               <div style={{textAlign:"center",padding:60,color:"#94a3b8",fontFamily:"'DM Mono'",fontSize:12}}>
-                Presioná "Actualizar" para cargar los datos de clientes
+                <span className="spin" style={{fontSize:20,display:"block",marginBottom:12}}>⟳</span>
+                Cargando datos del mes actual...
               </div>
             )}
           </div>
