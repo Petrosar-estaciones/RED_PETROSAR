@@ -381,20 +381,34 @@ async function fetchPlantaGranel(stockInicial){
   });
 
   const DESTINOS_INTERNOS=["REMOTA VH","REMOTA TP","BASE CR","RESERO","ESTACION CD","REMOTA AG","INT 742","INT 836","INT 794"];
+
+  // Helper: filtrar despachos de Planta por mes "YYYY-MM" (fecha formato ISO "2026-04-06")
+  const _mesActual=(()=>{ const n=new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`; })();
+  const esMesActual=(fecha)=>{
+    const s=String(fecha||"").trim();
+    return s.startsWith(_mesActual);
+  };
+
+  // Despachos externos históricos (para stock)
   const despachoExterno=despachos
     .filter(d=>!["RTO","FAC"].includes(d.ref))
     .filter(d=>{ const dest=(d.receptor+" "+d.destino).toUpperCase(); return !DESTINOS_INTERNOS.some(di=>dest.includes(di)); })
     .reduce((a,d)=>a+d.litros,0);
 
-  // Top clientes externos de Planta
-  const mapaClientes={};
-  despachos
+  // Despachos externos SOLO del mes actual (para dashboard y top clientes)
+  const despExternosMes=despachos
     .filter(d=>!["RTO","FAC"].includes(d.ref))
     .filter(d=>{ const dest=(d.receptor+" "+d.destino).toUpperCase(); return !DESTINOS_INTERNOS.some(di=>dest.includes(di)); })
-    .forEach(d=>{
-      const cliente=(d.receptor||d.destino||"SIN NOMBRE").trim();
-      if(cliente) mapaClientes[cliente]=(mapaClientes[cliente]||0)+d.litros;
-    });
+    .filter(d=>esMesActual(d.fecha));
+
+  const despachoExternoMes=despExternosMes.reduce((a,d)=>a+d.litros,0);
+
+  // Top clientes externos del mes actual (excluye entregas a puntos propios)
+  const mapaClientes={};
+  despExternosMes.forEach(d=>{
+    const cliente=(d.receptor||d.destino||"SIN NOMBRE").trim();
+    if(cliente) mapaClientes[cliente]=(mapaClientes[cliente]||0)+d.litros;
+  });
   const topClientesPlanta=Object.entries(mapaClientes)
     .map(([cliente,litros])=>({cliente,litros:Math.round(litros)}))
     .sort((a,b)=>b.litros-a.litros)
@@ -406,6 +420,7 @@ async function fetchPlantaGranel(stockInicial){
     porTanque:{tk1:0,tk2:0,tk3:0},
     total:despachos.filter(d=>!["RTO","FAC"].includes(d.ref)).reduce((a,d)=>a+d.litros,0),
     despachoExterno,
+    despachoExternoMes,
     topClientesPlanta,
     ingresosAuto,
   };
@@ -422,7 +437,13 @@ function mesActual(){
   const n=new Date();
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`;
 }
-
+/* label legible de un "YYYY-MM" */
+function mesLabel(val){
+  const [y,m]=val.split("-").map(Number);
+  const d=new Date(y,m-1,1);
+  const l=d.toLocaleString("es-AR",{month:"long",year:"numeric"});
+  return l.charAt(0).toUpperCase()+l.slice(1);
+}
 /* ══════════════════════════════════════════════════════
    COMPONENTES UI
    ══════════════════════════════════════════════════════ */
@@ -662,6 +683,7 @@ function App(){
   const [detalleEst,setDetalleEst]=useState(null);
   const [clientesData,setClientesData]=useState(null);
   const [loadingClientes,setLoadingClientes]=useState(false);
+  const [mesSeleccionado,setMesSeleccionado]=useState(mesActual);
 
   const [ultimaActualizacion,setUltimaActualizacion]=useState(null);
 
@@ -696,8 +718,9 @@ function App(){
   },[syncTodo]);
 
   async function fetchClientes(mes){
-    setLoadingClientes(true);
     const m=mes||mesActual();
+    setMesSeleccionado(m);
+    setLoadingClientes(true);
     try{
       const res=await fetch(GAS_URL_ESTACIONES+"?action=getClientes&mes="+m+"&nocache="+Date.now());
       const data=await res.json();
@@ -993,11 +1016,11 @@ function App(){
                 {label:"Stock total red",val:fmt(totales.totalStock)+" L",sub:`${totales.pct.toFixed(0)}% capacidad`,color:"#e87030"},
                 {label:"Capacidad total",val:fmt(totales.totalCap)+" L",sub:"todas las estaciones",color:"#3a8fd4"},
                 {
-                  label:(()=>{const n=new Date();const l=n.toLocaleString("es-AR",{month:"long",year:"numeric"});return l.charAt(0).toUpperCase()+l.slice(1);})(),
+                  label: mesLabel(mesActual()),
                   val: clientesData
-                    ? fmt(["AG","TP","VH","CD"].reduce((s,k)=>(clientesData[k]||[]).reduce((a,b)=>a+b.litros,s),0)+(plantaData?.despachoExterno||0))+" L"
+                    ? fmt(["AG","TP","VH","CD"].reduce((s,k)=>(clientesData[k]||[]).reduce((a,b)=>a+b.litros,s),0)+(plantaData?.despachoExternoMes??plantaData?.despachoExterno??0))+" L"
                     : "Cargando...",
-                  sub: clientesData ? "despachos mes en curso" : "cargando datos...",
+                  sub: clientesData ? "despachos mes en curso" : "cargando...",
                   color:"#16a34a"
                 },
                 {label:"Estaciones activas",val:(Object.keys(dataPorEst).length+(plantaData?1:0)+(baseCRData?1:0))+"/"+Object.keys(ESTACIONES_CONFIG).length,sub:"con datos",color:"#a060e0"},
@@ -1042,17 +1065,29 @@ function App(){
         {/* ── DESPACHOS ── */}
         {tab==="despachos"&&(
           <div>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,flexWrap:"wrap",gap:10}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,flexWrap:"wrap",gap:12}}>
               <div>
                 <div style={{fontFamily:"'Bebas Neue'",fontSize:22,letterSpacing:2,color:"#1e293b"}}>Top 10 Clientes por Estación</div>
                 <div style={{fontFamily:"'DM Mono'",fontSize:11,color:"#16a34a",marginTop:2}}>
-                  📅 {(()=>{const n=new Date();const l=n.toLocaleString("es-AR",{month:"long",year:"numeric"});return l.charAt(0).toUpperCase()+l.slice(1);})()}
-                  {" — "}<span style={{color:"#94a3b8"}}>datos del mes en curso</span>
+                  📅 {mesLabel(mesSeleccionado)}
+                  {mesSeleccionado===mesActual()
+                    ?<span style={{color:"#94a3b8"}}> — mes en curso</span>
+                    :<span style={{color:"#f59e0b"}}> — mes anterior</span>}
                 </div>
               </div>
-              <button onClick={()=>fetchClientes(mesActual())} style={{background:"#3a8fd4",border:"none",borderRadius:8,color:"#fff",fontFamily:"'DM Mono'",fontSize:11,letterSpacing:1,padding:"9px 16px",cursor:"pointer",textTransform:"uppercase",display:"flex",alignItems:"center",gap:6}}>
-                {loadingClientes?<span className="spin">⟳</span>:"↻"} {loadingClientes?"Cargando...":"Actualizar"}
-              </button>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <select
+                  value={mesSeleccionado}
+                  onChange={e=>fetchClientes(e.target.value)}
+                  style={{fontFamily:"'DM Mono'",fontSize:12,fontWeight:600,padding:"8px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",background:"#fff",color:"#1e293b",cursor:"pointer"}}>
+                  {(clientesData?.mesesDisponibles||[mesActual()]).map(m=>(
+                    <option key={m} value={m}>{mesLabel(m)}{m===mesActual()?" (actual)":""}</option>
+                  ))}
+                </select>
+                <button onClick={()=>fetchClientes(mesSeleccionado)} style={{background:"#3a8fd4",border:"none",borderRadius:8,color:"#fff",fontFamily:"'DM Mono'",fontSize:11,letterSpacing:1,padding:"9px 14px",cursor:"pointer",textTransform:"uppercase",display:"flex",alignItems:"center",gap:6}}>
+                  {loadingClientes?<span className="spin">⟳</span>:"↻"} {loadingClientes?"Cargando...":"Actualizar"}
+                </button>
+              </div>
             </div>
             {loadingClientes&&<div style={{textAlign:"center",padding:40,color:"#94a3b8",fontFamily:"'DM Mono'"}}>Cargando datos de clientes...</div>}
             {!loadingClientes&&clientesData&&(
