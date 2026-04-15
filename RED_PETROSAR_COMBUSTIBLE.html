@@ -1043,11 +1043,9 @@ function App(){
                   label: mesLabel(mesActual()),
                   val: clientesData
                     ? fmt(
-                        // Estaciones: usar totalReal (todos los clientes) si existe, sino top10
-                        ["AG","TP","VH","CD"].reduce((s,k)=>{
-                          const est=clientesData[k]||[];
-                          return s+(est.totalReal!=null?est.totalReal:est.reduce((a,b)=>a+b.litros,0));
-                        },0)
+                        // Estaciones: usar X_total (todos los clientes del mes)
+                        (clientesData.AG_total||0)+(clientesData.TP_total||0)
+                        +(clientesData.VH_total||0)+(clientesData.CD_total||0)
                         // RESERO: filtrado por mes (llamada separada con &mes=)
                         +reseroMes
                         // BASE CR: filtrado por mes via getResumenMes
@@ -1073,19 +1071,17 @@ function App(){
             {clientesData&&(
               <div style={{background:"#f8fafc",border:"1px dashed #94a3b8",borderRadius:10,padding:"12px 16px",marginBottom:16,fontFamily:"'DM Mono'",fontSize:11,color:"#334155"}}>
                 <div style={{fontWeight:700,marginBottom:8,color:"#e87030"}}>🔍 DESGLOSE ABRIL (debug)</div>
-                <div>AG: {fmt((clientesData["AG"]||[]).totalReal||(clientesData["AG"]||[]).reduce((a,b)=>a+b.litros,0))} L (totalReal)</div>
-                <div>TP: {fmt((clientesData["TP"]||[]).totalReal||(clientesData["TP"]||[]).reduce((a,b)=>a+b.litros,0))} L (totalReal)</div>
-                <div>VH: {fmt((clientesData["VH"]||[]).totalReal||(clientesData["VH"]||[]).reduce((a,b)=>a+b.litros,0))} L (totalReal)</div>
-                <div>CD: {fmt((clientesData["CD"]||[]).totalReal||(clientesData["CD"]||[]).reduce((a,b)=>a+b.litros,0))} L (totalReal)</div>
+                <div>AG: {fmt(clientesData.AG_total||0)} L (totalReal)</div>
+                <div>TP: {fmt(clientesData.TP_total||0)} L (totalReal)</div>
+                <div>VH: {fmt(clientesData.VH_total||0)} L (totalReal)</div>
+                <div>CD: {fmt(clientesData.CD_total||0)} L (totalReal)</div>
                 <div>RESERO: {fmt(reseroMes)} L (mes filtrado)</div>
                 <div>BASE CR: {fmt(baseCRMes)} L (mes filtrado)</div>
                 <div>PLANTA: {fmt(plantaData?.despachoExternoMes??plantaData?.despachoExterno??0)} L (mes filtrado)</div>
                 <div style={{borderTop:"1px solid #e2e8f0",marginTop:6,paddingTop:6,fontWeight:700}}>
                   TOTAL: {fmt(
-                    ["AG","TP","VH","CD"].reduce((s,k)=>{
-                      const est=clientesData[k]||[];
-                      return s+(est.totalReal!=null?est.totalReal:est.reduce((a,b)=>a+b.litros,0));
-                    },0)
+                    (clientesData.AG_total||0)+(clientesData.TP_total||0)
+                    +(clientesData.VH_total||0)+(clientesData.CD_total||0)
                     +reseroMes+baseCRMes
                     +(plantaData?.despachoExternoMes??plantaData?.despachoExterno??0)
                   )} L
