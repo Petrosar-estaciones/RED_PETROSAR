@@ -703,6 +703,19 @@ function App(){
   const [clientesData,setClientesData]=useState(null);
   const [loadingClientes,setLoadingClientes]=useState(false);
   const [mesSeleccionado,setMesSeleccionado]=useState(mesActual);
+  const [configVisible,setConfigVisible]=useState(false);
+
+  // Ctrl+Shift+K activa/desactiva el panel Config
+  useEffect(()=>{
+    const handler=(e)=>{
+      if(e.ctrlKey&&e.shiftKey&&e.key==="K"){
+        e.preventDefault();
+        setConfigVisible(v=>!v);
+      }
+    };
+    window.addEventListener("keydown",handler);
+    return ()=>window.removeEventListener("keydown",handler);
+  },[]);
 
   const [ultimaActualizacion,setUltimaActualizacion]=useState(null);
 
@@ -1030,7 +1043,7 @@ function App(){
 
           {/* tabs */}
           <div className="header-tabs" style={{display:"flex",marginLeft:12,borderLeft:"1px solid #e2e8f0",paddingLeft:12,gap:2,flexShrink:0}}>
-            {[["dashboard","Dashboard"],["despachos","Despachos"],["ingresos","Ingresos"],["config","Config"]].map(([k,label])=>(
+            {[["dashboard","Dashboard"],["despachos","Despachos"],["ingresos","Ingresos"],...(configVisible?[["config","Config"]]:[])].map(([k,label])=>(
               <button key={k} onClick={()=>setTab(k)} style={{background:tab===k?"#f1f5f9":"transparent",border:"none",borderRadius:6,color:tab===k?"#1e293b":"#94a3b8",fontFamily:"'DM Mono'",fontSize:10,letterSpacing:.5,padding:"6px 8px",cursor:"pointer",textTransform:"uppercase",transition:"all .15s",fontWeight:tab===k?600:400,whiteSpace:"nowrap"}}>
                 {label}
               </button>
@@ -1042,7 +1055,7 @@ function App(){
       {/* TABS MÓVIL — segunda fila, solo visible en celular */}
       <div className="header-tabs-mobile" style={{display:"none",borderBottom:"1px solid #e2e8f0",background:"#fff",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
         <div style={{display:"flex",minWidth:"max-content",padding:"0 8px"}}>
-          {[["dashboard","📊 Dashboard"],["despachos","📦 Despachos"],["ingresos","📥 Ingresos"],["config","⚙️ Config"]].map(([k,label])=>(
+          {[["dashboard","📊 Dashboard"],["despachos","📦 Despachos"],["ingresos","📥 Ingresos"],...(configVisible?[["config","⚙️ Config"]]:[])].map(([k,label])=>(
             <button key={k} onClick={()=>setTab(k)} style={{
               background:"transparent",border:"none",borderBottom:`2.5px solid ${tab===k?"#e87030":"transparent"}`,
               color:tab===k?"#e87030":"#94a3b8",fontFamily:"'DM Mono'",fontSize:11,
@@ -1363,7 +1376,7 @@ function App(){
         )}
 
         {/* ── CONFIG ── */}
-        {tab==="config"&&(
+        {tab==="config"&&configVisible&&(
           <div>
             <div style={{fontFamily:"'Bebas Neue'",fontSize:22,letterSpacing:2,color:"#1e293b",marginBottom:8}}>Stock Inicial por Estación</div>
             <div style={{fontSize:12,color:"#64748b",marginBottom:24,fontFamily:"'DM Mono'"}}>
