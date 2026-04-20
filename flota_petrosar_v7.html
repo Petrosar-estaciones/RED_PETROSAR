@@ -1,0 +1,1768 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PETROSAR · Consumo Flota</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg:#f5f6fa;--white:#ffffff;--navy:#0f2044;--orange:#e85d20;--orange-l:#ff7a40;
+    --orange-pale:#fff3ee;--blue:#1a5fa8;--blue-pale:#eef4fc;--green:#1a7a4a;
+    --green-pale:#edf7f2;--red:#c0392b;--red-pale:#fdf0ee;--gold:#c97d10;
+    --gold-pale:#fdf6e3;--border:#e2e6ef;--txt:#1a1f36;--muted:#6b7280;
+    --r:12px;--r-sm:8px;--shadow:0 1px 4px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.06);
+    --shadow-sm:0 1px 3px rgba(0,0,0,.06);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh}
+  .hdr{background:var(--navy);padding:0 32px;display:flex;align-items:center;gap:20px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+  .logo{background:var(--orange);color:#fff;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;letter-spacing:1px;padding:6px 14px;border-radius:6px;margin:14px 0}
+  .hdr-title{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:17px;color:#fff}
+  .hdr-sub{font-size:11px;color:rgba(255,255,255,.5);margin-top:1px;letter-spacing:.5px;text-transform:uppercase}
+  .tabs{background:var(--white);border-bottom:1.5px solid var(--border);padding:0 32px;display:flex;gap:0}
+  .tab{font-size:13px;font-weight:600;padding:14px 20px;cursor:pointer;color:var(--muted);border-bottom:2.5px solid transparent;margin-bottom:-1.5px;transition:all .18s;white-space:nowrap}
+  .tab.active{color:var(--orange);border-bottom-color:var(--orange)}
+  .tab:hover:not(.active){color:var(--txt)}
+  .main{padding:28px 32px;max-width:1300px;margin:0 auto}
+  .card{background:var(--white);border-radius:var(--r);border:1px solid var(--border);box-shadow:var(--shadow-sm);padding:20px 24px;margin-bottom:20px}
+  .card-title{font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+  .fg{display:flex;flex-direction:column;gap:5px;flex:1;min-width:130px}
+  .lbl{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.5px}
+  input,select{background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r-sm);color:var(--txt);font-family:'Inter',sans-serif;font-size:13px;padding:9px 12px;width:100%;outline:none;transition:border-color .15s}
+  input:focus,select:focus{border-color:var(--orange);background:#fff}
+  input::placeholder{color:#bbb}
+  .btn{font-family:'Inter',sans-serif;font-weight:600;font-size:13px;padding:9px 22px;border:none;border-radius:var(--r-sm);cursor:pointer;transition:all .15s;white-space:nowrap;height:38px}
+  .btn-primary{background:var(--orange);color:#fff}
+  .btn-primary:hover{background:var(--orange-l)}
+  .btn-ghost{background:transparent;color:var(--muted);border:1.5px solid var(--border)}
+  .btn-ghost:hover{border-color:var(--muted);color:var(--txt)}
+  /* SEGMENTED CONTROL */
+  .seg{display:flex;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r-sm);padding:3px;gap:3px}
+  .seg-btn{flex:1;font-size:12px;font-weight:600;padding:6px 14px;border:none;border-radius:6px;cursor:pointer;background:transparent;color:var(--muted);transition:all .15s;white-space:nowrap}
+  .seg-btn.active{background:var(--white);color:var(--orange);box-shadow:var(--shadow-sm)}
+  /* AUTOCOMPLETE */
+  .ac-wrap{position:relative}
+  .ac-dd{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1.5px solid var(--border);border-radius:var(--r-sm);max-height:240px;overflow-y:auto;z-index:300;box-shadow:var(--shadow);display:none}
+  .ac-item{padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);transition:background .1s}
+  .ac-item:last-child{border-bottom:none}
+  .ac-item:hover,.ac-item.hi{background:var(--orange-pale)}
+  .ac-int{font-weight:700;font-size:14px;color:var(--orange);min-width:48px}
+  .ac-pat{font-weight:600;font-size:12px;background:var(--blue-pale);color:var(--blue);padding:2px 8px;border-radius:4px;letter-spacing:.5px}
+  .ac-desc{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* MES TABS */
+  .mes-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+  .mes-tab{font-size:12px;font-weight:600;padding:5px 14px;border-radius:20px;border:1.5px solid var(--border);color:var(--muted);cursor:pointer;transition:all .15s;background:var(--white)}
+  .mes-tab.active{background:var(--orange);color:#fff;border-color:var(--orange)}
+  .mes-tab:hover:not(.active){border-color:var(--muted);color:var(--txt)}
+  /* KPI */
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+  .kpi{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow-sm)}
+  .kpi-lbl{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+  .kpi-val{font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:700;color:var(--txt);line-height:1}
+  .kpi-unit{font-size:11px;color:var(--muted);margin-top:3px}
+  .kpi.accent{background:var(--orange);border-color:var(--orange)}
+  .kpi.accent .kpi-lbl{color:rgba(255,255,255,.75)}
+  .kpi.accent .kpi-val{color:#fff}
+  .kpi.accent .kpi-unit{color:rgba(255,255,255,.75)}
+  /* SECTOR CARDS */
+  .sectores-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:20px}
+  .sector-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow-sm)}
+  .sector-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+  .sector-tag{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:4px 10px;border-radius:20px}
+  .sector-lts{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:20px}
+  .sector-body{padding:12px 18px}
+  .sector-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px}
+  .sector-row:last-child{border-bottom:none}
+  .sector-row-lbl{color:var(--muted)}
+  .sector-row-val{font-weight:600;font-size:13px}
+  /* PRODUCT BREAKDOWN */
+  .prod-bar{margin-top:8px}
+  .prod-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;font-size:12px}
+  .prod-lbl{color:var(--muted);font-weight:500}
+  .prod-val{font-weight:700}
+  .bar-track{height:4px;background:var(--bg);border-radius:2px;margin-bottom:8px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:2px;transition:width .4s}
+  /* TABLE */
+  .tbl-wrap{background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow-sm);margin-bottom:20px}
+  .tbl-hdr{padding:14px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+  .tbl-title{font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--txt)}
+  .tbl-count{font-size:11px;color:var(--muted);background:var(--bg);padding:3px 10px;border-radius:12px;border:1px solid var(--border)}
+  table.dt{width:100%;border-collapse:collapse;font-size:13px}
+  table.dt th{font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);padding:10px 18px;text-align:left;border-bottom:1px solid var(--border);background:var(--bg)}
+  table.dt td{padding:10px 18px;border-bottom:1px solid var(--border);color:var(--txt)}
+  table.dt tr:last-child td{border-bottom:none}
+  table.dt tr:hover td{background:var(--orange-pale)}
+  table.dt tfoot td{font-weight:700;background:var(--orange-pale);color:var(--orange)}
+  .lts-val{font-weight:700;color:var(--orange);font-size:14px}
+  /* BADGES */
+  .badge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:3px 8px;border-radius:4px}
+  .b-ag{background:#e8f7ee;color:#1a7a4a}
+  .b-tp{background:#f0eafe;color:#5b21b6}
+  .b-vh{background:#fff3e0;color:#b45309}
+  .b-cd{background:#e0f0ff;color:#1a5fa8}
+  .b-basecr{background:#fdecea;color:#b91c1c}
+  .b-resero{background:#f0fde4;color:#3a7d0a}
+  .b-planta{background:#e0f4ff;color:#0369a1}
+  .b-eesscd{background:#e0f9ff;color:#0891b2}
+  .b-euro{background:#fff3e0;color:#92400e}
+  .b-gasoil{background:#e0f0ff;color:#1e40af}
+  /* VEH CARD */
+  .veh-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:18px 22px;margin-bottom:18px;display:flex;align-items:center;gap:18px;box-shadow:var(--shadow-sm)}
+  .veh-int{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:32px;color:var(--orange);line-height:1}
+  .veh-pat{font-weight:700;font-size:15px;letter-spacing:1.5px;background:var(--blue-pale);color:var(--blue);padding:4px 12px;border-radius:6px;margin-top:4px;display:inline-block}
+  .veh-desc{font-size:12px;color:var(--muted);margin-top:3px}
+  /* PRECIO */
+  .precio-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
+  .precio-inp{display:flex;flex-direction:column;gap:4px}
+  .precio-inp label{font-size:11px;font-weight:600;color:var(--muted)}
+  /* LOADING/EMPTY */
+  .loading{display:none;padding:48px;text-align:center;color:var(--muted)}
+  .spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 14px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .empty{padding:48px 24px;text-align:center;color:var(--muted)}
+  .empty-icon{font-size:40px;margin-bottom:10px}
+  .empty-title{font-size:16px;font-weight:600;color:var(--txt);margin-bottom:4px}
+  .alert{border-radius:var(--r-sm);padding:10px 14px;font-size:12px;margin-bottom:14px;font-weight:500}
+  .alert-warn{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+  .alert-err{background:var(--red-pale);border:1px solid #fca5a5;color:var(--red)}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+  .fade{animation:fadeIn .3s ease}
+  @media(max-width:640px){.main{padding:16px}.tabs{padding:0 12px;overflow-x:auto}.hdr{padding:0 16px}.kpi-grid{grid-template-columns:repeat(2,1fr)}.sectores-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="hdr">
+  <div class="logo">PETROSAR</div>
+  <div>
+    <div class="hdr-title">Consumo Flota Interna</div>
+    <div class="hdr-sub">Control de combustible · Todas las fuentes</div>
+  </div>
+  <div style="margin-left:auto">
+    <button onclick="limpiarCache();cargarTotales()" class="btn" style="background:rgba(255,255,255,.1);color:#fff;font-size:12px;padding:6px 14px;height:auto">
+      ↺ Actualizar datos
+    </button>
+  </div>
+</header>
+<nav class="tabs">
+  <div class="tab active" onclick="switchTab('totales')">Totales por Sector</div>
+  <div class="tab" onclick="switchTab('veh')">Por Vehículo</div>
+  <div class="tab" onclick="switchTab('valorizacion')">Valorización</div>
+  <div class="tab" onclick="switchTab('ingreso')">Ingreso ESCD x Vta</div>
+</nav>
+<main class="main">
+
+  <!-- TAB VEH -->
+  <div id="tab-veh" style="display:none">
+    <div class="card">
+      <div class="card-title">Buscar vehículo</div>
+      <div class="row">
+        <div class="fg" style="flex:2;min-width:200px">
+          <label class="lbl">Patente o Interno</label>
+          <div class="ac-wrap">
+            <input type="text" id="vehSearch" placeholder="Ingresá patente o interno..." autocomplete="off" oninput="acSearch(this.value)" onkeydown="acKey(event)">
+            <div class="ac-dd" id="acDd"></div>
+          </div>
+        </div>
+        <div class="fg" style="min-width:180px">
+          <label class="lbl">Línea de Negocio</label>
+          <select id="vehLinea" onchange="filtrarPorLinea()">
+            <option value="">Todas las líneas</option>
+          </select>
+        </div>
+        <div class="fg"><label class="lbl">Desde</label><input type="date" id="vehFrom"></div>
+        <div class="fg"><label class="lbl">Hasta</label><input type="date" id="vehTo"></div>
+        <div style="display:flex;gap:8px;align-items:flex-end">
+          <button class="btn btn-primary" onclick="buscarVeh()">Buscar</button>
+          <button class="btn btn-ghost" onclick="limpiarVeh()">✕</button>
+        </div>
+      </div>
+      <!-- Lista de vehículos por línea -->
+      <div id="listaLinea" style="display:none;margin-top:14px">
+        <div class="lbl" style="margin-bottom:8px">Vehículos de la línea seleccionada — hacé clic para seleccionar:</div>
+        <div id="listaLineaItems" style="display:flex;flex-wrap:wrap;gap:6px;max-height:150px;overflow-y:auto"></div>
+      </div>
+      <div id="vehAlert"></div>
+      <div style="margin-top:10px">
+        <button class="btn btn-ghost" style="font-size:12px" onclick="buscarSinIdentificar()">
+          🔍 Ver despachos sin vehículo identificado en Rodados
+        </button>
+      </div>
+    </div>
+    <div id="loadingVeh" class="loading"><div class="spinner"></div>Consultando todas las fuentes...</div>
+    <div id="resVeh"><div class="empty"><div class="empty-icon">⛽</div><div class="empty-title">Ingresá una patente o interno</div><div style="font-size:13px;margin-top:4px">para ver el historial de consumo</div></div></div>
+  </div>
+
+  <!-- TAB TOTALES -->
+  <div id="tab-totales">
+    <div class="card">
+      <div class="card-title">Filtrar período y centro de costo</div>
+      <div class="row" style="margin-bottom:14px">
+        <div class="fg"><label class="lbl">Desde</label><input type="date" id="totFrom"></div>
+        <div class="fg"><label class="lbl">Hasta</label><input type="date" id="totTo"></div>
+        <div style="align-self:flex-end"><button class="btn btn-primary" onclick="cargarTotales()">Actualizar</button></div>
+      </div>
+      <div>
+        <div class="lbl" style="margin-bottom:8px">Centro de costo</div>
+        <div class="seg" style="max-width:320px">
+          <button class="seg-btn active" id="cc-petrosar" onclick="selCC('PETROSAR')">PETROSAR</button>
+          <button class="seg-btn" id="cc-eess" onclick="selCC('EESS')">EESS CD</button>
+          <button class="seg-btn" id="cc-todos" onclick="selCC('TODOS')">Todos</button>
+        </div>
+      </div>
+    </div>
+    <div class="mes-tabs" id="mesTabs"></div>
+    <div id="loadingTot" class="loading"><div class="spinner"></div>Cargando totales...</div>
+    <div id="resTot"><div class="empty"><div class="empty-icon">📊</div><div class="empty-title">Seleccioná un período</div></div></div>
+  </div>
+
+  <!-- TAB VALORIZACIÓN -->
+  <div id="tab-valorizacion" style="display:none">
+    <div class="card">
+      <div class="card-title">Precios de referencia por litro</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
+        Los precios se cargan automáticamente desde el sheet de Rodados (hoja Precios). 
+        <span id="preciosMesLabel" style="color:var(--orange);font-weight:600"></span>
+      </div>
+      <div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px">Precios de Costo (Compra)</div>
+      <div class="precio-grid">
+        <div class="precio-inp"><label>Euro Diesel — Neto costo ($/lts)</label><input type="number" id="pEuro" value="0" step="0.001" readonly style="background:#f0f4f8;color:var(--txt);font-weight:600"></div>
+        <div class="precio-inp"><label>Gasoil — Neto costo ($/lts)</label><input type="number" id="pGasoil" value="0" step="0.001" readonly style="background:#f0f4f8;color:var(--txt);font-weight:600"></div>
+        <div class="precio-inp"><label>Imp. Interno Euro ($/lts)</label><input type="number" id="pImpEuro" value="0" step="0.001" readonly style="background:#f0f4f8;color:var(--txt);font-weight:600"></div>
+        <div class="precio-inp"><label>Imp. Interno Gasoil ($/lts)</label><input type="number" id="pImpGasoil" value="0" step="0.001" readonly style="background:#f0f4f8;color:var(--txt);font-weight:600"></div>
+        <div class="precio-inp"><label>CO2 Euro ($/lts)</label><input type="number" id="pCO2Euro" value="0" step="0.001" readonly style="background:#f0f4f8;color:var(--txt);font-weight:600"></div>
+        <div class="precio-inp"><label>CO2 Gasoil ($/lts)</label><input type="number" id="pCO2Gasoil" value="0" step="0.001" readonly style="background:#f0f4f8;color:var(--txt);font-weight:600"></div>
+      </div>
+      <div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px;margin-top:12px;border-top:1px solid var(--border);padding-top:12px">Precios Neto de Venta — PETROSAR (para Ingreso ESCD)</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Columnas 7 y 8 del sheet Precios: <code style="background:var(--bg);padding:2px 6px;border-radius:4px">pNetaVtaEuro</code> y <code style="background:var(--bg);padding:2px 6px;border-radius:4px">pNetaVtaGasoil</code></div>
+      <div class="precio-grid" style="max-width:480px">
+        <div class="precio-inp"><label>Euro Diesel — Neto venta ($/lts)</label><input type="number" id="pVtaEuro" value="0" step="0.001" readonly style="background:#edf7f2;color:var(--green);font-weight:600"></div>
+        <div class="precio-inp"><label>Gasoil — Neto venta ($/lts)</label><input type="number" id="pVtaGasoil" value="0" step="0.001" readonly style="background:#edf7f2;color:var(--green);font-weight:600"></div>
+      </div>
+      <div class="row" style="margin-bottom:14px">
+        <div class="fg"><label class="lbl">Desde</label><input type="date" id="valFrom"></div>
+        <div class="fg"><label class="lbl">Hasta</label><input type="date" id="valTo"></div>
+        <div style="align-self:flex-end"><button class="btn btn-primary" onclick="cargarValorizacion()">Calcular</button></div>
+      </div>
+      <div>
+        <div class="lbl" style="margin-bottom:8px">Centro de costo</div>
+        <div class="seg" style="max-width:320px">
+          <button class="seg-btn active" id="valcc-petrosar" onclick="selValCC('PETROSAR')">PETROSAR</button>
+          <button class="seg-btn" id="valcc-eess" onclick="selValCC('EESS')">EESS CD</button>
+          <button class="seg-btn" id="valcc-todos" onclick="selValCC('TODOS')">Todos</button>
+        </div>
+      </div>
+    </div>
+    <div class="mes-tabs" id="mesTabsVal"></div>
+    <div id="loadingVal" class="loading"><div class="spinner"></div>Calculando valorización...</div>
+    <div id="resVal"><div class="empty"><div class="empty-icon">💰</div><div class="empty-title">Configurá los precios y calculá</div></div></div>
+  </div>
+
+  <!-- TAB INGRESO ESCD x VTA -->
+  <div id="tab-ingreso" style="display:none">
+    <div class="card">
+      <div class="card-title">Ingreso ESCD por Venta — Petrosar</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+        Diferencia contable entre el <strong>neto de venta</strong> de los litros consumidos por Petrosar 
+        y el <strong>costo de compra</strong> valorizado a esos mismos litros.<br>
+        <span style="color:var(--green);font-weight:600">Ingreso = (Litros Petrosar × Precio Neto Vta) − (Litros Petrosar × Precio Neto Costo)</span>
+      </div>
+      <div class="row" style="margin-bottom:14px">
+        <div class="fg"><label class="lbl">Desde</label><input type="date" id="ingFrom"></div>
+        <div class="fg"><label class="lbl">Hasta</label><input type="date" id="ingTo"></div>
+        <div style="align-self:flex-end"><button class="btn btn-primary" onclick="cargarIngreso()">Calcular</button></div>
+      </div>
+      <div id="ingPreciosInfo" style="font-size:12px;color:var(--muted);padding:8px 12px;background:var(--bg);border-radius:6px;border:1px solid var(--border);display:none"></div>
+    </div>
+    <div class="mes-tabs" id="mesTabsIng"></div>
+    <div id="loadingIng" class="loading"><div class="spinner"></div>Calculando ingreso...</div>
+    <div id="resIng"><div class="empty"><div class="empty-icon">📈</div><div class="empty-title">Seleccioná un período y calculá</div><div style="font-size:13px;margin-top:4px;color:var(--muted)">Requiere precios neto venta en el sheet (cols 7 y 8)</div></div></div>
+  </div>
+
+</main>
+<script>
+// ═══════════════════════════════════
+// FUENTES — índices fijos por columna
+// ═══════════════════════════════════
+const SHEET_EST = '1418oEjkm9IVg6RsBIrygD42G2SaDa0yx0DmJtpZxBWE';
+const EESS_INTERNOS = [1009, 836, 742, 794]; // internos EESS CD
+
+// Producto normalizado
+function normProd(s) {
+  const u = s.toUpperCase();
+  if (u.includes('GASOIL') || u.includes('DIESEL BIO')) return 'GASOIL';
+  return 'EURO';
+}
+
+const SHEET_DC       = '1CvPGNJGlv64Vs1PtEqdUrj9pntw7at0HPboS7YYnIf8';
+const SHEET_RODADOS  = '1MUMqZlrP5-oce4oqHMEL6VvcFdGaLL3MzUDqYX8KevY';
+const SHEET_PRECIOS  = '1MUMqZlrP5-oce4oqHMEL6VvcFdGaLL3MzUDqYX8KevY';
+const GID_PRECIOS    = '1112510098';
+let preciosHistorial = {};
+let cachedDespachos  = null, cachedFrom = null, cachedTo = null;
+const FUENTES = {
+  // TP: gid=0 — B=Fecha C=Litros D=Producto F=Patente G=Interno R=Cliente(col17)
+  TP: { nombre:'TP', id:SHEET_EST, ref:'0',
+    iFecha:1, iLitros:2, iProducto:3, iPatente:5, iInterno:6,
+    filtroCliente:true, headerRows:0, punto:'TP' },
+
+  // AG: gid=1244583268 — misma estructura
+  AG: { nombre:'AG', id:SHEET_EST, ref:'1244583268',
+    iFecha:1, iLitros:2, iProducto:3, iPatente:5, iInterno:6,
+    filtroCliente:true, headerRows:0, punto:'AG' },
+
+  // CD viene solo de Datos Conductor (CD_DC) — no de Estaciones
+
+  // DEBO CD: gid=1093517494 — consumos EESS CD
+  // A=Comprobante(0) B=Fecha(1) C=Cliente(2) D=FormaPago(3) E=Producto(4) F=Litros(5) H=Interno(7)
+  // Filtro: col C contiene "03007" Y col H (Interno) en [1009,836,742,794]
+  DEBOCD: { nombre:'EESS CD', id:SHEET_EST, ref:'1093517494',
+    iFecha:1, iLitros:5, iProducto:4, iPatente:-1, iInterno:7,
+    filtroCliente:false, filtroClienteCol:2, filtroClienteVal:'03007',
+    filtroInternos:[1009,836,742,794],
+    headerRows:0, punto:'EESS CD' },
+
+  // RESERO: gid=1798585939
+  // Sheet tiene filtros en filas 1-6 (Desde/Hasta/Consolas), fila 7=encabezados de col
+  // gviz con headers=1 toma fila 7 como header → filas 1-6 quedan como headerRows
+  // Datos reales desde fila 15 del sheet → headerRows=8 en gviz
+  // C=FechaInicio(2) J=MainID/Interno(9) R=Cantidad/Litros(17)
+  RESERO: { nombre:'RESERO', id:SHEET_EST, ref:'1798585939',
+    iFecha:2, iLitros:17, iProducto:14, iPatente:-1, iInterno:9,
+    filtroCliente:false, headerRows:0, punto:'RESERO' },
+
+  // VH: sheet Datos Conductor, producto = "EURO + DIESEL VH"
+  // A=Fecha(0) C=NroVale/Interno(2) G=Patente(6) M=Producto(12) N=Cantidad(13)
+  VH: { nombre:'VH', id:SHEET_DC, ref:'578541772',
+    iFecha:0, iLitros:13, iProducto:12, iPatente:6, iInterno:2,
+    filtroCliente:false, headerRows:0, punto:'VH',
+    filtroProducto:'EURO + DIESEL VH' },
+
+  // CD Datos Conductor: mismo sheet, todos excepto "EURO + DIESEL VH"
+  CD_DC: { nombre:'CD', id:SHEET_DC, ref:'578541772',
+    iFecha:0, iLitros:13, iProducto:12, iPatente:6, iInterno:2,
+    filtroCliente:false, headerRows:0, punto:'CD',
+    filtroProductoExcluir:'EURO + DIESEL VH' },
+
+  // BASE CR: A=Fecha(0) B=Interno(1) C=Patente(2) D=Chofer(3) E=Litros(4) F=Producto(5)
+  // Excluir internos 836/742/794
+  BASECR: { nombre:'BASE CR', id:'1A_0pcSuycTcTBcf8bAHXopHk_FrLSgcdbDSFbvZnLuQ', ref:'0',
+    iFecha:0, iLitros:4, iProducto:5, iPatente:2, iInterno:1,
+    filtroCliente:false, headerRows:0, punto:'BASE CR',
+    excluirInternos:[836,742,794] },
+
+  // PLANTA: gid=1688777748, B=Fecha(1) G=Receptor(6) L+M+N=litros
+  // Filtro: col G contiene "INT 742", "INT 794" o "INT 836"
+  PLANTA: { nombre:'PLANTA', id:'1NWUzcMuA5JmUXW5p3MiWwes8M4nb5EBNoTssFBU0ndE', ref:'1688777748',
+    iFecha:1, iLitrosMulti:[11,12,13], iProducto:2, iPatente:-1, iInterno:9,
+    filtroCliente:false, headerRows:2, punto:'EESS CD',
+    filtroReceptor:[742,836,794], iReceptor:6 }
+}
+const SECTOR_ORDER  = ['AG','TP','VH','CD','BASE CR','RESERO','EESS CD'];
+const SECTOR_COLOR  = {AG:'#1a7a4a',TP:'#5b21b6',VH:'#b45309',CD:'#1a5fa8','BASE CR':'#b91c1c',RESERO:'#3a7d0a',PLANTA:'#0369a1','EESS CD':'#0891b2'};
+const SECTOR_BG     = {AG:'#e8f7ee',TP:'#f0eafe',VH:'#fff3e0',CD:'#e0f0ff','BASE CR':'#fdecea',RESERO:'#f0fde4',PLANTA:'#e0f4ff','EESS CD':'#e0f9ff'};
+
+let ccActual  = 'PETROSAR';
+let ccVal     = 'PETROSAR'; // CC para valorización
+
+// ═══════════════════════════════════
+// UTILIDADES
+// ═══════════════════════════════════
+let FLOTA = [];
+function v(row,i){return(i>=0&&row.c&&row.c[i])?(row.c[i].v??null):null;}
+function s(row,i){return String(v(row,i)||'').trim();}
+function f(row,i){return(row.c&&row.c[i])?(row.c[i].f||''):'';}
+function norm(x){return String(x||'').trim().toUpperCase().replace(/[\s\-]/g,'');}
+function fmtN(n,d=2){return(+n||0).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});}
+function fmtARS(n){return '$'+fmtN(n,0);}
+function fmtDate(d){if(!d)return'—';const[y,m,day]=d.split('-');return`${day}/${m}/${y}`;}
+
+function parseFecha(row,i){
+  const val=v(row,i), fmt=f(row,i);
+  const tryStr = src => {
+    if(!src) return null;
+    src = String(src);
+    // Date(2026,2,1,...) — mes base 0
+    let m=src.match(/Date\((\d+),(\d+),(\d+)/);
+    if(m) return new Date(+m[1],+m[2],+m[3]);
+    // YYYY-MM-DD (con o sin hora: "2026-03-01" o "2026-03-01 20:29:00")
+    m=src.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if(m) return new Date(+m[1],+m[2]-1,+m[3]);
+    // DD/MM/YYYY
+    m=src.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if(m) return new Date(+m[3],+m[2]-1,+m[1]);
+    // DD-MM-YYYY
+    m=src.match(/(\d{1,2})-(\d{1,2})-(\d{4})/);
+    if(m) return new Date(+m[3],+m[2]-1,+m[1]);
+    return null;
+  };
+  // 1. Valor raw
+  if(val!==null && val!==undefined){
+    const r=tryStr(val);
+    if(r&&!isNaN(r)) return r;
+    if(typeof val==='number') return new Date(val);
+  }
+  // 2. Formato display
+  if(fmt){
+    const r=tryStr(fmt);
+    if(r&&!isNaN(r)) return r;
+  }
+  return null;
+}
+
+function inRange(fecha,from,to){
+  if(!fecha)return false;
+  if(from&&fecha<new Date(from+'T00:00:00'))return false;
+  if(to&&fecha>new Date(to+'T23:59:59'))return false;
+  return true;
+}
+
+async function fetchGviz(id,ref='0'){
+  const p=/^\d+$/.test(String(ref))?`gid=${ref}`:`sheet=${encodeURIComponent(ref)}`;
+  const r=await fetch(`https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:json&headers=1&${p}`);
+  if(!r.ok)throw new Error(`HTTP ${r.status}`);
+  const t=await r.text();
+  const j=JSON.parse(t.slice(t.indexOf('(')+1,t.lastIndexOf(')')));
+  if(j.status==='error')throw new Error(j.errors?.[0]?.message||'Error sheet');
+  return j.table;
+}
+
+function parsarFuente(table,fuente,from,to,filtVeh=null){
+  if(!table?.rows)return[];
+  const res=[];
+  let ri=0,skipFecha=0,skipCliente=0,skipFiltro=0;
+  for(const row of table.rows){
+    ri++;
+    if(ri<=fuente.headerRows)continue;
+    if(!row.c)continue;
+    // Filtro cliente (PETROSAR en col R)
+    if(fuente.filtroCliente){
+      const cli=s(row,17).toUpperCase();
+      if(!cli.includes('PETROSAR')){skipCliente++;continue;}
+    }
+    // Filtro internos específicos (Planta por col J)
+    if(fuente.filtroInternos){
+      if(!fuente.filtroInternos.includes(+v(row,fuente.iInterno))){skipFiltro++;continue;}
+    }
+    // Excluir internos específicos (BASE CR: excluir camiones de EESS)
+    if(fuente.excluirInternos){
+      if(fuente.excluirInternos.includes(+v(row,fuente.iInterno))){skipFiltro++;continue;}
+    }
+    // Filtro receptor (Planta por col G: busca el número 742/794/836 en el texto)
+    let receptorN=null;
+    if(fuente.filtroReceptor){
+      const rec=s(row,fuente.iReceptor).toUpperCase().replace(/\s+/g,'');
+      const matchedN=fuente.filtroReceptor.find(n=>rec.includes(String(n)));
+      if(!matchedN){skipFiltro++;continue;}
+      receptorN=matchedN; // guardar el número: 742, 836 o 794
+    }
+    // Filtro por producto exacto (VH)
+    if(fuente.filtroProducto){
+      if(!s(row,fuente.iProducto).toUpperCase().includes(fuente.filtroProducto.toUpperCase())){skipFiltro++;continue;}
+    }
+    // Filtro excluir producto (CD_DC: todo excepto VH)
+    if(fuente.filtroProductoExcluir){
+      if(s(row,fuente.iProducto).toUpperCase().includes(fuente.filtroProductoExcluir.toUpperCase())){skipFiltro++;continue;}
+    }
+    const fecha=parseFecha(row,fuente.iFecha);
+    if(!inRange(fecha,from,to)){skipFecha++;continue;}
+    let litros=0;
+    if(fuente.iLitrosMulti){
+      litros=fuente.iLitrosMulti.reduce((s,i)=>s+(+v(row,i)||0),0);
+    } else {
+      const lv=v(row,fuente.iLitros);
+      const lf=f(row,fuente.iLitros);
+      if(typeof lv==='number' && lv===Math.floor(lv) && lf){
+        // .v es entero pero puede tener decimales en .f — ej: .v=31, .f="31,884"
+        // formato argentino: punto=miles, coma=decimal → "31,884" = 31.884
+        const fromFmt=parseFloat(lf.replace(/\./g,'').replace(',','.'))||0;
+        litros=fromFmt||lv;
+      } else if(typeof lv==='number'){
+        litros=lv;
+      } else if(typeof lv==='string'){
+        // string con coma decimal: "31,884" → 31.884
+        litros=parseFloat(lv.replace(/\./g,'').replace(',','.'))||0;
+      } else if(lf){
+        litros=parseFloat(lf.replace(/\./g,'').replace(',','.'))||0;
+      }
+    }
+    if(!litros)continue;
+    const pat=fuente.iPatente>=0?norm(s(row,fuente.iPatente)):'';
+    let int_=String(v(row,fuente.iInterno)||'').trim();
+    const prodRaw=s(row,fuente.iProducto);
+    const prod=normProd(prodRaw);
+    // Punto: dinámico para VHCD
+    let punto=fuente.punto;
+    if(!punto){
+      // VHCD: producto VH → VH, resto → CD
+      punto=prodRaw.toUpperCase().includes('VH')?'VH':'CD';
+    }
+    // Filtro vehículo
+    if(filtVeh){
+      const okP=pat&&pat===norm(filtVeh.Dominio);
+      const okI=int_&&int_===String(filtVeh.Interno);
+      // Para fuentes con filtroReceptor (PLANTA): matchear por receptor col G
+      const okR=fuente.filtroReceptor?
+        s(row,fuente.iReceptor).replace(/\s/g,'').toUpperCase().includes(String(filtVeh.Interno)):false;
+      if(!okP&&!okI&&!okR)continue;
+    }
+    const mes=fecha?`${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,'0')}`:null;
+    const interno=+int_||0;
+    res.push({fecha,fechaStr:f(row,fuente.iFecha)||(fecha?fecha.toLocaleDateString('es-AR'):''),litros,prod,prodRaw,pat,int:int_,interno,punto,mes,fuente:fuente.nombre,receptorN});
+  }
+  console.log(`[${fuente.nombre}] total=${ri} headerSkip=${fuente.headerRows} clienteSkip=${skipCliente} fechaSkip=${skipFecha} filtroSkip=${skipFiltro} resultado=${res.length} lts=${res.reduce((s,d)=>s+d.litros,0).toFixed(2)}`);
+  return res;
+}
+
+// Filtro centro de costo
+function filtrarCC(despachos,cc){
+  if(cc==='TODOS')return despachos;
+  if(cc==='EESS')return despachos.filter(d=>d.punto==='EESS CD');
+  // PETROSAR = todos los que NO son EESS CD
+  return despachos.filter(d=>d.punto!=='EESS CD');
+}
+
+// Cache global de tablas crudas por fuente (no expira en la sesión)
+const _tableCache = {};
+
+async function fetchGvizCached(id, ref){
+  const key = id+'|'+ref;
+  if(_tableCache[key]) return _tableCache[key];
+  const t = await fetchGviz(id, ref);
+  _tableCache[key] = t;
+  return t;
+}
+
+function limpiarCache(){
+  Object.keys(_tableCache).forEach(k=>delete _tableCache[k]);
+  cachedDespachos=null; cachedFrom=null; cachedTo=null;
+}
+
+async function consultarTodo(from,to,filtVeh=null){
+  const keys=Object.keys(FUENTES);
+  // Usar cache de tablas para no re-descargar sheets ya consultados
+  const results=await Promise.allSettled(
+    keys.map(k=>fetchGvizCached(FUENTES[k].id,FUENTES[k].ref))
+  );
+  const despachos=[],errores=[];
+  results.forEach((r,i)=>{
+    const k=keys[i];
+    if(r.status==='fulfilled')despachos.push(...parsarFuente(r.value,FUENTES[k],from,to,filtVeh));
+    else errores.push(`${FUENTES[k].nombre}: ${r.reason?.message||'error'}`);
+  });
+  return{despachos,errores};
+}
+
+// ═══════════════════════════════════
+// FLOTA DINÁMICA
+// ═══════════════════════════════════
+async function cargarPreciosSheet(){
+  try {
+    console.log('Cargando precios desde sheet:', SHEET_PRECIOS, 'gid:', GID_PRECIOS);
+    const t = await fetchGviz(SHEET_PRECIOS, GID_PRECIOS);
+    console.log('Tabla precios recibida:', t?.rows?.length, 'filas');
+    if(!t?.rows) { console.warn('Sin filas en sheet de precios'); return; }
+    for(const row of t.rows){
+      if(!row.c) continue;
+      console.log('Fila precios raw:', row.c.map(c=>c?`v=${c.v} f=${c.f}`:'null').join(' | '));
+      if(!row.c[0]?.v) continue;
+      // El mes puede venir como string "2026-03", como fecha, o como número
+      let mes = '';
+      const mesCell = row.c[0];
+      if(mesCell.f) mes = String(mesCell.f).trim();
+      else if(mesCell.v) mes = String(mesCell.v).trim();
+      // Si viene como "2026-03-01" tomar solo año-mes
+      if(mes.match(/\d{4}-\d{2}-\d{2}/)) mes = mes.slice(0,7);
+      // Si viene como "Date(2026,2,1)" convertir
+      const dm = typeof mesCell.v==='string' ? mesCell.v.match(/Date\((\d+),(\d+)/) : null;
+      if(dm) mes = `${dm[1]}-${String(+dm[2]+1).padStart(2,'0')}`;
+      if(!mes.match(/\d{4}-\d{2}/)) { console.log('Mes no reconocido:', mes, 'raw:', JSON.stringify(mesCell)); continue; }
+      preciosHistorial[mes] = {
+        pEuro:     parsePrecio(row.c[1]),
+        pGasoil:   parsePrecio(row.c[2]),
+        pImpEuro:  parsePrecio(row.c[3]),
+        pImpGasoil:parsePrecio(row.c[4]),
+        pCO2Euro:  parsePrecio(row.c[5]),
+        pCO2Gasoil:parsePrecio(row.c[6]),
+        pVtaEuro:  parsePrecio(row.c[7]),   // col 7: neto venta Euro (para Ingreso ESCD)
+        pVtaGasoil:parsePrecio(row.c[8])    // col 8: neto venta Gasoil (para Ingreso ESCD)
+      };
+      console.log('Precios guardados para', mes, ':', preciosHistorial[mes]);
+    }
+  } catch(e){ console.error('Error cargando precios:', e.message); }
+}
+
+function parsePrecio(cell){
+  if(!cell) return 0;
+  // Preferir valor numérico directo
+  if(typeof cell.v === 'number') return cell.v;
+  // Si viene como string con formato "$1.610,027" → 1610.027
+  const src = String(cell.f || cell.v || '');
+  // Quitar $, espacios, luego: punto=miles, coma=decimal (formato AR)
+  const clean = src.replace(/\$/g,'').replace(/\s/g,'').replace(/\./g,'').replace(',','.');
+  return parseFloat(clean) || 0;
+}
+
+function aplicarPreciosMes(mesKey){
+  const p = preciosHistorial[mesKey];
+  if(!p) return false;
+  document.getElementById('pEuro').value      = p.pEuro;
+  document.getElementById('pGasoil').value    = p.pGasoil;
+  document.getElementById('pImpEuro').value   = p.pImpEuro;
+  document.getElementById('pImpGasoil').value = p.pImpGasoil;
+  document.getElementById('pCO2Euro').value   = p.pCO2Euro;
+  document.getElementById('pCO2Gasoil').value = p.pCO2Gasoil;
+  if(document.getElementById('pVtaEuro'))   document.getElementById('pVtaEuro').value   = p.pVtaEuro||0;
+  if(document.getElementById('pVtaGasoil')) document.getElementById('pVtaGasoil').value = p.pVtaGasoil||0;
+  // Actualizar label
+  const [y,m] = mesKey.split('-');
+  const d = new Date(+y,+m-1,1);
+  const lbl = d.toLocaleString('es-AR',{month:'long',year:'numeric'});
+  const el = document.getElementById('preciosMesLabel');
+  if(el) el.textContent = '— Precios de '+lbl.charAt(0).toUpperCase()+lbl.slice(1);
+  return true;
+}
+
+async function cargarFlota(){
+  try{
+    const t=await fetchGviz(SHEET_RODADOS,'766085002');
+    if(!t?.rows)return;
+    // Detectar índice de columna por nombre
+    const cols=t.cols||[];
+    const iInterno  = cols.findIndex(c=>/^interno$/i.test(c.label));
+    const iDominio  = cols.findIndex(c=>/^dominio$/i.test(c.label));
+    const iDesc     = cols.findIndex(c=>/^descripci/i.test(c.label));
+    const iLinea    = cols.findIndex(c=>/^linea/i.test(c.label));
+    console.log('Rodados cols:', cols.map(c=>c.label), '| iLinea:', iLinea);
+    // Fallback a índices fijos si no encuentra
+    const ci = iInterno>=0?iInterno:0;
+    const cd = iDominio>=0?iDominio:1;
+    const ce = iDesc>=0?iDesc:3;
+    const cl = iLinea>=0?iLinea:7;
+    const seen=new Set();
+    for(const row of t.rows){
+      if(!row.c)continue;
+      const interno=row.c[ci]?.v,dominio=String(row.c[cd]?.v||'').trim().toUpperCase(),desc=String(row.c[ce]?.v||'').trim();
+      if(!interno||!dominio||dominio==='NAN')continue;
+      const k=String(interno);
+      if(seen.has(k))continue;
+      seen.add(k);
+      const lineaRaw = row.c[cl];
+      const linea = lineaRaw ? String(lineaRaw.f||lineaRaw.v||'').trim() : '';
+      FLOTA.push({Interno:+interno,Dominio:dominio,Descripción:desc,LineaNegocio:linea});
+    }
+    FLOTA.sort((a,b)=>a.Interno-b.Interno);
+  }catch(e){console.warn('Flota:',e.message);}
+}
+
+// ═══════════════════════════════════
+// TABS
+// ═══════════════════════════════════
+function switchTab(t){
+  ['veh','totales','valorizacion','ingreso'].forEach(id=>document.getElementById('tab-'+id).style.display=id===t?'block':'none');
+  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['totales','veh','valorizacion','ingreso'][i]===t));
+  if(t==='veh') poblarLineas();
+  if(t==='totales'&&!document.getElementById('mesTabs').children.length){buildMesesDesplegable('mesTabs','totFrom','totTo',cargarTotales);}
+  if(t==='valorizacion'&&!document.getElementById('mesTabsVal').children.length){
+    buildMesesDesplegable('mesTabsVal','valFrom','valTo',cargarValorizacion);
+    // Aplicar precios del mes actual
+    const now=new Date();
+    const mesKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    if(!aplicarPreciosMes(mesKey)){
+      const keys=Object.keys(preciosHistorial).sort();
+      if(keys.length>0) aplicarPreciosMes(keys[keys.length-1]);
+    }
+  }
+  if(t==='ingreso'&&!document.getElementById('mesTabsIng').children.length){
+    buildMesesDesplegable('mesTabsIng','ingFrom','ingTo',cargarIngreso);
+  }
+}
+function setDates(f,t){const now=new Date();document.getElementById(f).value=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);document.getElementById(t).value=now.toISOString().slice(0,10);}
+function buildMesesDesplegable(cid, fromId, toId, callback) {
+  const container = document.getElementById(cid);
+  // Select con meses disponibles (últimos 12 meses + opción custom)
+  const now = new Date();
+  let opts = '<option value="custom">Período personalizado</option>';
+  for(let i=0; i<=11; i++){
+    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    const y = d.getFullYear(), m = d.getMonth();
+    const lbl = d.toLocaleString('es-AR',{month:'long',year:'numeric'});
+    const sel = i===0 ? 'selected' : '';
+    opts += `<option value="${y}-${m}" ${sel}>${lbl.charAt(0).toUpperCase()+lbl.slice(1)}</option>`;
+  }
+  container.innerHTML = `<div style="display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap">
+    <select id="${cid}-sel" onchange="selMesDrop('${cid}','${fromId}','${toId}')" style="max-width:220px;font-weight:600">
+      ${opts}
+    </select>
+    <span style="font-size:12px;color:var(--muted)">o usá el filtro de fechas arriba</span>
+  </div>`;
+  // Setear fechas del mes actual
+  const from = new Date(now.getFullYear(), now.getMonth(), 1);
+  const to   = new Date(now.getFullYear(), now.getMonth()+1, 0);
+  document.getElementById(fromId).value = from.toISOString().slice(0,10);
+  document.getElementById(toId).value   = to.toISOString().slice(0,10);
+}
+
+function selMesDrop(cid, fromId, toId) {
+  const val = document.getElementById(cid+'-sel').value;
+  if(val==='custom') return;
+  const [y,m] = val.split('-').map(Number);
+  const from = new Date(y,m,1), to = new Date(y,m+1,0);
+  const fmt = d => d.toISOString().slice(0,10);
+  document.getElementById(fromId).value = fmt(from);
+  document.getElementById(toId).value   = fmt(to);
+  // Llamar al callback correcto
+  if(cid==='mesTabs') cargarTotales();
+  else if(cid==='mesTabsIng'){
+    const from=document.getElementById(fromId).value;
+    aplicarPreciosMes(from.slice(0,7));
+    cargarIngreso();
+  } else {
+    const from = document.getElementById(fromId).value;
+    const mesKey = from.slice(0,7);
+    const fromSheet = aplicarPreciosMes(mesKey);
+    if(fromSheet){
+      const [y,m] = mesKey.split('-');
+      const d = new Date(+y, +m-1, 1);
+      const lbl = d.toLocaleString('es-AR',{month:'long',year:'numeric'});
+      document.getElementById('resVal').innerHTML=`<div class="alert alert-warn" style="margin-bottom:0">
+        ✓ Precios de <strong>${lbl.charAt(0).toUpperCase()+lbl.slice(1)}</strong> cargados desde el sheet.
+      </div>`;
+    }
+    cargarValorizacion();
+  }
+}
+
+// CC selector
+function selCC(cc){
+  ccActual=cc;
+  ['PETROSAR','EESS','TODOS'].forEach(x=>{
+    document.getElementById('cc-'+x.toLowerCase()).classList.toggle('active',x===cc);
+  });
+  cachedDespachos=null; cachedFrom=null; cachedTo=null;
+  cargarTotales();
+}
+
+function selValCC(cc){
+  ccVal=cc;
+  ['PETROSAR','EESS','TODOS'].forEach(x=>{
+    document.getElementById('valcc-'+x.toLowerCase()).classList.toggle('active',x===cc);
+  });
+  cargarValorizacion();
+}
+
+// INIT
+(async function(){
+  const now=new Date();
+  document.getElementById('vehFrom').value=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
+  document.getElementById('vehTo').value=now.toISOString().slice(0,10);
+  cargarFlota().then(()=>{
+    const inp=document.getElementById('vehSearch');
+    inp.placeholder=FLOTA.length?`Buscar entre ${FLOTA.length} vehículos...`:'Ingresá patente o interno';
+  });
+  cargarPreciosSheet().then(()=>{
+    // Aplicar precios del mes actual al init
+    const now=new Date();
+    const mesKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    console.log('Intentando aplicar precios para mes:', mesKey, '| disponibles:', Object.keys(preciosHistorial));
+    if(!aplicarPreciosMes(mesKey)){
+      // Si no hay precios para este mes, probar los últimos disponibles
+      const keys = Object.keys(preciosHistorial).sort();
+      if(keys.length > 0){
+        const lastKey = keys[keys.length-1];
+        console.log('Aplicando precios del último mes disponible:', lastKey);
+        aplicarPreciosMes(lastKey);
+      }
+    }
+  });
+  // Arrancar en Totales por Sector
+  buildMesesDesplegable('mesTabs','totFrom','totTo',cargarTotales);
+  setDates('totFrom','totTo');
+  cargarTotales();
+})();
+
+// ═══════════════════════════════════
+// AUTOCOMPLETE
+// ═══════════════════════════════════
+let selVeh=null,acItems=[],acIdx=-1;
+function poblarLineas(){
+  const lineas=[...new Set(FLOTA.map(v=>v.LineaNegocio).filter(l=>l&&l!=='undefined'))].sort();
+  const sel=document.getElementById('vehLinea');
+  if(!sel) return;
+  sel.innerHTML='<option value="">Todas las líneas</option>'+
+    lineas.map(l=>`<option value="${l}">${l}</option>`).join('');
+  console.log('Líneas de negocio pobladas:', lineas);
+}
+
+function getFlotaFiltrada(){
+  const linea=document.getElementById('vehLinea')?.value||'';
+  if(!linea) return FLOTA;
+  return FLOTA.filter(v=>v.LineaNegocio===linea);
+}
+
+function filtrarPorLinea(){
+  selVeh=null;
+  document.getElementById('vehSearch').value='';
+  closeAC();
+  const linea=document.getElementById('vehLinea')?.value||'';
+  const lista=document.getElementById('listaLinea');
+  const items=document.getElementById('listaLineaItems');
+  if(!linea){
+    lista.style.display='none';
+    document.getElementById('vehSearch').placeholder=`Buscar entre ${FLOTA.length} vehículos...`;
+    document.getElementById('resVeh').innerHTML='<div class="empty"><div class="empty-icon">⛽</div><div class="empty-title">Ingresá una patente o interno</div></div>';
+    return;
+  }
+  const vehsFiltrados=getFlotaFiltrada();
+  document.getElementById('vehSearch').placeholder=`Opcional: filtrá por interno...`;
+  // Mostrar botón para ver totales + chips de vehículos
+  items.innerHTML=`
+    <div style="width:100%;margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="buscarLinea()">
+        📊 Ver totales de <strong style="margin-left:4px">${linea}</strong>
+      </button>
+      <span style="font-size:12px;color:var(--muted)">${vehsFiltrados.length} vehículos — o elegí uno:</span>
+    </div>
+    ${vehsFiltrados.map(v=>`
+    <div onclick="selVehDirecto(${v.Interno})" style="
+      background:var(--bg);border:1.5px solid var(--border);border-radius:6px;
+      padding:5px 10px;cursor:pointer;font-size:12px;font-weight:600;
+      transition:all .15s;white-space:nowrap"
+      onmouseover="this.style.borderColor='var(--orange)';this.style.background='var(--orange-pale)'"
+      onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--bg)'">
+      <span style="color:var(--orange)">${v.Interno}</span>
+      <span style="color:var(--muted);margin-left:4px">${v.Dominio}</span>
+    </div>`).join('')}`;
+  lista.style.display='block';
+}
+
+async function buscarLinea(){
+  const linea=document.getElementById('vehLinea')?.value||'';
+  if(!linea) return;
+  const vehsFiltrados=getFlotaFiltrada();
+  const from=document.getElementById('vehFrom').value;
+  const to=document.getElementById('vehTo').value;
+  document.getElementById('vehAlert').innerHTML='';
+  document.getElementById('listaLinea').style.display='none';
+  document.getElementById('loadingVeh').style.display='block';
+  document.getElementById('resVeh').innerHTML='';
+
+  // Buscar todos los despachos del período y filtrar por internos de la línea
+  const internosLinea=new Set(vehsFiltrados.map(v=>v.Interno));
+  const {despachos,errores}=await consultarTodo(from,to);
+  const filtrados=despachos.filter(d=>{
+    if(internosLinea.has(d.interno)) return true;
+    // PLANTA: receptor guardado en d.receptorN
+    if(d.receptorN && internosLinea.has(d.receptorN)) return true;
+    return false;
+  });
+  document.getElementById('loadingVeh').style.display='none';
+
+  // Renderizar como resumen de línea
+  const total=filtrados.reduce((s,d)=>s+d.litros,0);
+  const euro=filtrados.filter(d=>d.prod==='EURO').reduce((s,d)=>s+d.litros,0);
+  const gasoil=filtrados.filter(d=>d.prod==='GASOIL').reduce((s,d)=>s+d.litros,0);
+  const porVeh={};
+  filtrados.forEach(d=>{
+    const k=d.interno||d.receptorN||d.int;
+    if(!porVeh[k])porVeh[k]={interno:d.interno||0,receptorN:d.receptorN||null,pat:d.pat,lts:0,euro:0,gasoil:0,cargas:0};
+    porVeh[k].lts+=d.litros;porVeh[k].cargas++;
+    if(d.prod==='GASOIL')porVeh[k].gasoil+=d.litros;
+    else porVeh[k].euro+=d.litros;
+  });
+  const vehs=Object.values(porVeh).sort((a,b)=>b.lts-a.lts);
+
+  // Guardar para exportar — agregar desc a vehs
+  vehs.forEach(v=>{ const f=FLOTA.find(x=>x.Interno===+v.interno); v.desc=f?.Descripción||''; });
+  window._lastLineaVehs = vehs;
+  window._lastLineaDesp = filtrados;
+  document.getElementById('resVeh').innerHTML=`
+    <div class="veh-card fade">
+      <div style="font-size:28px">🏢</div>
+      <div>
+        <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:20px;color:var(--orange)">${linea}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">${vehsFiltrados.length} vehículos · ${fmtDate(from)} → ${fmtDate(to)}</div>
+      </div>
+    </div>
+    <div class="kpi-grid fade">
+      <div class="kpi accent"><div class="kpi-lbl">Total litros</div><div class="kpi-val">${fmtN(total)}</div><div class="kpi-unit">${filtrados.length} despachos</div></div>
+      <div class="kpi"><div class="kpi-lbl">Euro Diesel</div><div class="kpi-val">${fmtN(euro)}</div><div class="kpi-unit">lts</div></div>
+      <div class="kpi"><div class="kpi-lbl">Gasoil</div><div class="kpi-val">${fmtN(gasoil)}</div><div class="kpi-unit">lts</div></div>
+      <div class="kpi"><div class="kpi-lbl">Vehículos activos</div><div class="kpi-val">${vehs.length}</div><div class="kpi-unit">con despachos</div></div>
+    </div>
+    ${errores.length?`<div class="alert alert-warn fade">⚠ Sin datos de: ${errores.map(e=>e.split(':')[0]).join(', ')}</div>`:''}
+    <div class="tbl-wrap fade">
+      <div class="tbl-hdr">
+        <span class="tbl-title">Detalle por vehículo</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="tbl-count">${vehs.length} vehículos</span>
+          <button class="btn btn-ghost" style="font-size:11px;padding:4px 12px;height:auto" onclick="exportLinea('${linea}',_lastLineaVehs,_lastLineaDesp,'${from}','${to}')">⬇ Excel</button>
+        </div>
+      </div>
+      ${vehs.length===0?`<div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">Sin despachos en el período</div></div>`:`
+      <table class="dt"><thead><tr><th>Interno</th><th>Patente</th><th>Euro Diesel</th><th>Gasoil</th><th>Total lts</th><th>Despachos</th></tr></thead><tbody>
+        ${vehs.map(v=>`<tr>
+          <td style="font-weight:700;color:var(--orange)">#${v.interno||v.receptorN||'?'}</td>
+          <td><span style="font-weight:600;font-size:12px;background:var(--blue-pale);color:var(--blue);padding:2px 8px;border-radius:4px">${v.pat||'—'}</span></td>
+          <td>${v.euro?fmtN(v.euro):'—'}</td>
+          <td>${v.gasoil?fmtN(v.gasoil):'—'}</td>
+          <td><span class="lts-val">${fmtN(v.lts)}</span></td>
+          <td>${v.cargas}</td>
+        </tr>`).join('')}
+      </tbody></table>`}
+    </div>`;
+}
+
+function selVehDirecto(interno){
+  const v=FLOTA.find(x=>x.Interno===interno);
+  if(!v) return;
+  selVeh=v;
+  document.getElementById('vehSearch').value=`${v.Interno} — ${v.Dominio}`;
+  document.getElementById('listaLinea').style.display='none';
+  // Resaltar el seleccionado
+  document.querySelectorAll('#listaLineaItems div').forEach(el=>{
+    el.style.borderColor=el.textContent.trim().startsWith(String(interno))?'var(--orange)':'var(--border)';
+    el.style.background=el.textContent.trim().startsWith(String(interno))?'var(--orange-pale)':'var(--bg)';
+  });
+}
+
+function acSearch(val){
+  selVeh=null;const q=norm(val);
+  if(q.length<2){closeAC();return;}
+  const base=getFlotaFiltrada();
+  acItems=base.filter(x=>norm(x.Dominio).includes(q)||String(x.Interno).startsWith(q)).slice(0,10);
+  if(!acItems.length){closeAC();return;}
+  document.getElementById('acDd').innerHTML=acItems.map((x,i)=>`<div class="ac-item" onclick="acSel(${i})"><span class="ac-int">${x.Interno}</span><span class="ac-pat">${x.Dominio}</span><span class="ac-desc">${x.Descripción||''}</span></div>`).join('');
+  document.getElementById('acDd').style.display='block';acIdx=-1;
+}
+function acKey(e){
+  const dd=document.getElementById('acDd');
+  if(dd.style.display==='none'){if(e.key==='Enter')buscarVeh();return;}
+  if(e.key==='ArrowDown'){acIdx=Math.min(acIdx+1,acItems.length-1);hiAC();e.preventDefault();}
+  else if(e.key==='ArrowUp'){acIdx=Math.max(acIdx-1,0);hiAC();e.preventDefault();}
+  else if(e.key==='Enter'){if(acIdx>=0)acSel(acIdx);else buscarVeh();}
+  else if(e.key==='Escape')closeAC();
+}
+function hiAC(){document.querySelectorAll('.ac-item').forEach((el,i)=>el.classList.toggle('hi',i===acIdx));}
+function acSel(i){selVeh=acItems[i];document.getElementById('vehSearch').value=`${selVeh.Interno} — ${selVeh.Dominio}`;closeAC();}
+function closeAC(){document.getElementById('acDd').style.display='none';}
+document.addEventListener('click',e=>{if(!e.target.closest('.ac-wrap'))closeAC();});
+
+// ═══════════════════════════════════
+// TAB 1: POR VEHÍCULO
+// ═══════════════════════════════════
+function limpiarVeh(){
+  document.getElementById('vehSearch').value='';
+  selVeh=null;
+  document.getElementById('resVeh').innerHTML='<div class="empty"><div class="empty-icon">⛽</div><div class="empty-title">Ingresá una patente o interno</div></div>';
+  document.getElementById('vehAlert').innerHTML='';
+  const ll=document.getElementById('listaLinea');
+  if(ll) ll.style.display='none';
+  const sel=document.getElementById('vehLinea');
+  if(sel) sel.value='';
+}
+
+async function buscarVeh(){
+  if(!selVeh){
+    const q=norm(document.getElementById('vehSearch').value);
+    selVeh=FLOTA.find(x=>norm(x.Dominio)===q||String(x.Interno)===q);
+    if(!selVeh&&q.length>=3)selVeh={Interno:/^\d+$/.test(q)?+q:0,Dominio:q,Descripción:'Búsqueda directa'};
+    if(!selVeh){document.getElementById('vehAlert').innerHTML='<div class="alert alert-err">Ingresá al menos 3 caracteres.</div>';return;}
+  }
+  document.getElementById('vehAlert').innerHTML='';
+  document.getElementById('resVeh').innerHTML='';
+  document.getElementById('loadingVeh').style.display='block';
+  const from=document.getElementById('vehFrom').value,to=document.getElementById('vehTo').value;
+  const{despachos,errores}=await consultarTodo(from,to,selVeh);
+  despachos.sort((a,b)=>(b.fecha||0)-(a.fecha||0));
+  document.getElementById('loadingVeh').style.display='none';
+  renderVeh(selVeh,despachos,errores,from,to);
+}
+
+function renderVeh(veh,desp,errores,from,to){
+  window._lastDesp = desp; window._lastVeh = veh;
+  const total=desp.reduce((s,d)=>s+d.litros,0),cant=desp.length;
+  const dias=Math.max(1,Math.round((new Date(to)-new Date(from))/86400000)+1);
+  const porPunto={},porProd={EURO:0,GASOIL:0};
+  desp.forEach(d=>{porPunto[d.punto]=(porPunto[d.punto]||0)+d.litros;porProd[d.prod]=(porProd[d.prod]||0)+d.litros;});
+  document.getElementById('resVeh').innerHTML=`
+    <div class="veh-card fade">
+      <div style="font-size:34px">${vehIcon(veh.Descripción)}</div>
+      <div>
+        <div class="veh-int">#${veh.Interno}</div>
+        <div class="veh-pat">${veh.Dominio}</div>
+        <div class="veh-desc">${veh.Descripción||'—'}</div>
+      </div>
+      <div style="margin-left:auto;font-size:12px;color:var(--muted);text-align:right">${fmtDate(from)} → ${fmtDate(to)}</div>
+    </div>
+    <div class="kpi-grid fade">
+      <div class="kpi accent"><div class="kpi-lbl">Total litros</div><div class="kpi-val">${fmtN(total)}</div><div class="kpi-unit">todas las fuentes</div></div>
+      <div class="kpi"><div class="kpi-lbl">Euro Diesel</div><div class="kpi-val">${fmtN(porProd.EURO)}</div><div class="kpi-unit">lts</div></div>
+      <div class="kpi"><div class="kpi-lbl">Gasoil</div><div class="kpi-val">${fmtN(porProd.GASOIL)}</div><div class="kpi-unit">lts</div></div>
+      <div class="kpi"><div class="kpi-lbl">Despachos</div><div class="kpi-val">${cant}</div><div class="kpi-unit">cargas · ${fmtN(total/dias)} lts/día</div></div>
+    </div>
+    ${Object.keys(porPunto).length?`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px" class="fade">
+      ${Object.entries(porPunto).sort((a,b)=>b[1]-a[1]).map(([p,lts])=>`
+        <div style="background:${SECTOR_BG[p]||'#f5f5f5'};border-radius:10px;padding:12px 18px;min-width:110px;text-align:center;border:1px solid ${SECTOR_COLOR[p]||'#ddd'}33">
+          <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:${SECTOR_COLOR[p]||'#666'};text-transform:uppercase;margin-bottom:4px">${p}</div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:18px">${fmtN(lts)}</div>
+          <div style="font-size:10px;color:var(--muted)">lts</div>
+        </div>`).join('')}
+    </div>`:''}
+    ${errores.length?`<div class="alert alert-warn fade">⚠ Sin datos de: ${errores.map(e=>e.split(':')[0]).join(', ')}</div>`:''}
+    <div class="tbl-wrap fade">
+      <div class="tbl-hdr"><span class="tbl-title">Detalle de despachos</span><span class="tbl-count">${cant} registros</span></div>
+      ${cant===0?`<div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">Sin despachos en el período</div></div>`:`
+      <table class="dt"><thead><tr><th>Fecha</th><th>Litros</th><th>Producto</th><th>Sector</th><th>Fuente</th></tr></thead><tbody>
+        ${desp.map(d=>`<tr>
+          <td>${d.fechaStr}</td>
+          <td><span class="lts-val">${fmtN(d.litros)}</span> <span style="font-size:11px;color:var(--muted)">lts</span></td>
+          <td><span class="badge b-${d.prod.toLowerCase()}">${d.prod}</span></td>
+          <td><span class="badge b-${d.punto.toLowerCase().replace(/\s/g,'')}">${d.punto}</span></td>
+          <td style="font-size:12px;color:var(--muted)">${d.fuente}</td>
+        </tr>`).join('')}
+      </tbody></table>`}
+    </div>`;
+}
+
+// ═══════════════════════════════════
+// TAB 2: TOTALES POR SECTOR
+// ═══════════════════════════════════
+// cachedDespachos declarado arriba
+
+async function cargarTotales(){
+  const from=document.getElementById('totFrom').value,to=document.getElementById('totTo').value;
+  // Usar cache si mismo período
+  let despachos,errores;
+  // Aplicar filtro de CC
+  if(cachedDespachos&&cachedFrom===from&&cachedTo===to){
+    despachos=cachedDespachos;errores=[];
+  }else{
+    document.getElementById('resTot').innerHTML='';
+    document.getElementById('loadingTot').style.display='block';
+    const res=await consultarTodo(from,to);
+    despachos=res.despachos;errores=res.errores;
+    cachedDespachos=despachos;cachedFrom=from;cachedTo=to;
+    document.getElementById('loadingTot').style.display='none';
+  }
+  const filtrados=filtrarCC(despachos,ccActual);
+  renderTotales(filtrados,errores,from,to);
+}
+
+function renderTotales(desp,errores,from,to){
+  const map={};
+  desp.forEach(d=>{
+    if(!map[d.punto])map[d.punto]={lts:0,euro:0,gasoil:0,cargas:0};
+    map[d.punto].lts+=d.litros;map[d.punto].cargas++;
+    if(d.prod==='GASOIL')map[d.punto].gasoil+=d.litros;
+    else map[d.punto].euro+=d.litros;
+  });
+  const total=desp.reduce((s,d)=>s+d.litros,0);
+  const totalEuro=desp.filter(d=>d.prod==='EURO').reduce((s,d)=>s+d.litros,0);
+  const totalGasoil=desp.filter(d=>d.prod==='GASOIL').reduce((s,d)=>s+d.litros,0);
+  const sectores=SECTOR_ORDER.filter(p=>map[p]);
+
+  const ccLabel={'PETROSAR':'PETROSAR (flota propia)','EESS':'EESS CD (Estación Cerro Dragón)','TODOS':'Todos'}[ccActual];
+
+  document.getElementById('resTot').innerHTML=`
+    ${errores.length?`<div class="alert alert-warn fade">⚠ Sin datos de: ${errores.map(e=>e.split(':')[0]).join(', ')}</div>`:''}
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px;font-weight:500">Mostrando: <strong style="color:var(--txt)">${ccLabel}</strong> · ${fmtDate(from)} → ${fmtDate(to)}</div>
+    <div class="kpi-grid fade">
+      <div class="kpi accent"><div class="kpi-lbl">Total litros</div><div class="kpi-val">${fmtN(total)}</div><div class="kpi-unit">${desp.length} despachos</div></div>
+      <div class="kpi"><div class="kpi-lbl">Euro Diesel</div><div class="kpi-val">${fmtN(totalEuro)}</div><div class="kpi-unit">${total?((totalEuro/total)*100).toFixed(1)+'% del total':''}</div></div>
+      <div class="kpi"><div class="kpi-lbl">Gasoil</div><div class="kpi-val">${fmtN(totalGasoil)}</div><div class="kpi-unit">${total?((totalGasoil/total)*100).toFixed(1)+'% del total':''}</div></div>
+      <div class="kpi"><div class="kpi-lbl">Sectores activos</div><div class="kpi-val">${sectores.length}</div><div class="kpi-unit">con despachos</div></div>
+    </div>
+    <div class="sectores-grid fade">
+      ${sectores.map(p=>{
+        const c=SECTOR_COLOR[p]||'#888',bg=SECTOR_BG[p]||'#f5f5f5';
+        const pct=total?(map[p].lts/total*100).toFixed(1):0;
+        const barEuro=map[p].lts?(map[p].euro/map[p].lts*100).toFixed(0):0;
+        return`<div class="sector-card">
+          <div class="sector-head">
+            <span class="sector-tag" style="background:${bg};color:${c}">${p}</span>
+            <div style="text-align:right">
+              <div class="sector-lts" style="color:${c}">${fmtN(map[p].lts)}</div>
+              <div style="font-size:11px;color:var(--muted)">lts · ${pct}%</div>
+            </div>
+          </div>
+          <div class="sector-body">
+            ${map[p].euro?`<div class="prod-row"><span class="prod-lbl">Euro Diesel</span><span class="prod-val">${fmtN(map[p].euro)} lts</span></div>
+            <div class="bar-track"><div class="bar-fill" style="width:${barEuro}%;background:#92400e40"></div></div>`:''}
+            ${map[p].gasoil?`<div class="prod-row"><span class="prod-lbl">Gasoil</span><span class="prod-val">${fmtN(map[p].gasoil)} lts</span></div>
+            <div class="bar-track"><div class="bar-fill" style="width:${100-+barEuro}%;background:#1e40af40"></div></div>`:''}
+            <div class="sector-row"><span class="sector-row-lbl">Despachos</span><span class="sector-row-val">${map[p].cargas}</span></div>
+            <div class="sector-row"><span class="sector-row-lbl">Prom./carga</span><span class="sector-row-val">${fmtN(map[p].lts/map[p].cargas)} lts</span></div>
+          </div>
+        </div>`;}).join('')}
+    </div>
+    <div class="tbl-wrap fade">
+      <div class="tbl-hdr"><span class="tbl-title">Resumen global</span><span class="tbl-count">${desp.length} despachos</span></div>
+      <table class="dt">
+        <thead><tr><th>Sector</th><th>Euro Diesel</th><th>Gasoil</th><th>Total lts</th><th>Despachos</th><th>% total</th></tr></thead>
+        <tbody>
+          ${sectores.map(p=>`<tr>
+            <td><span class="badge b-${p.toLowerCase().replace(/\s/g,'')}">${p}</span></td>
+            <td>${map[p].euro?fmtN(map[p].euro):'—'}</td>
+            <td>${map[p].gasoil?fmtN(map[p].gasoil):'—'}</td>
+            <td><span class="lts-val">${fmtN(map[p].lts)}</span></td>
+            <td>${map[p].cargas}</td>
+            <td style="color:var(--muted)">${pct(map[p].lts,total)}</td>
+          </tr>`).join('')}
+        </tbody>
+        <tfoot><tr>
+          <td>TOTAL</td>
+          <td>${fmtN(totalEuro)}</td>
+          <td>${fmtN(totalGasoil)}</td>
+          <td>${fmtN(total)}</td>
+          <td>${desp.length}</td>
+          <td>100%</td>
+        </tr></tfoot>
+      </table>
+    </div>`;
+}
+function pct(a,b){return b?(a/b*100).toFixed(1)+'%':'—';}
+
+// ═══════════════════════════════════
+// TAB 3: VALORIZACIÓN
+// ═══════════════════════════════════
+function guardarPrecios(mesKey){
+  const precios={
+    pEuro:document.getElementById('pEuro').value,
+    pGasoil:document.getElementById('pGasoil').value,
+    pImpEuro:document.getElementById('pImpEuro').value,
+    pImpGasoil:document.getElementById('pImpGasoil').value,
+    pCO2Euro:document.getElementById('pCO2Euro').value,
+    pCO2Gasoil:document.getElementById('pCO2Gasoil').value
+  };
+  try{ localStorage.setItem('precios_'+mesKey, JSON.stringify(precios)); }catch(e){}
+}
+
+function cargarPreciosMes(mesKey){
+  try{
+    const saved=localStorage.getItem('precios_'+mesKey);
+    if(!saved) return false;
+    const p=JSON.parse(saved);
+    document.getElementById('pEuro').value=p.pEuro;
+    document.getElementById('pGasoil').value=p.pGasoil;
+    document.getElementById('pImpEuro').value=p.pImpEuro;
+    document.getElementById('pImpGasoil').value=p.pImpGasoil;
+    document.getElementById('pCO2Euro').value=p.pCO2Euro;
+    document.getElementById('pCO2Gasoil').value=p.pCO2Gasoil;
+    return true;
+  }catch(e){ return false; }
+}
+
+async function cargarValorizacion(){
+  document.getElementById('resVal').innerHTML='';
+  document.getElementById('loadingVal').style.display='block';
+  const from=document.getElementById('valFrom').value,to=document.getElementById('valTo').value;
+  const mesKey=from.slice(0,7);
+  aplicarPreciosMes(mesKey);
+  const pEuro=+document.getElementById('pEuro').value||0;
+  const pGasoil=+document.getElementById('pGasoil').value||0;
+  const pImpEuro=+document.getElementById('pImpEuro').value||0;
+  const pImpGasoil=+document.getElementById('pImpGasoil').value||0;
+  const pCO2Euro=+document.getElementById('pCO2Euro').value||0;
+  const pCO2Gasoil=+document.getElementById('pCO2Gasoil').value||0;
+  const pVtaEuro=+document.getElementById('pVtaEuro').value||0;
+  const pVtaGasoil=+document.getElementById('pVtaGasoil').value||0;
+
+  let despachos,errores;
+  if(cachedDespachos&&cachedFrom===from&&cachedTo===to){
+    despachos=cachedDespachos;errores=[];
+  }else{
+    const res=await consultarTodo(from,to);
+    despachos=res.despachos;errores=res.errores;
+    cachedDespachos=despachos;cachedFrom=from;cachedTo=to;
+  }
+  document.getElementById('loadingVal').style.display='none';
+
+  // Separar Petrosar y EESS CD (independiente del selector ccVal)
+  const despPetrosar = despachos.filter(d=>d.punto!=='EESS CD');
+  const despEESS     = despachos.filter(d=>d.punto==='EESS CD');
+
+  // ── Acumular por mes ──
+  function preciosMes(m){
+    // Usar precios del historial para ese mes; si no existe, usar los del input (fallback)
+    const h=preciosHistorial[m];
+    if(h) return h;
+    return {pEuro,pGasoil,pImpEuro,pImpGasoil,pCO2Euro,pCO2Gasoil,pVtaEuro,pVtaGasoil};
+  }
+
+  function acumMes(desp, calcVta=false){
+    const meses={};
+    desp.forEach(d=>{
+      const m=d.mes||'Sin fecha';
+      if(!meses[m]) meses[m]={
+        ltsEuro:0,ltsGasoil:0,
+        costoNetoEuro:0,costoNetoGasoil:0,
+        costoImpEuro:0,costoImpGasoil:0,
+        costoCO2Euro:0,costoCO2Gasoil:0,
+        vtaNetoEuro:0,vtaNetoGasoil:0
+      };
+      const p=preciosMes(m);
+      if(d.prod==='GASOIL'){
+        meses[m].ltsGasoil+=d.litros;
+        meses[m].costoNetoGasoil+=d.litros*p.pGasoil;
+        meses[m].costoImpGasoil+=d.litros*p.pImpGasoil;
+        meses[m].costoCO2Gasoil+=d.litros*p.pCO2Gasoil;
+        if(calcVta) meses[m].vtaNetoGasoil+=d.litros*p.pVtaGasoil;
+      }else{
+        meses[m].ltsEuro+=d.litros;
+        meses[m].costoNetoEuro+=d.litros*p.pEuro;
+        meses[m].costoImpEuro+=d.litros*p.pImpEuro;
+        meses[m].costoCO2Euro+=d.litros*p.pCO2Euro;
+        if(calcVta) meses[m].vtaNetoEuro+=d.litros*p.pVtaEuro;
+      }
+    });
+    return meses;
+  }
+
+  // Actualizar el label de precios en la UI
+  const allMesKeys = [...new Set([...Object.keys(mesPetrosar),...Object.keys(mesEESS)])].sort();
+  const elLabel = document.getElementById('preciosMesLabel');
+  if(elLabel){
+    if(allMesKeys.length===1){
+      aplicarPreciosMes(allMesKeys[0]);
+    } else if(allMesKeys.length>1){
+      // Mostrar rango y que cada mes usa su precio
+      const mesIni = allMesKeys[0], mesFin = allMesKeys[allMesKeys.length-1];
+      const nomIni = new Date(+mesIni.split('-')[0],+mesIni.split('-')[1]-1,1).toLocaleString('es-AR',{month:'long',year:'numeric'});
+      const nomFin = new Date(+mesFin.split('-')[0],+mesFin.split('-')[1]-1,1).toLocaleString('es-AR',{month:'long',year:'numeric'});
+      elLabel.textContent = `— Precios por mes (${nomIni.charAt(0).toUpperCase()+nomIni.slice(1)} → ${nomFin.charAt(0).toUpperCase()+nomFin.slice(1)})`;
+      // Mostrar los precios del mes más reciente en los inputs (referencia)
+      aplicarPreciosMes(mesFin);
+    }
+  }
+
+  const allKeys = allMesKeys;
+  if(!allKeys.length){
+    document.getElementById('resVal').innerHTML='<div class="empty"><div class="empty-icon">📭</div><div class="empty-title">Sin datos en el período</div></div>';
+    return;
+  }
+
+  // Totales
+  function totales(meses){
+    const t={ltsEuro:0,ltsGasoil:0,costoNetoEuro:0,costoNetoGasoil:0,costoImpEuro:0,costoImpGasoil:0,costoCO2Euro:0,costoCO2Gasoil:0,vtaNetoEuro:0,vtaNetoGasoil:0};
+    Object.values(meses).forEach(m=>Object.keys(t).forEach(k=>t[k]+=(m[k]||0)));
+    return t;
+  }
+  const totP=totales(mesPetrosar);
+  const totE=totales(mesEESS);
+
+  // KPIs globales para el selector ccVal actual (para compatibilidad)
+  const despFiltrados=filtrarCC(despachos,ccVal);
+  const totalLts=despFiltrados.reduce((s,d)=>s+d.litros,0);
+
+  // Guardar para exportar
+  window._lastValData = {
+    mesPetrosar, mesEESS, allKeys, from, to, ccVal,
+    pEuro, pGasoil, pImpEuro, pImpGasoil, pCO2Euro, pCO2Gasoil, pVtaEuro, pVtaGasoil,
+    totP, totE
+  };
+
+  function mesNom(k){
+    const[y,m]=k.split('-');
+    const n=new Date(+y,+m-1,1).toLocaleString('es-AR',{month:'long',year:'numeric'});
+    return n.charAt(0).toUpperCase()+n.slice(1);
+  }
+
+  function tablaValorizacion(mesesObj, tot, titulo, showVta, color){
+    const keys=Object.keys(mesesObj).sort();
+    if(!keys.length) return `<div style="padding:16px 20px;color:var(--muted);font-size:13px">Sin despachos en el período</div>`;
+    const totCostoNeto=tot.costoNetoEuro+tot.costoNetoGasoil;
+    const totCostoImp=tot.costoImpEuro+tot.costoImpGasoil;
+    const totCostoCO2=tot.costoCO2Euro+tot.costoCO2Gasoil;
+    const totCostoTotal=totCostoNeto+totCostoImp+totCostoCO2;
+    const totVtaNeto=tot.vtaNetoEuro+tot.vtaNetoGasoil;
+    const vtaCol=showVta?`<th style="background:#e8f7f2;color:var(--green)">Neto Venta ($)</th>`:'';
+    const vtaFoot=showVta?`<td style="color:var(--green);font-weight:700">${fmtARS(totVtaNeto)}</td>`:'';
+    return `
+      <div class="tbl-wrap fade" style="margin-bottom:20px">
+        <div class="tbl-hdr" style="background:${color}10;border-bottom:2px solid ${color}30">
+          <span class="tbl-title" style="color:${color}">${titulo}</span>
+          <span class="tbl-count">${tot.ltsEuro+tot.ltsGasoil>0?fmtN(tot.ltsEuro+tot.ltsGasoil)+' lts':''}</span>
+        </div>
+        <table class="dt">
+          <thead><tr>
+            <th>Mes</th><th>Producto</th><th>Litros</th>
+            <th style="color:var(--muted);font-size:10px">$/lt costo</th>
+            <th>Neto Costo ($)</th><th>Imp. Interno ($)</th><th>CO2 ($)</th>
+            <th style="background:#fff3e8;color:var(--orange)">Total Costo ($)</th>
+            ${vtaCol}
+          </tr></thead>
+          <tbody>
+            ${keys.flatMap(k=>{
+              const d=mesesObj[k]; const rows=[];
+              const nom=mesNom(k);
+              const pm=preciosMes(k);
+              if(d.ltsEuro>0) rows.push(`<tr>
+                <td style="font-weight:500">${nom}</td>
+                <td><span class="badge b-euro">Euro Diesel</span></td>
+                <td>${fmtN(d.ltsEuro)}</td>
+                <td style="font-size:11px;color:var(--muted)">${fmtN(pm.pEuro,3)}</td>
+                <td>${fmtARS(d.costoNetoEuro)}</td>
+                <td>${fmtARS(d.costoImpEuro)}</td>
+                <td>${fmtARS(d.costoCO2Euro)}</td>
+                <td style="font-weight:700;color:var(--orange)">${fmtARS(d.costoNetoEuro+d.costoImpEuro+d.costoCO2Euro)}</td>
+                ${showVta?`<td style="font-weight:700;color:var(--green)">${fmtARS(d.vtaNetoEuro)}</td>`:''}
+              </tr>`);
+              if(d.ltsGasoil>0) rows.push(`<tr>
+                <td style="font-weight:500">${d.ltsEuro>0?'':nom}</td>
+                <td><span class="badge b-gasoil">Gasoil</span></td>
+                <td>${fmtN(d.ltsGasoil)}</td>
+                <td style="font-size:11px;color:var(--muted)">${fmtN(pm.pGasoil,3)}</td>
+                <td>${fmtARS(d.costoNetoGasoil)}</td>
+                <td>${fmtARS(d.costoImpGasoil)}</td>
+                <td>${fmtARS(d.costoCO2Gasoil)}</td>
+                <td style="font-weight:700;color:var(--orange)">${fmtARS(d.costoNetoGasoil+d.costoImpGasoil+d.costoCO2Gasoil)}</td>
+                ${showVta?`<td style="font-weight:700;color:var(--green)">${fmtARS(d.vtaNetoGasoil)}</td>`:''}
+              </tr>`);
+              return rows;
+            }).join('')}
+          </tbody>
+          <tfoot><tr>
+            <td colspan="2">TOTAL</td>
+            <td>${fmtN(tot.ltsEuro+tot.ltsGasoil)}</td>
+            <td></td>
+            <td>${fmtARS(totCostoNeto)}</td>
+            <td>${fmtARS(totCostoImp)}</td>
+            <td>${fmtARS(totCostoCO2)}</td>
+            <td style="color:var(--orange)">${fmtARS(totCostoTotal)}</td>
+            ${vtaFoot}
+          </tr></tfoot>
+        </table>
+      </div>`;
+  }
+
+  const totPCostoTotal=(totP.costoNetoEuro+totP.costoNetoGasoil)+(totP.costoImpEuro+totP.costoImpGasoil)+(totP.costoCO2Euro+totP.costoCO2Gasoil);
+  const totECostoTotal=(totE.costoNetoEuro+totE.costoNetoGasoil)+(totE.costoImpEuro+totE.costoImpGasoil)+(totE.costoCO2Euro+totE.costoCO2Gasoil);
+  const totVta=totP.vtaNetoEuro+totP.vtaNetoGasoil;
+  const ingresoEscd=totVta-totPCostoTotal;
+
+  document.getElementById('resVal').innerHTML=`
+    ${errores.length?`<div class="alert alert-warn fade">⚠ Sin datos de: ${errores.map(e=>e.split(':')[0]).join(', ')}</div>`:''}
+
+    <!-- KPIs resumen -->
+    <div class="kpi-grid fade">
+      <div class="kpi"><div class="kpi-lbl">Petrosar — lts</div><div class="kpi-val">${fmtN(totP.ltsEuro+totP.ltsGasoil)}</div><div class="kpi-unit">costo: ${fmtARS(totPCostoTotal)}</div></div>
+      <div class="kpi"><div class="kpi-lbl">EESS CD — lts</div><div class="kpi-val">${fmtN(totE.ltsEuro+totE.ltsGasoil)}</div><div class="kpi-unit">costo: ${fmtARS(totECostoTotal)}</div></div>
+      ${pVtaEuro>0||pVtaGasoil>0?`
+      <div class="kpi" style="border-color:var(--green)"><div class="kpi-lbl">Petrosar — Neto Vta</div><div class="kpi-val" style="font-size:18px;color:var(--green)">${fmtARS(totVta)}</div><div class="kpi-unit">precio neto de venta</div></div>
+      <div class="kpi accent" style="background:var(--green);border-color:var(--green)"><div class="kpi-lbl">Ingreso ESCD x Vta</div><div class="kpi-val" style="font-size:18px">${fmtARS(ingresoEscd)}</div><div class="kpi-unit">neto vta − costo Petrosar</div></div>
+      `:`<div class="kpi" style="border-color:#fde68a;background:#fffbeb"><div class="kpi-lbl">⚠ Ingreso ESCD</div><div class="kpi-val" style="font-size:14px;color:#92400e">Sin precio vta</div><div class="kpi-unit">Agregar cols 7-8 al sheet Precios</div></div>`}
+    </div>
+
+    <!-- Tabla PETROSAR -->
+    <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:var(--blue);text-transform:uppercase;margin-bottom:8px">Consumo Interno — PETROSAR</div>
+    ${tablaValorizacion(mesPetrosar, totP, 'PETROSAR — Valorización al Costo y Neto de Venta', true, '#1a5fa8')}
+
+    <!-- Tabla EESS CD -->
+    <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#0891b2;text-transform:uppercase;margin-bottom:8px">Consumo Interno — EESS CD</div>
+    ${tablaValorizacion(mesEESS, totE, 'EESS CD — Valorización al Costo de Compra', false, '#0891b2')}
+
+    <div style="text-align:right;margin-top:4px">
+      <button class="btn btn-ghost" style="font-size:11px;padding:4px 14px;height:auto" onclick="exportValorizacion()">⬇ Exportar Excel</button>
+    </div>`;
+}
+
+function exportToExcel(rows, headers, filename, sheetName='Datos'){
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  // Ancho de columnas
+  ws['!cols'] = headers.map(h=>({wch:Math.max(h.length+2, 14)}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  XLSX.writeFile(wb, filename+'.xlsx');
+}
+
+function exportVeh(veh, despachos, from, to){
+  const headers = ['Fecha','Litros','Producto','Sector','Fuente'];
+  const rows = despachos.map(d=>[
+    d.fechaStr,
+    d.litros,
+    d.prod,
+    d.punto,
+    d.fuente
+  ]);
+  // Agregar totales
+  rows.push([]);
+  rows.push(['TOTAL LITROS', despachos.reduce((s,d)=>s+d.litros,0), '', '', '']);
+  const fname = `Consumo_${veh.Interno}_${veh.Dominio}_${from}_${to}`;
+  exportToExcel(rows, headers, fname, 'Despachos');
+}
+
+function exportLinea(linea, vehs, despachos, from, to){
+  // Hoja 1: resumen por vehículo
+  const headers1 = ['Interno','Patente','Descripción','Euro Diesel (lts)','Gasoil (lts)','Total (lts)','Despachos'];
+  const rows1 = vehs.map(v=>[v.interno, v.pat||'', v.desc||'', v.euro||0, v.gasoil||0, v.lts, v.cargas]);
+  rows1.push([]);
+  rows1.push(['TOTAL','','', 
+    vehs.reduce((s,v)=>s+(v.euro||0),0),
+    vehs.reduce((s,v)=>s+(v.gasoil||0),0),
+    vehs.reduce((s,v)=>s+v.lts,0),
+    vehs.reduce((s,v)=>s+v.cargas,0)
+  ]);
+
+  // Hoja 2: detalle de despachos
+  const headers2 = ['Fecha','Interno','Patente','Litros','Producto','Sector','Fuente'];
+  const rows2 = despachos.map(d=>[d.fechaStr, d.interno, d.pat||'', d.litros, d.prod, d.punto, d.fuente]);
+
+  const wb = XLSX.utils.book_new();
+  const ws1 = XLSX.utils.aoa_to_sheet([headers1, ...rows1]);
+  ws1['!cols'] = headers1.map(h=>({wch:Math.max(h.length+2,14)}));
+  XLSX.utils.book_append_sheet(wb, ws1, 'Resumen por Vehículo');
+
+  const ws2 = XLSX.utils.aoa_to_sheet([headers2, ...rows2]);
+  ws2['!cols'] = headers2.map(h=>({wch:Math.max(h.length+2,14)}));
+  XLSX.utils.book_append_sheet(wb, ws2, 'Detalle Despachos');
+
+  const fname = `Consumo_${linea.replace(/\s+/g,'_')}_${from}_${to}`;
+  XLSX.writeFile(wb, fname+'.xlsx');
+}
+
+// ═══════════════════════════════════
+// TAB 4: INGRESO ESCD x VTA
+// ═══════════════════════════════════
+async function cargarIngreso(){
+  document.getElementById('resIng').innerHTML='';
+  document.getElementById('loadingIng').style.display='block';
+  const from=document.getElementById('ingFrom').value, to=document.getElementById('ingTo').value;
+  const mesKey=from.slice(0,7);
+  aplicarPreciosMes(mesKey);
+
+  const pEuro=+document.getElementById('pEuro').value||0;
+  const pGasoil=+document.getElementById('pGasoil').value||0;
+  const pImpEuro=+document.getElementById('pImpEuro').value||0;
+  const pImpGasoil=+document.getElementById('pImpGasoil').value||0;
+  const pCO2Euro=+document.getElementById('pCO2Euro').value||0;
+  const pCO2Gasoil=+document.getElementById('pCO2Gasoil').value||0;
+  const pVtaEuro=+document.getElementById('pVtaEuro').value||0;
+  const pVtaGasoil=+document.getElementById('pVtaGasoil').value||0;
+
+  // Info de precios
+  const infoEl=document.getElementById('ingPreciosInfo');
+  if(infoEl){
+    infoEl.style.display='block';
+    const mesesDisp=Object.keys(preciosHistorial).sort();
+    const tieneMulti=mesesDisp.length>1;
+    infoEl.innerHTML= tieneMulti
+      ? `<strong>Precios por mes desde el sheet:</strong> cada mes se valoriza con sus propios precios. &nbsp;
+         Meses disponibles: <strong>${mesesDisp.join(', ')}</strong>`
+      : `<strong>Precios aplicados — ${mesKey}:</strong> &nbsp; 
+         Costo Euro: <strong>${fmtN(pEuro,3)}</strong> $/lt &nbsp;|&nbsp; 
+         Costo Gasoil: <strong>${fmtN(pGasoil,3)}</strong> $/lt &nbsp;|&nbsp; 
+         Neto Vta Euro: <strong style="color:var(--green)">${pVtaEuro>0?fmtN(pVtaEuro,3):'⚠ no configurado'}</strong> $/lt &nbsp;|&nbsp; 
+         Neto Vta Gasoil: <strong style="color:var(--green)">${pVtaGasoil>0?fmtN(pVtaGasoil,3):'⚠ no configurado'}</strong> $/lt`;
+  }
+
+  let despachos, errores;
+  if(cachedDespachos&&cachedFrom===from&&cachedTo===to){
+    despachos=cachedDespachos; errores=[];
+  }else{
+    const res=await consultarTodo(from,to);
+    despachos=res.despachos; errores=res.errores;
+    cachedDespachos=despachos; cachedFrom=from; cachedTo=to;
+  }
+  document.getElementById('loadingIng').style.display='none';
+
+  // Solo PETROSAR
+  const despPetrosar=despachos.filter(d=>d.punto!=='EESS CD');
+
+  function preciosMesIng(m){
+    const h=preciosHistorial[m];
+    if(h) return h;
+    return {pEuro,pGasoil,pImpEuro,pImpGasoil,pCO2Euro,pCO2Gasoil,pVtaEuro,pVtaGasoil};
+  }
+
+  // Agrupar por mes
+  const meses={};
+  despPetrosar.forEach(d=>{
+    const m=d.mes||'Sin fecha';
+    if(!meses[m]) meses[m]={
+      ltsEuro:0,ltsGasoil:0,
+      costoNetoEuro:0,costoNetoGasoil:0,
+      costoTotalEuro:0,costoTotalGasoil:0,
+      vtaNetoEuro:0,vtaNetoGasoil:0
+    };
+    const p=preciosMesIng(m);
+    if(d.prod==='GASOIL'){
+      meses[m].ltsGasoil+=d.litros;
+      meses[m].costoNetoGasoil+=d.litros*p.pGasoil;
+      meses[m].costoTotalGasoil+=d.litros*(p.pGasoil+p.pImpGasoil+p.pCO2Gasoil);
+      meses[m].vtaNetoGasoil+=d.litros*p.pVtaGasoil;
+    }else{
+      meses[m].ltsEuro+=d.litros;
+      meses[m].costoNetoEuro+=d.litros*p.pEuro;
+      meses[m].costoTotalEuro+=d.litros*(p.pEuro+p.pImpEuro+p.pCO2Euro);
+      meses[m].vtaNetoEuro+=d.litros*p.pVtaEuro;
+    }
+  });
+
+  const keys=Object.keys(meses).sort();
+  if(!keys.length){
+    document.getElementById('resIng').innerHTML='<div class="empty"><div class="empty-icon">📭</div><div class="empty-title">Sin datos Petrosar en el período</div></div>';
+    return;
+  }
+
+  const tot={ltsEuro:0,ltsGasoil:0,costoNetoEuro:0,costoNetoGasoil:0,costoTotalEuro:0,costoTotalGasoil:0,vtaNetoEuro:0,vtaNetoGasoil:0};
+  keys.forEach(k=>Object.keys(tot).forEach(f=>tot[f]+=(meses[k][f]||0)));
+
+  const totLts=tot.ltsEuro+tot.ltsGasoil;
+  const totCostoNeto=tot.costoNetoEuro+tot.costoNetoGasoil;
+  const totCostoTotal=tot.costoTotalEuro+tot.costoTotalGasoil;
+  const totVtaNeto=tot.vtaNetoEuro+tot.vtaNetoGasoil;
+  const ingresoTotal=totVtaNeto-totCostoNeto; // neto vta − neto costo (sin imp.int.)
+
+  window._lastIngresoData={meses,keys,from,to,pEuro,pGasoil,pImpEuro,pImpGasoil,pCO2Euro,pCO2Gasoil,pVtaEuro,pVtaGasoil,tot,totLts,totCostoNeto,totCostoTotal,totVtaNeto,ingresoTotal};
+
+  function mesNom(k){const[y,m]=k.split('-');const n=new Date(+y,+m-1,1).toLocaleString('es-AR',{month:'long',year:'numeric'});return n.charAt(0).toUpperCase()+n.slice(1);}
+
+  const sinPrecios=pVtaEuro===0&&pVtaGasoil===0;
+
+  document.getElementById('resIng').innerHTML=`
+    ${errores.length?`<div class="alert alert-warn fade">⚠ Sin datos de: ${errores.map(e=>e.split(':')[0]).join(', ')}</div>`:''}
+    ${sinPrecios?`<div class="alert alert-warn fade">⚠ Los precios neto de venta (cols 7 y 8 del sheet Precios) están en 0. El ingreso calculado será $0.</div>`:''}
+
+    <div class="kpi-grid fade">
+      <div class="kpi"><div class="kpi-lbl">Litros Petrosar</div><div class="kpi-val">${fmtN(totLts)}</div><div class="kpi-unit">${fmtN(tot.ltsEuro)} Euro · ${fmtN(tot.ltsGasoil)} Gasoil</div></div>
+      <div class="kpi"><div class="kpi-lbl">Valoriz. Costo Neto</div><div class="kpi-val" style="font-size:18px">${fmtARS(totCostoNeto)}</div><div class="kpi-unit">sin imp. interno ni CO2</div></div>
+      <div class="kpi" style="border-color:var(--green)"><div class="kpi-lbl">Valoriz. Neto Venta</div><div class="kpi-val" style="font-size:18px;color:var(--green)">${fmtARS(totVtaNeto)}</div><div class="kpi-unit">precio neto venta Petrosar</div></div>
+      <div class="kpi accent" style="background:${ingresoTotal>=0?'var(--green)':'var(--red)'};border-color:${ingresoTotal>=0?'var(--green)':'var(--red)'}">
+        <div class="kpi-lbl">INGRESO ESCD x VTA</div>
+        <div class="kpi-val" style="font-size:18px">${fmtARS(ingresoTotal)}</div>
+        <div class="kpi-unit">Neto Vta − Costo Neto Petrosar</div>
+      </div>
+    </div>
+
+    <div class="tbl-wrap fade">
+      <div class="tbl-hdr">
+        <span class="tbl-title">Ingreso ESCD — Detalle por Mes y Producto</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="tbl-count">${keys.length} meses</span>
+          <button class="btn btn-ghost" style="font-size:11px;padding:4px 12px;height:auto" onclick="exportIngreso()">⬇ Excel</button>
+        </div>
+      </div>
+      <table class="dt">
+        <thead><tr>
+          <th>Mes</th><th>Producto</th><th>Litros</th>
+          <th>Neto Costo ($)</th>
+          <th style="background:#edf7f2;color:var(--green)">Neto Venta ($)</th>
+          <th style="background:#edf7f2;color:var(--green);font-weight:700">Ingreso ESCD ($)</th>
+        </tr></thead>
+        <tbody>
+          ${keys.flatMap(k=>{
+            const d=meses[k]; const rows=[]; const nom=mesNom(k);
+            if(d.ltsEuro>0){
+              const ing=d.vtaNetoEuro-d.costoNetoEuro;
+              rows.push(`<tr>
+                <td style="font-weight:500">${nom}</td>
+                <td><span class="badge b-euro">Euro Diesel</span></td>
+                <td>${fmtN(d.ltsEuro)}</td>
+                <td>${fmtARS(d.costoNetoEuro)}</td>
+                <td style="color:var(--green);font-weight:600">${fmtARS(d.vtaNetoEuro)}</td>
+                <td style="font-weight:700;color:${ing>=0?'var(--green)':'var(--red)'}">${fmtARS(ing)}</td>
+              </tr>`);
+            }
+            if(d.ltsGasoil>0){
+              const ing=d.vtaNetoGasoil-d.costoNetoGasoil;
+              rows.push(`<tr>
+                <td style="font-weight:500">${d.ltsEuro>0?'':nom}</td>
+                <td><span class="badge b-gasoil">Gasoil</span></td>
+                <td>${fmtN(d.ltsGasoil)}</td>
+                <td>${fmtARS(d.costoNetoGasoil)}</td>
+                <td style="color:var(--green);font-weight:600">${fmtARS(d.vtaNetoGasoil)}</td>
+                <td style="font-weight:700;color:${ing>=0?'var(--green)':'var(--red)'}">${fmtARS(ing)}</td>
+              </tr>`);
+            }
+            return rows;
+          }).join('')}
+        </tbody>
+        <tfoot><tr>
+          <td colspan="2">TOTAL</td>
+          <td>${fmtN(totLts)}</td>
+          <td>${fmtARS(totCostoNeto)}</td>
+          <td style="color:var(--green)">${fmtARS(totVtaNeto)}</td>
+          <td style="color:${ingresoTotal>=0?'var(--green)':'var(--red)'}">${fmtARS(ingresoTotal)}</td>
+        </tr></tfoot>
+      </table>
+    </div>`;
+}
+
+function exportIngreso(){
+  const d=window._lastIngresoData;
+  if(!d){alert('Primero calculá el ingreso');return;}
+  const wb=XLSX.utils.book_new();
+  // Hoja principal
+  const h=['Mes','Producto','Litros','Neto Costo ($)','Neto Venta ($)','Ingreso ESCD ($)'];
+  const r=[];
+  function mesNom(k){const[y,m]=k.split('-');const n=new Date(+y,+m-1,1).toLocaleString('es-AR',{month:'long',year:'numeric'});return n.charAt(0).toUpperCase()+n.slice(1);}
+  d.keys.forEach(k=>{
+    const m=d.meses[k];
+    if(m.ltsEuro>0) r.push([mesNom(k),'Euro Diesel',m.ltsEuro,m.costoNetoEuro,m.vtaNetoEuro,m.vtaNetoEuro-m.costoNetoEuro]);
+    if(m.ltsGasoil>0) r.push([mesNom(k),'Gasoil',m.ltsGasoil,m.costoNetoGasoil,m.vtaNetoGasoil,m.vtaNetoGasoil-m.costoNetoGasoil]);
+  });
+  r.push([]);
+  r.push(['TOTAL','',d.totLts,d.totCostoNeto,d.totVtaNeto,d.ingresoTotal]);
+  const ws=XLSX.utils.aoa_to_sheet([h,...r]);
+  ws['!cols']=[{wch:22},{wch:14},{wch:14},{wch:18},{wch:18},{wch:18}];
+  XLSX.utils.book_append_sheet(wb,ws,'Ingreso ESCD x Vta');
+  // Hoja precios
+  const hp=['Concepto','Euro Diesel','Gasoil'];
+  const rp=[
+    ['Precio neto costo ($/lts)',d.pEuro,d.pGasoil],
+    ['Imp. Interno ($/lts)',d.pImpEuro,d.pImpGasoil],
+    ['CO2 ($/lts)',d.pCO2Euro,d.pCO2Gasoil],
+    ['Precio neto venta ($/lts)',d.pVtaEuro,d.pVtaGasoil],
+  ];
+  const wsp=XLSX.utils.aoa_to_sheet([hp,...rp]);
+  wsp['!cols']=[{wch:28},{wch:16},{wch:16}];
+  XLSX.utils.book_append_sheet(wb,wsp,'Precios');
+  XLSX.writeFile(wb,`IngresoESCD_${d.from}_${d.to}.xlsx`);
+}
+
+function exportValorizacion(){
+  const d = window._lastValData;
+  if(!d){ alert('Primero calculá la valorización'); return; }
+
+  const wb = XLSX.utils.book_new();
+
+  function mesNom(k){const[y,m]=k.split('-');const n=new Date(+y,+m-1,1).toLocaleString('es-AR',{month:'long',year:'numeric'});return n.charAt(0).toUpperCase()+n.slice(1);}
+
+  // ── Hoja 1: Valorización PETROSAR ───────────────────────────────────
+  const h1=['Mes','Producto','Litros','Neto Costo ($)','Imp. Interno ($)','CO2 ($)','Total Costo ($)','Neto Venta ($)'];
+  const r1=[];
+  d.allKeys.forEach(k=>{
+    const m=d.mesPetrosar[k]; if(!m) return;
+    if(m.ltsEuro>0) r1.push([mesNom(k),'Euro Diesel',m.ltsEuro,m.costoNetoEuro,m.costoImpEuro,m.costoCO2Euro,m.costoNetoEuro+m.costoImpEuro+m.costoCO2Euro,m.vtaNetoEuro]);
+    if(m.ltsGasoil>0) r1.push([mesNom(k),'Gasoil',m.ltsGasoil,m.costoNetoGasoil,m.costoImpGasoil,m.costoCO2Gasoil,m.costoNetoGasoil+m.costoImpGasoil+m.costoCO2Gasoil,m.vtaNetoGasoil]);
+  });
+  r1.push([]);
+  const tP=d.totP;
+  r1.push(['TOTAL','',tP.ltsEuro+tP.ltsGasoil,tP.costoNetoEuro+tP.costoNetoGasoil,tP.costoImpEuro+tP.costoImpGasoil,tP.costoCO2Euro+tP.costoCO2Gasoil,(tP.costoNetoEuro+tP.costoNetoGasoil)+(tP.costoImpEuro+tP.costoImpGasoil)+(tP.costoCO2Euro+tP.costoCO2Gasoil),tP.vtaNetoEuro+tP.vtaNetoGasoil]);
+  const ws1=XLSX.utils.aoa_to_sheet([h1,...r1]);
+  ws1['!cols']=h1.map(h=>({wch:Math.max(h.length+2,16)}));
+  XLSX.utils.book_append_sheet(wb,ws1,'Valoriz. PETROSAR');
+
+  // ── Hoja 2: Valorización EESS CD ────────────────────────────────────
+  const h2=['Mes','Producto','Litros','Neto Costo ($)','Imp. Interno ($)','CO2 ($)','Total Costo ($)'];
+  const r2=[];
+  d.allKeys.forEach(k=>{
+    const m=d.mesEESS[k]; if(!m) return;
+    if(m.ltsEuro>0) r2.push([mesNom(k),'Euro Diesel',m.ltsEuro,m.costoNetoEuro,m.costoImpEuro,m.costoCO2Euro,m.costoNetoEuro+m.costoImpEuro+m.costoCO2Euro]);
+    if(m.ltsGasoil>0) r2.push([mesNom(k),'Gasoil',m.ltsGasoil,m.costoNetoGasoil,m.costoImpGasoil,m.costoCO2Gasoil,m.costoNetoGasoil+m.costoImpGasoil+m.costoCO2Gasoil]);
+  });
+  r2.push([]);
+  const tE=d.totE;
+  r2.push(['TOTAL','',tE.ltsEuro+tE.ltsGasoil,tE.costoNetoEuro+tE.costoNetoGasoil,tE.costoImpEuro+tE.costoImpGasoil,tE.costoCO2Euro+tE.costoCO2Gasoil,(tE.costoNetoEuro+tE.costoNetoGasoil)+(tE.costoImpEuro+tE.costoImpGasoil)+(tE.costoCO2Euro+tE.costoCO2Gasoil)]);
+  const ws2=XLSX.utils.aoa_to_sheet([h2,...r2]);
+  ws2['!cols']=h2.map(h=>({wch:Math.max(h.length+2,16)}));
+  XLSX.utils.book_append_sheet(wb,ws2,'Valoriz. EESS CD');
+
+  // ── Hoja 3: Ingreso ESCD ─────────────────────────────────────────────
+  const h3=['Mes','Producto','Litros Petrosar','Neto Costo ($)','Neto Venta ($)','Ingreso ESCD ($)'];
+  const r3=[];
+  let totIngEuro=0,totIngGasoil=0,totLtsE=0,totLtsG=0,totCNE=0,totCNG=0,totVNE=0,totVNG=0;
+  d.allKeys.forEach(k=>{
+    const m=d.mesPetrosar[k]; if(!m) return;
+    if(m.ltsEuro>0){const ing=m.vtaNetoEuro-m.costoNetoEuro;r3.push([mesNom(k),'Euro Diesel',m.ltsEuro,m.costoNetoEuro,m.vtaNetoEuro,ing]);totIngEuro+=ing;totLtsE+=m.ltsEuro;totCNE+=m.costoNetoEuro;totVNE+=m.vtaNetoEuro;}
+    if(m.ltsGasoil>0){const ing=m.vtaNetoGasoil-m.costoNetoGasoil;r3.push([mesNom(k),'Gasoil',m.ltsGasoil,m.costoNetoGasoil,m.vtaNetoGasoil,ing]);totIngGasoil+=ing;totLtsG+=m.ltsGasoil;totCNG+=m.costoNetoGasoil;totVNG+=m.vtaNetoGasoil;}
+  });
+  r3.push([]);
+  r3.push(['TOTAL','',totLtsE+totLtsG,totCNE+totCNG,totVNE+totVNG,totIngEuro+totIngGasoil]);
+  const ws3=XLSX.utils.aoa_to_sheet([h3,...r3]);
+  ws3['!cols']=h3.map(h=>({wch:Math.max(h.length+2,16)}));
+  XLSX.utils.book_append_sheet(wb,ws3,'Ingreso ESCD x Vta');
+
+  // ── Hoja 4: Precios ──────────────────────────────────────────────────
+  const h4=['Concepto','Euro Diesel','Gasoil'];
+  const r4=[
+    ['Precio neto costo ($/lts)',d.pEuro,d.pGasoil],
+    ['Imp. Interno ($/lts)',d.pImpEuro,d.pImpGasoil],
+    ['CO2 ($/lts)',d.pCO2Euro,d.pCO2Gasoil],
+    ['Total costo ($/lts)',d.pEuro+d.pImpEuro+d.pCO2Euro,d.pGasoil+d.pImpGasoil+d.pCO2Gasoil],
+    [''],
+    ['Precio neto venta ($/lts)',d.pVtaEuro,d.pVtaGasoil],
+  ];
+  const ws4=XLSX.utils.aoa_to_sheet([h4,...r4]);
+  ws4['!cols']=[{wch:28},{wch:16},{wch:16}];
+  XLSX.utils.book_append_sheet(wb,ws4,'Precios');
+
+  const fname=`Valorizacion_${d.from}_${d.to}`;
+  XLSX.writeFile(wb,fname+'.xlsx');
+}
+
+async function buscarSinIdentificar(){
+  const from=document.getElementById('vehFrom').value;
+  const to=document.getElementById('vehTo').value;
+  document.getElementById('loadingVeh').style.display='block';
+  document.getElementById('resVeh').innerHTML='';
+  document.getElementById('vehAlert').innerHTML='';
+
+  const {despachos,errores}=await consultarTodo(from,to);
+  // Internos conocidos de Rodados
+  const internosConocidos=new Set(FLOTA.map(v=>v.Interno));
+  // Despachos donde el interno NO está en Rodados
+  const sinIdent=despachos.filter(d=>{
+    if(!d.interno && !d.receptorN) return true;
+    if(d.interno && !internosConocidos.has(d.interno)) return true;
+    if(d.receptorN && !internosConocidos.has(d.receptorN)) return true;
+    return false;
+  });
+
+  document.getElementById('loadingVeh').style.display='none';
+
+  if(!sinIdent.length){
+    document.getElementById('resVeh').innerHTML='<div class="empty"><div class="empty-icon">✅</div><div class="empty-title">Todos los despachos tienen vehículo identificado</div></div>';
+    return;
+  }
+
+  const total=sinIdent.reduce((s,d)=>s+d.litros,0);
+  const porInt={};
+  sinIdent.forEach(d=>{
+    const k=d.interno||d.receptorN||d.int||'Sin interno';
+    if(!porInt[k])porInt[k]={int:k,lts:0,cargas:0,prod:{},fuentes:new Set()};
+    porInt[k].lts+=d.litros;
+    porInt[k].cargas++;
+    porInt[k].prod[d.prod]=(porInt[k].prod[d.prod]||0)+d.litros;
+    porInt[k].fuentes.add(d.fuente);
+  });
+  const items=Object.values(porInt).sort((a,b)=>b.lts-a.lts);
+
+  document.getElementById('resVeh').innerHTML=`
+    <div class="alert alert-warn fade">
+      ⚠ Se encontraron <strong>${sinIdent.length} despachos</strong> con interno no identificado en Rodados — 
+      <strong>${fmtN(total)} lts</strong> en total
+    </div>
+    <div class="tbl-wrap fade">
+      <div class="tbl-hdr">
+        <span class="tbl-title">Despachos sin vehículo en Rodados</span>
+        <span class="tbl-count">${items.length} internos distintos</span>
+      </div>
+      <table class="dt">
+        <thead><tr><th>Interno</th><th>Litros</th><th>Despachos</th><th>Producto</th><th>Fuente</th></tr></thead>
+        <tbody>
+          ${items.map(v=>`<tr>
+            <td style="font-weight:700;color:var(--orange)">${v.int}</td>
+            <td><span class="lts-val">${fmtN(v.lts)}</span></td>
+            <td>${v.cargas}</td>
+            <td>${Object.entries(v.prod).map(([p,l])=>`<span class="badge b-${p.toLowerCase()}">${p}: ${fmtN(l)}</span>`).join(' ')}</td>
+            <td style="font-size:12px;color:var(--muted)">${[...v.fuentes].join(', ')}</td>
+          </tr>`).join('')}
+        </tbody>
+        <tfoot><tr>
+          <td>TOTAL</td>
+          <td><span class="lts-val">${fmtN(total)}</span></td>
+          <td>${sinIdent.length}</td>
+          <td colspan="2"></td>
+        </tr></tfoot>
+      </table>
+    </div>`;
+}
+
+function vehIcon(d){if(!d)return'🚗';d=d.toUpperCase();if(/IVECO|TECTOR/.test(d))return'🚛';if(/BUS|EUROBUS|MIDIBUS|SPRINTER/.test(d))return'🚐';if(/SCANIA|CAMION|CARGO|VOLKSWAGEN 3/.test(d))return'🚌';if(/ACOPLADO|SEMIRREMOLQUE/.test(d))return'🚜';return'🚗';}
+</script>
+</body>
+</html>
