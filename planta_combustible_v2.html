@@ -583,7 +583,7 @@ function PlantaGranel({showToast}){
                           <td style={{padding:"8px 13px",textAlign:"right",fontFamily:"'Barlow Condensed'",fontSize:15,fontWeight:700,color:isIng?P.green:P.accent,whiteSpace:"nowrap"}}>{isIng?"+":"−"}{fmt(tot)}</td>
                           <td style={{padding:"8px 13px"}}>
                             <div style={{display:"flex",gap:4}}>
-                              <button className="ba" onClick={()=>{setForm({...m});setEditId(m.id);}} style={{background:"#e6f0ff",border:"none",borderRadius:4,color:P.blue,fontSize:12,padding:"4px 9px"}}>✏️</button>
+                              <button className="ba" onClick={()=>{setForm({...m,distribucion:{}});setEditId(m.id);}} style={{background:"#e6f0ff",border:"none",borderRadius:4,color:P.blue,fontSize:12,padding:"4px 9px"}}>✏️</button>
                               <button className="ba" onClick={async()=>{ if(!window.confirm("¿Eliminar?"))return; setMovs(p=>p.filter(x=>x.id!==m.id)); try{await gasPost(GAS_URL_PLANTA,{action:"delete",id:m.id});showToast("✓ Eliminado","ok");}catch(e){} }} style={{background:"#fff0ee",border:"none",borderRadius:4,color:P.red,fontSize:12,padding:"4px 9px"}}>🗑</button>
                             </div>
                           </td>
@@ -937,7 +937,7 @@ function BaseCR({showToast}){
                           <td style={{padding:"8px 13px",color:P.inkL,fontSize:12}}>{m.observaciones||"—"}</td>
                           <td style={{padding:"8px 13px"}}>
                             <div style={{display:"flex",gap:4}}>
-                              <button className="ba" onClick={()=>{setForm({...m});setEditId(m.id);}} style={{background:"#e6f0ff",border:"none",borderRadius:4,color:P.blue,fontSize:12,padding:"4px 9px"}}>✏️</button>
+                              <button className="ba" onClick={()=>{setForm({...m,distribucion:{}});setEditId(m.id);}} style={{background:"#e6f0ff",border:"none",borderRadius:4,color:P.blue,fontSize:12,padding:"4px 9px"}}>✏️</button>
                               <button className="ba" onClick={async()=>{ if(!window.confirm("¿Eliminar?"))return; setMovs(p=>p.filter(x=>x.id!==m.id)); if(!GAS_URL_BASECR.includes("REEMPLAZAR")){try{await gasPost(GAS_URL_BASECR,{action:"delete",fecha:m.fecha,litros:m.litros});showToast("✓ Eliminado","ok");}catch(e){}}}} style={{background:"#fff0ee",border:"none",borderRadius:4,color:P.red,fontSize:12,padding:"4px 9px"}}>🗑</button>
                             </div>
                           </td>
