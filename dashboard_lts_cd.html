@@ -7,36 +7,66 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #f0efeb; font-family: system-ui, sans-serif; padding: 16px; }
-    .db { background: #f5f4f0; color: #1a1a1a; padding: 16px; border-radius: 12px; max-width: 1100px; margin: 0 auto; }
+    body { background: #eceae4; font-family: system-ui, sans-serif; padding: 16px; }
+    .db { background: #f5f4f0; color: #1a1a1a; padding: 16px; border-radius: 12px; max-width: 1200px; margin: 0 auto; }
+
     .db-header { background: #1a1a1a; border-radius: 8px; padding: 14px 20px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
     .db-title { font-size: 15px; font-weight: 500; color: #fff; letter-spacing: 0.06em; text-transform: uppercase; }
     .db-sub { font-size: 11px; color: #c9a227; margin-top: 2px; font-style: italic; }
-    .status { font-size: 10px; color: #888; }
-    .month-bar { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 14px; }
-    .month-btn { background: #fff; border: 0.5px solid #ccc; color: #555; padding: 5px 14px; border-radius: 4px; cursor: pointer; font-size: 12px; font-family: inherit; transition: all .15s; }
-    .month-btn:hover { border-color: #c9a227; color: #c9a227; }
-    .month-btn.active { background: #1a1a1a; border-color: #1a1a1a; color: #fff; font-weight: 500; }
+    .status { font-size: 10px; color: #666; }
+
+    .nav { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
+    .nav-btn { background: #fff; border: 0.5px solid #ccc; color: #555; padding: 5px 14px; border-radius: 4px; cursor: pointer; font-size: 12px; font-family: inherit; transition: all .15s; }
+    .nav-btn:hover { border-color: #c9a227; color: #c9a227; }
+    .nav-btn.active { background: #1a1a1a; border-color: #1a1a1a; color: #fff; font-weight: 500; }
+    .nav-sep { width: 1px; height: 20px; background: #ddd; margin: 0 4px; }
+
     .kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
     .kpi { background: #fff; border: 0.5px solid #e0e0e0; border-radius: 8px; padding: 12px 16px; }
     .kpi-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 4px; }
-    .kpi-val { font-size: 22px; font-weight: 500; color: #1a1a1a; }
+    .kpi-val { font-size: 24px; font-weight: 500; color: #1a1a1a; }
     .kpi-val span { font-size: 12px; color: #c9a227; margin-left: 4px; }
+
     .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
     .panel { background: #fff; border: 0.5px solid #e0e0e0; border-radius: 8px; padding: 14px; }
     .panel-title { font-size: 10px; font-weight: 500; color: #c9a227; text-transform: uppercase; letter-spacing: 0.09em; margin-bottom: 10px; }
+
+    .res-table { width: 100%; font-size: 12px; border-collapse: collapse; }
+    .res-table th { background: #1a1a1a; color: #c9a227; padding: 6px 10px; text-align: right; font-weight: 500; font-size: 11px; letter-spacing: 0.04em; }
+    .res-table th:first-child { text-align: left; }
+    .res-table td { padding: 6px 10px; border-bottom: 0.5px solid #f0f0f0; text-align: right; color: #333; }
+    .res-table td:first-child { text-align: left; font-weight: 500; color: #1a1a1a; }
+    .res-table tr.total-row td { background: #1a1a1a; color: #fff; font-weight: 500; border: none; }
+    .res-table tr.total-row td:first-child { color: #c9a227; }
+    .res-table tr:hover td { background: #faf9f5; }
+    .res-table tr.total-row:hover td { background: #1a1a1a; }
+    .pct-euro { color: #c9a227 !important; font-weight: 500; }
+
+    .top-table { width: 100%; font-size: 11px; border-collapse: collapse; }
+    .top-table th { background: #1a1a1a; color: #c9a227; padding: 5px 7px; text-align: right; font-weight: 500; font-size: 10px; letter-spacing: 0.04em; white-space: nowrap; }
+    .top-table th:nth-child(1), .top-table th:nth-child(2) { text-align: left; }
+    .top-table td { padding: 5px 7px; border-bottom: 0.5px solid #f0f0f0; color: #333; text-align: right; white-space: nowrap; }
+    .top-table td:nth-child(1) { color: #c9a227; font-weight: 500; text-align: left; }
+    .top-table td:nth-child(2) { text-align: left; }
+    .top-table tr.total-row td { background: #1a1a1a; color: #fff; font-weight: 500; border: none; }
+    .top-table tr:hover td { background: #faf9f5; }
+    .top-table tr.total-row:hover td { background: #1a1a1a; }
+
     .legend-row { display: flex; gap: 14px; margin-bottom: 8px; }
     .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #666; }
     .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+
     .client-table { width: 100%; font-size: 11px; border-collapse: collapse; }
-    .client-table th { color: #999; text-align: left; padding: 4px 6px; border-bottom: 0.5px solid #eee; font-weight: 400; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em; }
+    .client-table th { color: #999; text-align: left; padding: 4px 6px; border-bottom: 0.5px solid #eee; font-weight: 400; text-transform: uppercase; font-size: 10px; }
     .client-table td { padding: 5px 6px; border-bottom: 0.5px solid #f0f0f0; color: #333; }
     .rank { color: #c9a227; font-weight: 500; }
     .bar-bg { background: #eee; border-radius: 2px; height: 4px; margin-top: 3px; }
     .bar-fill { height: 4px; border-radius: 2px; background: #c9a227; }
+
     .loading { text-align: center; padding: 40px; color: #888; font-size: 14px; }
     .error { color: #a32d2d; font-size: 13px; padding: 20px; text-align: center; }
-    @media (max-width: 600px) {
+
+    @media (max-width: 700px) {
       .grid2 { grid-template-columns: 1fr; }
       .kpi-row { grid-template-columns: 1fr 1fr; }
     }
@@ -55,21 +85,24 @@
 </div>
 
 <script>
-const SHEET_ID = '1gzoHplpsPcCjfZ7g6uv56ZGnBwwGURUfbYU_56GX-Ho';
+const SHEET_ID   = '1gzoHplpsPcCjfZ7g6uv56ZGnBwwGURUfbYU_56GX-Ho';
 const SHEET_NAME = 'debocd';
-let barChart, lineChart;
-let allData = {};
-let months = [];
-let selectedMonth = '';
+const MO_NAMES   = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 
-function fmt(n) { return Math.round(n).toLocaleString('es-AR'); }
+let allData      = {};
+let months       = [];
+let selectedView = 'resumen';
+let charts       = {};
 
+function fmt(n)   { return Math.round(n).toLocaleString('es-AR'); }
+function fmtDec(n){ return parseFloat(n).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+
+/* ─── CSV parser ─────────────────────────────────────────────── */
 function parseCSV(text) {
-  const lines = text.trim().split('\n');
-  const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+  const lines   = text.trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.replace(/"/g,'').trim());
   return lines.slice(1).map(line => {
-    const cols = [];
-    let cur = '', inQ = false;
+    const cols = []; let cur = '', inQ = false;
     for (let c of line) {
       if (c === '"') { inQ = !inQ; }
       else if (c === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
@@ -77,82 +110,241 @@ function parseCSV(text) {
     }
     cols.push(cur.trim());
     const obj = {};
-    headers.forEach((h, i) => obj[h] = (cols[i] || '').replace(/"/g, '').trim());
+    headers.forEach((h,i) => obj[h] = (cols[i]||'').replace(/"/g,'').trim());
     return obj;
   });
 }
 
-// Fecha formato D/M/YYYY H:MM
-function getMonthKey(dateStr) {
-  const mNames = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-  const clean = dateStr.replace(/"/g, '').trim();
-  const match = clean.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (match) {
-    const month = parseInt(match[2]) - 1;
-    const year = parseInt(match[3]);
-    return mNames[month] + ' ' + year;
-  }
-  const d = new Date(clean);
-  if (!isNaN(d.getTime())) return mNames[d.getMonth()] + ' ' + d.getFullYear();
+/* ─── date helpers ───────────────────────────────────────────── */
+function getMonthKey(s) {
+  const m = s.replace(/"/g,'').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return MO_NAMES[parseInt(m[2])-1] + ' ' + m[3];
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) return MO_NAMES[d.getMonth()] + ' ' + d.getFullYear();
   return null;
 }
-
-function getDayNum(dateStr) {
-  const clean = dateStr.replace(/"/g, '').trim();
-  const match = clean.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (match) return parseInt(match[1]);
-  const d = new Date(clean);
-  if (!isNaN(d.getTime())) return d.getDate();
-  return null;
+function getDayNum(s) {
+  const m = s.replace(/"/g,'').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return parseInt(m[1]);
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d.getDate();
 }
 
-// GASOIL → diesel bio | EURO + DIESEL → euro diesel bio
-function classifyProduct(producto) {
-  const p = producto.toUpperCase().trim();
-  if (p === 'GASOIL') return 'diesel';
-  if (p === 'EURO + DIESEL') return 'euro';
-  // fallback
-  if (p.includes('EURO')) return 'euro';
-  return 'diesel';
+/* ─── classify product ───────────────────────────────────────── */
+function classify(p) {
+  const u = p.toUpperCase().trim();
+  if (u === 'GASOIL')        return 'diesel';
+  if (u === 'EURO + DIESEL') return 'euro';
+  return u.includes('EURO')  ? 'euro' : 'diesel';
 }
 
+/* ─── detect NC (Nota de Crédito) ────────────────────────────── */
+// Comprobantes que empiezan con "A NC", "R NC", "NC" o contienen " NC-"
+function isNotaCredito(comprobante) {
+  const u = comprobante.toUpperCase().trim();
+  return u.startsWith('A NC') ||
+         u.startsWith('R NC') ||
+         u.startsWith('NC')   ||
+         u.includes(' NC-')   ||
+         u.includes('/NC');
+}
+
+/* ─── process rows ───────────────────────────────────────────── */
 function processRows(rows) {
   const data = {};
   rows.forEach(r => {
-    const fecha   = r['Fecha']    || r['fecha']    || '';
-    const cliente = r['Cliente']  || r['cliente']  || '';
-    const producto= r['Producto'] || r['producto'] || '';
-    const cantStr = (r['Cantidad']|| r['cantidad'] || '0').replace(',', '.');
-    const cant    = parseFloat(cantStr) || 0;
-    const mkey    = getMonthKey(fecha);
-    const day     = getDayNum(fecha);
-    if (!mkey || !day || cant <= 0) return;
-    if (!data[mkey]) data[mkey] = { days: {}, clients: {} };
-    if (!data[mkey].days[day]) data[mkey].days[day] = { diesel: 0, euro: 0 };
-    const type = classifyProduct(producto);
-    data[mkey].days[day][type] += cant;
+    const comprobante = r['Comprobante'] || r['comprobante'] || '';
+    const fecha       = r['Fecha']       || r['fecha']       || '';
+    const cliente     = r['Cliente']     || r['cliente']     || '';
+    const prod        = r['Producto']    || r['producto']    || '';
+    const cantRaw     = (r['Cantidad']   || r['cantidad']    || '0').replace(',','.');
+    let   cant        = parseFloat(cantRaw) || 0;
+    const mkey        = getMonthKey(fecha);
+    const day         = getDayNum(fecha);
+    if (!mkey || !day || cant === 0) return;
+
+    // Si es NC, la cantidad resta (negativo)
+    if (isNotaCredito(comprobante)) cant = -Math.abs(cant);
+
+    if (!data[mkey]) data[mkey] = { days:{}, clients:{}, diesel:0, euro:0 };
+    if (!data[mkey].days[day]) data[mkey].days[day] = { diesel:0, euro:0 };
+
+    const t = classify(prod);
+    data[mkey].days[day][t] += cant;
+    data[mkey][t]           += cant;
     if (!data[mkey].clients[cliente]) data[mkey].clients[cliente] = 0;
     data[mkey].clients[cliente] += cant;
   });
   return data;
 }
 
-function renderDashboard() {
-  const d = allData[selectedMonth];
-  if (!d) { document.getElementById('content').innerHTML = '<div class="error">Sin datos para este mes.</div>'; return; }
+/* ─── helpers ────────────────────────────────────────────────── */
+function destroyCharts() {
+  Object.values(charts).forEach(c => { try { c.destroy(); } catch(e){} });
+  charts = {};
+}
+function sortMonths(arr) {
+  return arr.slice().sort((a,b) => {
+    const [ma,ya] = a.split(' '), [mb,yb] = b.split(' ');
+    return (parseInt(ya)-parseInt(yb)) || MO_NAMES.indexOf(ma)-MO_NAMES.indexOf(mb);
+  });
+}
 
-  const sortedDays  = Object.keys(d.days).map(Number).sort((a, b) => a - b);
-  const dieselArr   = sortedDays.map(day => d.days[day].diesel);
-  const euroArr     = sortedDays.map(day => d.days[day].euro);
-  const totalDiesel = dieselArr.reduce((a, b) => a + b, 0);
-  const totalEuro   = euroArr.reduce((a, b) => a + b, 0);
-  const total       = totalDiesel + totalEuro;
-  const pctEuro     = total > 0 ? ((totalEuro / total) * 100).toFixed(1) : '0.0';
-  const topClients  = Object.entries(d.clients).sort((a, b) => b[1] - a[1]).slice(0, 10);
-  const clientTotal = topClients.reduce((a, c) => a + c[1], 0);
+/* ─── NAV ────────────────────────────────────────────────────── */
+function buildNav() {
+  const nav = document.getElementById('navBar');
+  nav.innerHTML = '';
+  const btnRes = document.createElement('button');
+  btnRes.className = 'nav-btn' + (selectedView==='resumen' ? ' active' : '');
+  btnRes.textContent = 'Resumen';
+  btnRes.onclick = () => { selectedView='resumen'; renderAll(); };
+  nav.appendChild(btnRes);
+  const sep = document.createElement('div'); sep.className='nav-sep';
+  nav.appendChild(sep);
+  sortMonths(months).forEach(m => {
+    const btn = document.createElement('button');
+    btn.className = 'nav-btn' + (selectedView===m ? ' active' : '');
+    btn.textContent = m;
+    btn.onclick = () => { selectedView=m; renderAll(); };
+    nav.appendChild(btn);
+  });
+}
 
-  document.getElementById('content').innerHTML = `
-    <div class="month-bar" id="monthBar"></div>
+/* ═══════════════════════════════════════════════════════════════
+   VISTA RESUMEN
+═══════════════════════════════════════════════════════════════ */
+function renderResumen() {
+  destroyCharts();
+  const sorted = sortMonths(months);
+  let grandDiesel=0, grandEuro=0;
+  sorted.forEach(m => { grandDiesel+=allData[m].diesel; grandEuro+=allData[m].euro; });
+  const grandTotal = grandDiesel + grandEuro;
+  const pctEuro = grandTotal>0 ? ((grandEuro/grandTotal)*100).toFixed(1) : '0.0';
+
+  const rowsHTML = sorted.map(m => {
+    const d=allData[m], tot=d.diesel+d.euro;
+    const pe = tot>0 ? ((d.euro/tot)*100).toFixed(1) : '0.0';
+    const label = m.charAt(0).toUpperCase()+m.slice(1);
+    return `<tr><td>${label}</td><td>${fmtDec(d.diesel)}</td><td>${fmtDec(d.euro)}</td><td>${fmtDec(tot)}</td><td class="pct-euro">${pe}%</td></tr>`;
+  }).join('');
+
+  const clientMap = {};
+  sorted.forEach(m => {
+    Object.entries(allData[m].clients).forEach(([c,v]) => {
+      if (!clientMap[c]) clientMap[c]={total:0,byMonth:{}};
+      clientMap[c].total+=v;
+      clientMap[c].byMonth[m]=(clientMap[c].byMonth[m]||0)+v;
+    });
+  });
+  const topClients  = Object.entries(clientMap).sort((a,b)=>b[1].total-a[1].total).slice(0,10);
+  const topTotal    = sorted.map(m=>topClients.reduce((s,[,d])=>s+(d.byMonth[m]||0),0));
+  const grandTopTot = topClients.reduce((s,[,d])=>s+d.total,0);
+
+  const thMonths   = sorted.map(m=>`<th>${m.split(' ')[0].slice(0,3)} ${m.split(' ')[1].slice(2)}</th>`).join('');
+  const clientRows = topClients.map(([name,d],i)=>{
+    const mCols = sorted.map(m=>`<td>${d.byMonth[m]!=null ? fmtDec(d.byMonth[m]) : '-'}</td>`).join('');
+    return `<tr><td>${i+1}</td><td>${name}</td>${mCols}<td><strong>${fmtDec(d.total)}</strong></td></tr>`;
+  }).join('');
+  const totalMCols = sorted.map((_,i)=>`<td>${fmtDec(topTotal[i])}</td>`).join('');
+  const pctMCols   = sorted.map((m,i)=>{
+    const mTot=allData[m].diesel+allData[m].euro;
+    return `<td style="color:#c9a227;">${mTot>0?((topTotal[i]/mTot)*100).toFixed(1)+' %':'-'}</td>`;
+  }).join('');
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="kpi-row">
+      <div class="kpi"><div class="kpi-label">Total Litros</div><div class="kpi-val">${fmt(grandTotal)}</div></div>
+      <div class="kpi"><div class="kpi-label">Gasoil (Diesel Bio)</div><div class="kpi-val">${fmt(grandDiesel)}</div></div>
+      <div class="kpi"><div class="kpi-label">Euro + Diesel (Euro Bio)</div><div class="kpi-val">${fmt(grandEuro)}<span>${pctEuro}%</span></div></div>
+    </div>
+    <div class="grid2" style="margin-bottom:12px;">
+      <div class="panel">
+        <div class="panel-title">Litros por mes y combustible</div>
+        <table class="res-table">
+          <thead><tr><th>Mes</th><th>Gasoil</th><th>Euro + Diesel</th><th>Total</th><th>% Euro</th></tr></thead>
+          <tbody>${rowsHTML}</tbody>
+          <tfoot><tr class="total-row"><td>TOTAL</td><td>${fmtDec(grandDiesel)}</td><td>${fmtDec(grandEuro)}</td><td>${fmtDec(grandTotal)}</td><td>${pctEuro}%</td></tr></tfoot>
+        </table>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Litros por mes y tipo de combustible</div>
+        <div class="legend-row">
+          <div class="legend-item"><div class="legend-dot" style="background:#999;"></div>Gasoil</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#c9a227;"></div>Euro + Diesel</div>
+        </div>
+        <div style="position:relative;height:210px;"><canvas id="chartBar"></canvas></div>
+      </div>
+    </div>
+    <div class="panel" style="margin-bottom:12px;overflow-x:auto;">
+      <div class="panel-title">Top 10 clientes · evolución mensual</div>
+      <table class="top-table">
+        <thead><tr><th>#</th><th>Cliente</th>${thMonths}<th>Total</th></tr></thead>
+        <tbody>${clientRows}</tbody>
+        <tfoot>
+          <tr class="total-row"><td></td><td>Total Top 10</td>${totalMCols}<td>${fmtDec(grandTopTot)}</td></tr>
+          <tr style="background:#f5f4f0;"><td></td><td style="color:#888;font-size:10px;">% del total mes</td>${pctMCols}<td></td></tr>
+        </tfoot>
+      </table>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Litros totales vendidos por mes</div>
+      <div style="position:relative;height:200px;"><canvas id="chartLine"></canvas></div>
+    </div>
+  `;
+
+  charts.bar = new Chart(document.getElementById('chartBar'),{
+    type:'bar',
+    data:{
+      labels: sorted.map(m=>m.split(' ')[0].slice(0,3)+' '+m.split(' ')[1].slice(2)),
+      datasets:[
+        {label:'Gasoil',        data:sorted.map(m=>allData[m].diesel), backgroundColor:'#aaa',    stack:'s'},
+        {label:'Euro + Diesel', data:sorted.map(m=>allData[m].euro),   backgroundColor:'#c9a227', stack:'s'}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+fmt(ctx.raw)+' lts'}}},
+      scales:{
+        x:{stacked:true,ticks:{color:'#999',font:{size:10}},grid:{color:'#f0f0f0'}},
+        y:{stacked:true,ticks:{color:'#999',font:{size:10},callback:v=>(v/1000).toFixed(0)+'k'},grid:{color:'#f0f0f0'}}
+      }
+    }
+  });
+
+  charts.line = new Chart(document.getElementById('chartLine'),{
+    type:'line',
+    data:{
+      labels: sorted.map(m=>m.split(' ')[0].slice(0,3)+' '+m.split(' ')[1].slice(2)),
+      datasets:[{label:'Total',data:sorted.map(m=>allData[m].diesel+allData[m].euro),borderColor:'#c9a227',backgroundColor:'rgba(201,162,39,0.07)',pointRadius:4,pointBackgroundColor:'#c9a227',fill:true,tension:0.3}]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)+' lts'}}},
+      scales:{
+        x:{ticks:{color:'#999',font:{size:10}},grid:{color:'#f0f0f0'}},
+        y:{ticks:{color:'#999',font:{size:10},callback:v=>(v/1000).toFixed(0)+'k'},grid:{color:'#f0f0f0'}}
+      }
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   VISTA MES (detalle diario)
+═══════════════════════════════════════════════════════════════ */
+function renderMes(month) {
+  destroyCharts();
+  const d = allData[month];
+  if (!d) { document.getElementById('mainContent').innerHTML='<div class="error">Sin datos.</div>'; return; }
+
+  const sortedDays  = Object.keys(d.days).map(Number).sort((a,b)=>a-b);
+  const dieselArr   = sortedDays.map(day=>d.days[day].diesel);
+  const euroArr     = sortedDays.map(day=>d.days[day].euro);
+  const totalDiesel = d.diesel, totalEuro=d.euro, total=totalDiesel+totalEuro;
+  const pctEuro     = total>0 ? ((totalEuro/total)*100).toFixed(1) : '0.0';
+  const topClients  = Object.entries(d.clients).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const clientTotal = topClients.reduce((s,c)=>s+c[1],0);
+
+  document.getElementById('mainContent').innerHTML = `
     <div class="kpi-row">
       <div class="kpi"><div class="kpi-label">Total Litros</div><div class="kpi-val">${fmt(total)}</div></div>
       <div class="kpi"><div class="kpi-label">Gasoil (Diesel Bio)</div><div class="kpi-val">${fmt(totalDiesel)}</div></div>
@@ -165,99 +357,83 @@ function renderDashboard() {
           <div class="legend-item"><div class="legend-dot" style="background:#999;"></div>Gasoil</div>
           <div class="legend-item"><div class="legend-dot" style="background:#c9a227;"></div>Euro + Diesel</div>
         </div>
-        <div style="position:relative;height:190px;"><canvas id="barChart"></canvas></div>
+        <div style="position:relative;height:190px;"><canvas id="chartBar"></canvas></div>
       </div>
       <div class="panel">
         <div class="panel-title">Evolución total diaria</div>
-        <div style="position:relative;height:220px;"><canvas id="lineChart"></canvas></div>
+        <div style="position:relative;height:220px;"><canvas id="chartLine"></canvas></div>
       </div>
     </div>
     <div class="panel">
-      <div class="panel-title">Top 10 clientes — ${selectedMonth}</div>
+      <div class="panel-title">Top 10 clientes — ${month}</div>
       <table class="client-table">
         <thead><tr><th>#</th><th>Cliente</th><th style="text-align:right;">Litros</th><th style="text-align:right;">%</th><th style="min-width:70px;"></th></tr></thead>
-        <tbody>${topClients.map((c, i) => {
-          const pct = ((c[1] / clientTotal) * 100).toFixed(1);
-          const bw  = Math.round((c[1] / topClients[0][1]) * 100);
-          return `<tr><td class="rank">${i+1}</td><td>${c[0]}</td><td style="text-align:right;">${fmt(c[1])}</td><td style="text-align:right;color:#aaa;">${pct}%</td><td><div class="bar-bg"><div class="bar-fill" style="width:${bw}%"></div></div></td></tr>`;
+        <tbody>${topClients.map((c,i)=>{
+          const pct=((c[1]/clientTotal)*100).toFixed(1);
+          const bw=Math.round((c[1]/topClients[0][1])*100);
+          return `<tr><td class="rank">${i+1}</td><td>${c[0]}</td><td style="text-align:right;">${fmtDec(c[1])}</td><td style="text-align:right;color:#aaa;">${pct}%</td><td><div class="bar-bg"><div class="bar-fill" style="width:${bw}%"></div></div></td></tr>`;
         }).join('')}</tbody>
       </table>
     </div>
   `;
 
-  // Botones de mes
-  const mb = document.getElementById('monthBar');
-  months.forEach(m => {
-    const btn = document.createElement('button');
-    btn.className = 'month-btn' + (m === selectedMonth ? ' active' : '');
-    btn.textContent = m;
-    btn.onclick = () => { selectedMonth = m; renderDashboard(); };
-    mb.appendChild(btn);
-  });
-
-  // Gráfico barras apiladas
-  if (barChart) barChart.destroy();
-  barChart = new Chart(document.getElementById('barChart'), {
-    type: 'bar',
-    data: {
-      labels: sortedDays.map(String),
-      datasets: [
-        { label: 'Gasoil',       data: dieselArr, backgroundColor: '#aaa',     stack: 's' },
-        { label: 'Euro + Diesel',data: euroArr,   backgroundColor: '#c9a227',  stack: 's' }
-      ]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmt(ctx.raw) + ' lts' } } },
-      scales: {
-        x: { stacked: true, ticks: { color: '#999', font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 16 }, grid: { color: '#f0f0f0' } },
-        y: { stacked: true, ticks: { color: '#999', font: { size: 9 }, callback: v => (v / 1000).toFixed(0) + 'k' }, grid: { color: '#f0f0f0' } }
+  charts.bar = new Chart(document.getElementById('chartBar'),{
+    type:'bar',
+    data:{labels:sortedDays.map(String),datasets:[
+      {label:'Gasoil',        data:dieselArr,backgroundColor:'#aaa',    stack:'s'},
+      {label:'Euro + Diesel', data:euroArr,  backgroundColor:'#c9a227', stack:'s'}
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+fmt(ctx.raw)+' lts'}}},
+      scales:{
+        x:{stacked:true,ticks:{color:'#999',font:{size:9},maxRotation:0,autoSkip:true,maxTicksLimit:16},grid:{color:'#f0f0f0'}},
+        y:{stacked:true,ticks:{color:'#999',font:{size:9},callback:v=>(v/1000).toFixed(0)+'k'},grid:{color:'#f0f0f0'}}
       }
     }
   });
 
-  // Gráfico línea total
-  const totals = sortedDays.map((_, i) => dieselArr[i] + euroArr[i]);
-  if (lineChart) lineChart.destroy();
-  lineChart = new Chart(document.getElementById('lineChart'), {
-    type: 'line',
-    data: {
-      labels: sortedDays.map(String),
-      datasets: [{ label: 'Total', data: totals, borderColor: '#c9a227', backgroundColor: 'rgba(201,162,39,0.07)', pointRadius: 2, pointBackgroundColor: '#c9a227', fill: true, tension: 0.3 }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt(ctx.raw) + ' lts' } } },
-      scales: {
-        x: { ticks: { color: '#999', font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 16 }, grid: { color: '#f0f0f0' } },
-        y: { ticks: { color: '#999', font: { size: 9 }, callback: v => (v / 1000).toFixed(0) + 'k' }, grid: { color: '#f0f0f0' } }
+  const totals=sortedDays.map((_,i)=>dieselArr[i]+euroArr[i]);
+  charts.line = new Chart(document.getElementById('chartLine'),{
+    type:'line',
+    data:{labels:sortedDays.map(String),datasets:[{label:'Total',data:totals,borderColor:'#c9a227',backgroundColor:'rgba(201,162,39,0.07)',pointRadius:2,pointBackgroundColor:'#c9a227',fill:true,tension:0.3}]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)+' lts'}}},
+      scales:{
+        x:{ticks:{color:'#999',font:{size:9},maxRotation:0,autoSkip:true,maxTicksLimit:16},grid:{color:'#f0f0f0'}},
+        y:{ticks:{color:'#999',font:{size:9},callback:v=>(v/1000).toFixed(0)+'k'},grid:{color:'#f0f0f0'}}
       }
     }
   });
 }
 
+/* ─── render ─────────────────────────────────────────────────── */
+function renderAll() {
+  buildNav();
+  if (selectedView==='resumen') renderResumen();
+  else renderMes(selectedView);
+}
+
+/* ─── load ───────────────────────────────────────────────────── */
 async function loadData() {
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}`;
   try {
     const res = await fetch(url);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    if (!res.ok) throw new Error('HTTP '+res.status);
     const text = await res.text();
-    const rows = parseCSV(text);
-    allData = processRows(rows);
-    months = Object.keys(allData).sort((a, b) => {
-      const mo = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-      const [ma, ya] = a.split(' '); const [mb2, yb] = b.split(' ');
-      return (parseInt(ya) - parseInt(yb)) || mo.indexOf(ma) - mo.indexOf(mb2);
-    });
-    if (months.length === 0) {
-      document.getElementById('content').innerHTML = '<div class="error">No se encontraron datos en la planilla.</div>';
-      return;
-    }
-    selectedMonth = months[months.length - 1];
+    allData  = processRows(parseCSV(text));
+    months   = Object.keys(allData);
+    if (!months.length) { document.getElementById('content').innerHTML='<div class="error">Sin datos.</div>'; return; }
+    selectedView = 'resumen';
     document.getElementById('statusTxt').textContent = '✓ Datos actualizados';
-    renderDashboard();
-  } catch (e) {
-    document.getElementById('content').innerHTML = `<div class="error">Error al cargar la planilla: ${e.message}<br><small>Verificá que el sheet sea público (compartir → cualquier persona con el link).</small></div>`;
+    document.getElementById('content').innerHTML = `
+      <div class="nav" id="navBar"></div>
+      <div id="mainContent"></div>
+    `;
+    renderAll();
+  } catch(e) {
+    document.getElementById('content').innerHTML = `<div class="error">Error: ${e.message}<br><small>Verificá que el sheet sea público.</small></div>`;
     document.getElementById('statusTxt').textContent = 'Error de conexión';
   }
 }
