@@ -37,144 +37,53 @@
 const GAS_URL_PLANTA="https://script.google.com/macros/s/AKfycbxi0XUb_Bj_09iqf6qxwMhKcfeKRBU7Ct_UeVPr0SnggHWfLOe-w_-_rhQh-9AakpMw/exec";
 // Base CR — reemplazá con la URL del script de Base CR
 const GAS_URL_BASECR="https://script.google.com/macros/s/AKfycbxMs9CQYLVS1GhAiU_RViaYksMMSNuUKfo0fzYr1qcwGHslZPdevD_zIqIdm2o2eAl6/exec";
+// Sheet de Rodados — para cargar internos/patentes en tiempo real
+const RODADOS_SHEET_ID="1MUMqZlrP5-oce4oqHMEL6VvcFdGaLL3MzUDqYX8KevY";
+const RODADOS_GID="766085002";
 
-/* ── LISTADO DE VEHÍCULOS (Interno → Patente) ─────────────────────────────── */
-const VEHICULOS = [
-  {interno:"14",patente:"GBS010"},{interno:"17",patente:"RGV349"},{interno:"18",patente:"FMO203"},
-  {interno:"549",patente:"FZD463"},{interno:"606",patente:"HAP800"},{interno:"612",patente:"HCQ115"},
-  {interno:"639",patente:"HHL220"},{interno:"642",patente:"HLX557"},{interno:"644",patente:"HLX558"},
-  {interno:"661",patente:"HMO791"},{interno:"666",patente:"HNF752"},{interno:"667",patente:"HMO819"},
-  {interno:"673",patente:"HOY445"},{interno:"678",patente:"HQD469"},{interno:"682",patente:"FMU690"},
-  {interno:"697",patente:"FLB244"},{interno:"717",patente:"LBT116"},{interno:"719",patente:"LBT123"},
-  {interno:"723",patente:"LCS513"},{interno:"725",patente:"LBT118"},{interno:"726",patente:"LBT120"},
-  {interno:"739",patente:"LHV467"},{interno:"741",patente:"LRS766"},{interno:"742",patente:"LRX408"},
-  {interno:"746",patente:"MIO712"},{interno:"747",patente:"MIO711"},{interno:"748",patente:"MIO713"},
-  {interno:"749",patente:"MIO710"},{interno:"752",patente:"MJP353"},{interno:"755",patente:"MJP356"},
-  {interno:"757",patente:"757"},{interno:"760",patente:"MKU443"},{interno:"761",patente:"MKU445"},
-  {interno:"762",patente:"MKU446"},{interno:"763",patente:"MKU447"},{interno:"765",patente:"MNS001"},
-  {interno:"769",patente:"769"},{interno:"770",patente:"MSV883"},{interno:"771",patente:"MSV884"},
-  {interno:"775",patente:"MOO698"},{interno:"777",patente:"MOO701"},{interno:"782",patente:"MUO365"},
-  {interno:"783",patente:"MUO373"},{interno:"784",patente:"NSP193"},{interno:"785",patente:"NUK674"},
-  {interno:"786",patente:"NTT689"},{interno:"787",patente:"NSP189"},{interno:"788",patente:"NUK676"},
-  {interno:"794",patente:"NJS794"},{interno:"795",patente:"MGH003"},{interno:"800",patente:"OFU993"},
-  {interno:"801",patente:"OFU994"},{interno:"802",patente:"OFU996"},{interno:"803",patente:"OIO502"},
-  {interno:"804",patente:"OIO544"},{interno:"805",patente:"OIO545"},{interno:"806",patente:"OIO546"},
-  {interno:"807",patente:"OIO547"},{interno:"808",patente:"OIO548"},{interno:"810",patente:"OIW821"},
-  {interno:"811",patente:"OIW822"},{interno:"812",patente:"OIW823"},{interno:"813",patente:"OIW824"},
-  {interno:"814",patente:"OIW825"},{interno:"815",patente:"OIW826"},{interno:"816",patente:"OIW827"},
-  {interno:"817",patente:"OIW828"},{interno:"818",patente:"OIW829"},{interno:"819",patente:"OIW830"},
-  {interno:"820",patente:"OIW831"},{interno:"821",patente:"OIW832"},{interno:"822",patente:"OIW833"},
-  {interno:"823",patente:"OIW848"},{interno:"824",patente:"OIW849"},{interno:"825",patente:"OKD420"},
-  {interno:"826",patente:"OKD421"},{interno:"827",patente:"OKW570"},{interno:"828",patente:"OKW578"},
-  {interno:"829",patente:"OME744"},{interno:"830",patente:"OLU130"},{interno:"831",patente:"OKW609"},
-  {interno:"832",patente:"OME740"},{interno:"833",patente:"OME739"},{interno:"834",patente:"FJJ130"},
-  {interno:"836",patente:"PQL622"},{interno:"837",patente:"PQL624"},{interno:"838",patente:"PQL623"},
-  {interno:"839",patente:"POB667"},{interno:"840",patente:"AA160QS"},{interno:"841",patente:"AA772GL"},
-  {interno:"842",patente:"AA772GJ"},{interno:"843",patente:"AA772GT"},{interno:"844",patente:"AA772GV"},
-  {interno:"845",patente:"AA815HG"},{interno:"846",patente:"AA772GS"},{interno:"847",patente:"AA815HO"},
-  {interno:"848",patente:"AA772GU"},{interno:"849",patente:"AA772GI"},{interno:"850",patente:"AA772GQ"},
-  {interno:"851",patente:"AA772GM"},{interno:"852",patente:"AA772GW"},{interno:"853",patente:"AA772GX"},
-  {interno:"854",patente:"AA772HW"},{interno:"855",patente:"AA815HB"},{interno:"856",patente:"AA772HY"},
-  {interno:"857",patente:"AA815HE"},{interno:"858",patente:"PHO575"},{interno:"859",patente:"PMP770"},
-  {interno:"861",patente:"OOV139"},{interno:"862",patente:"AB064FD"},{interno:"863",patente:"AB064FE"},
-  {interno:"864",patente:"AB064FF"},{interno:"865",patente:"AB064FH"},{interno:"866",patente:"AB039PZ"},
-  {interno:"867",patente:"AB039PX"},{interno:"868",patente:"AB039PU"},{interno:"869",patente:"AB039PY"},
-  {interno:"870",patente:"AB064FC"},{interno:"871",patente:"AB039PW"},{interno:"873",patente:"PLG-843"},
-  {interno:"874",patente:"AB601NL"},{interno:"875",patente:"AB601NI"},{interno:"876",patente:"AB601NJ"},
-  {interno:"877",patente:"AB601NG"},{interno:"878",patente:"AB601NM"},{interno:"879",patente:"AB601NK"},
-  {interno:"880",patente:"AB601NF"},{interno:"881",patente:"AB601NN"},{interno:"882",patente:"AB601NH"},
-  {interno:"883",patente:"AB462XO"},{interno:"884",patente:"AB462XT"},{interno:"885",patente:"AB462XZ"},
-  {interno:"886",patente:"AB493YA"},{interno:"887",patente:"AB462XY"},{interno:"888",patente:"AC468TQ"},
-  {interno:"889",patente:"AC448IT"},{interno:"890",patente:"AC448IS"},{interno:"891",patente:"AC468TP"},
-  {interno:"893",patente:"PLG-842"},{interno:"894",patente:"PLG-844"},{interno:"895",patente:"AB888VV"},
-  {interno:"896",patente:"AC172FB"},{interno:"897",patente:"AC172FO"},{interno:"898",patente:"AC172EX"},
-  {interno:"899",patente:"AC172FN"},{interno:"900",patente:"AC172EV"},{interno:"901",patente:"AC172FC"},
-  {interno:"902",patente:"AC172FF"},{interno:"903",patente:"AC172FK"},{interno:"904",patente:"AC172FL"},
-  {interno:"905",patente:"AC172EZ"},{interno:"907",patente:"AD641EJ"},{interno:"908",patente:"AD641EN"},
-  {interno:"909",patente:"AD641EZ"},{interno:"913",patente:"AD723HE"},{interno:"914",patente:"AD723HF"},
-  {interno:"915",patente:"AD848RF"},{interno:"916",patente:"AD848RG"},{interno:"917",patente:"AD848RE"},
-  {interno:"918",patente:"AD848RD"},{interno:"919",patente:"AE015GB"},{interno:"920",patente:"AE074BA"},
-  {interno:"921",patente:"AE074BB"},{interno:"922",patente:"AE193NF"},{interno:"923",patente:"AE193NG"},
-  {interno:"924",patente:"AE193NH"},{interno:"925",patente:"AE193NJ"},{interno:"926",patente:"AE193NI"},
-  {interno:"927",patente:"AE193NL"},{interno:"928",patente:"AE193NM"},{interno:"929",patente:"AE174RH"},
-  {interno:"930",patente:"AE174RJ"},{interno:"931",patente:"AE174RF"},{interno:"932",patente:"AE174RS"},
-  {interno:"933",patente:"AE174RN"},{interno:"934",patente:"AE174RG"},{interno:"935",patente:"AE174RR"},
-  {interno:"936",patente:"AE174RK"},{interno:"937",patente:"AE174RC"},{interno:"938",patente:"AE174RL"},
-  {interno:"939",patente:"AE174RE"},{interno:"940",patente:"AE174RB"},{interno:"941",patente:"AE174RQ"},
-  {interno:"942",patente:"AE174RD"},{interno:"943",patente:"AE174RP"},{interno:"944",patente:"AE174RM"},
-  {interno:"945",patente:"AE193NX"},{interno:"946",patente:"AE350BI"},{interno:"947",patente:"AE428RA"},
-  {interno:"948",patente:"AE428RB"},{interno:"949",patente:"AE428RH"},{interno:"950",patente:"AE428RG"},
-  {interno:"951",patente:"AE350BZ"},{interno:"952",patente:"AE473BR"},{interno:"953",patente:"AE473BQ"},
-  {interno:"954",patente:"AE502UF"},{interno:"955",patente:"AE502UE"},{interno:"956",patente:"AE502UC"},
-  {interno:"957",patente:"AE502UA"},{interno:"958",patente:"AE502UD"},{interno:"959",patente:"AE473BZ"},
-  {interno:"960",patente:"AE502UB"},{interno:"961",patente:"AE686XG"},{interno:"962",patente:"AE686XM"},
-  {interno:"963",patente:"AE814BD"},{interno:"964",patente:"AE814BE"},{interno:"965",patente:"AE814BF"},
-  {interno:"966",patente:"AE814BG"},{interno:"967",patente:"AE944SK"},{interno:"968",patente:"AE863MW"},
-  {interno:"969",patente:"AE944SG"},{interno:"970",patente:"AE944SL"},{interno:"971",patente:"AE944SH"},
-  {interno:"972",patente:"AE944SS"},{interno:"973",patente:"AE944ST"},{interno:"974",patente:"AF056VA"},
-  {interno:"975",patente:"AF056VB"},{interno:"976",patente:"AF056VP"},{interno:"977",patente:"AF056VO"},
-  {interno:"978",patente:"AF056VV"},{interno:"979",patente:"AF085ML"},{interno:"980",patente:"AF085MK"},
-  {interno:"981",patente:"AF085MD"},{interno:"982",patente:"AF117PW"},{interno:"983",patente:"AE318KX"},
-  {interno:"984",patente:"AF177VZ"},{interno:"985",patente:"AF353DH"},{interno:"986",patente:"AF485QX"},
-  {interno:"987",patente:"AF485QY"},{interno:"988",patente:"AF485QP"},{interno:"989",patente:"AF485QS"},
-  {interno:"990",patente:"AF485QQ"},{interno:"991",patente:"AF485QR"},{interno:"992",patente:"AF353DI"},
-  {interno:"993",patente:"AF485QC"},{interno:"994",patente:"AF485QA"},{interno:"995",patente:"AF485QB"},
-  {interno:"996",patente:"AF485QD"},{interno:"997",patente:"AF423ZL"},{interno:"998",patente:"AF423ZS"},
-  {interno:"999",patente:"AF537FJ"},{interno:"1000",patente:"AF537FQ"},{interno:"1001",patente:"AF537FP"},
-  {interno:"1002",patente:"AF537FK"},{interno:"1003",patente:"AF537FE"},{interno:"1004",patente:"AF537FD"},
-  {interno:"1005",patente:"AF537FL"},{interno:"1006",patente:"AF537FH"},{interno:"1007",patente:"AF537FM"},
-  {interno:"1008",patente:"AF440EU"},{interno:"1009",patente:"AF537FT"},{interno:"1010",patente:"AF527TG"},
-  {interno:"1011",patente:"AF614SK"},{interno:"1012",patente:"AF614SI"},{interno:"1013",patente:"AF614SL"},
-  {interno:"1014",patente:"AF614SH"},{interno:"1015",patente:"AF668OC"},{interno:"1016",patente:"AF668OA"},
-  {interno:"1017",patente:"AF668OB"},{interno:"1018",patente:"AF668OI"},{interno:"1019",patente:"AF668OK"},
-  {interno:"1020",patente:"AF668OP"},{interno:"1021",patente:"AF668ON"},{interno:"1022",patente:"AF668OQ"},
-  {interno:"1023",patente:"AF668OO"},{interno:"1024",patente:"AF668OR"},{interno:"1025",patente:"AF668OY"},
-  {interno:"1026",patente:"AF668OS"},{interno:"1028",patente:"AF668OT"},{interno:"1029",patente:"AF668OU"},
-  {interno:"1030",patente:"AF732ZP"},{interno:"1033",patente:"AF891YQ"},{interno:"1034",patente:"AF949KJ"},
-  {interno:"1035",patente:"AF949KK"},{interno:"1036",patente:"AF949KI"},{interno:"1037",patente:"AF949KN"},
-  {interno:"1038",patente:"AF949KM"},{interno:"1039",patente:"AF949KG"},{interno:"1040",patente:"AF949KH"},
-  {interno:"1041",patente:"AF949KQ"},{interno:"1042",patente:"AF949KP"},{interno:"1043",patente:"AF949KX"},
-  {interno:"1044",patente:"AF949KY"},{interno:"1045",patente:"AG043YU"},{interno:"1046",patente:"AG043YV"},
-  {interno:"1047",patente:"AG098QB"},{interno:"1048",patente:"AG043YZ"},{interno:"1049",patente:"AG098QW"},
-  {interno:"1050",patente:"AG098QV"},{interno:"1051",patente:"AG174JI"},{interno:"1052",patente:"AG174JJ"},
-  {interno:"1053",patente:"AG264SE"},{interno:"1054",patente:"AG264SD"},{interno:"1055",patente:"AG264SG"},
-  {interno:"1056",patente:"AG264SV"},{interno:"1057",patente:"AG264SU"},{interno:"1058",patente:"AG351OF"},
-  {interno:"1059",patente:"AG351OE"},{interno:"1060",patente:"AG351OD"},{interno:"1061",patente:"AG118QJ"},
-  {interno:"1062",patente:"AG351OG"},{interno:"1063",patente:"AG297HP"},{interno:"1064",patente:"AG351OR"},
-  {interno:"1065",patente:"AG316VO"},{interno:"1066",patente:"AG459IA"},{interno:"1067",patente:"AG459IC"},
-  {interno:"1068",patente:"AG351OZ"},{interno:"1069",patente:"AG512XV"},{interno:"1070",patente:"AG586GB"},
-  {interno:"1071",patente:"AG586GC"},{interno:"1072",patente:"AG512XW"},{interno:"1073",patente:"AG712XA"},
-  {interno:"1074",patente:"AG631ZU"},{interno:"1075",patente:"AG712XL"},{interno:"1076",patente:"AG712XB"},
-  {interno:"1077",patente:"AG631ZX"},{interno:"1078",patente:"AG712XH"},{interno:"1079",patente:"AG712XC"},
-  {interno:"1080",patente:"AG712XM"},{interno:"1081",patente:"AG712XK"},{interno:"1082",patente:"AG712XO"},
-  {interno:"1083",patente:"AG631ZG"},{interno:"1084",patente:"AG631ZS"},{interno:"1085",patente:"AG763LZ"},
-  {interno:"1086",patente:"AG944JX"},{interno:"1088",patente:"AF563HZ"},{interno:"1089",patente:"AH289JF"},
-  {interno:"1090",patente:"AH289JE"},{interno:"1091",patente:"AH248DZ"},{interno:"1093",patente:"AH385HX"},
-  {interno:"1094",patente:"AG293YO"},{interno:"1110",patente:"AH683IK"},{interno:"1111",patente:"AH893NH"},
-  {interno:"1112",patente:"AH893NX"},{interno:"1113",patente:"AH893MQ"},{interno:"1114",patente:"AH893NV"},
-  {interno:"1115",patente:"AH893NG"},{interno:"1116",patente:"AH893NW"},{interno:"1117",patente:"AH174RH"},
-  {interno:"1118",patente:"AH893NK"},{interno:"1119",patente:"AH893NF"},{interno:"1120",patente:"AH893NP"},
-  {interno:"1121",patente:"AH893NH"},{interno:"1122",patente:"AH893NM"},{interno:"1123",patente:"AH893NL"},
-  {interno:"1124",patente:"AH893NS"},{interno:"1125",patente:"AH893NY"},{interno:"1126",patente:"AH893MO"},
-  {interno:"1127",patente:"AH893NR"},{interno:"1128",patente:"AH893NN"},{interno:"1129",patente:"AH893NO"},
-  {interno:"1130",patente:"AH983NI"},{interno:"100006",patente:"OLB342"},{interno:"100010",patente:"AC678CJ"},
-  {interno:"100016",patente:"AH237BG"},{interno:"100017",patente:"AD773RQ"},{interno:"100018",patente:"AH893NQ"},
-  {interno:"100246",patente:"AG378CN"},{interno:"100247",patente:"AF152IE"},{interno:"100248",patente:"AH410ZP"},
-  {interno:"100249",patente:"AG529EX"},{interno:"100250",patente:"AG400EO"},{interno:"100251",patente:"AH258PM"},
-  {interno:"100252",patente:"AF983IT"},{interno:"100255",patente:"KEM095"},{interno:"100256",patente:"GWF471"},
-  {interno:"100370",patente:"AC422GH"},{interno:"100015",patente:"AG958TJ"},{interno:"100260",patente:"AH921TE"},
-  {interno:"100261",patente:"AH276XQ"},{interno:"100999",patente:"AF009MA"},
-  {interno:"DELEGADO",patente:"NFQ-225"},{interno:"ESTANCIA TP",patente:"ESTANCIA TP"},
-  {interno:"H-63",patente:"H-63"},{interno:"H-64",patente:"H-64"},{interno:"H-65",patente:"H-65"},
-  {interno:"H-69",patente:"H-69"},{interno:"HIDRO BASE",patente:"HIDRO BASE"},
-  {interno:"S-39",patente:"S-39"},{interno:"S-41",patente:"S-41"},{interno:"S-43",patente:"S-43"},
-  {interno:"S-44",patente:"S-44"},{interno:"S-45",patente:"S-45"},{interno:"S-47",patente:"S-47"},
-  {interno:"SINDICATO",patente:"AG378CN"},
-];
+/* ── LISTADO DE VEHÍCULOS — cargado dinámicamente desde sheet de Rodados ─── */
+// Se inicializa vacío y se llena al cargar la app
+let VEHICULOS = [];
+let INTERNO_MAP = {};
 
-// Mapa rápido interno→patente
-const INTERNO_MAP = {};
-VEHICULOS.forEach(v=>{ INTERNO_MAP[v.interno]=v.patente; });
+async function cargarRodados() {
+  try {
+    const url = `https://docs.google.com/spreadsheets/d/${RODADOS_SHEET_ID}/gviz/tq?tqx=out:csv&gid=${RODADOS_GID}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const text = await res.text();
+    const lines = text.trim().split("\n").slice(1); // saltar header
+    const nuevos = [];
+    lines.forEach(line => {
+      const cols = [];
+      let cur = "", inQ = false;
+      for (let c of line) {
+        if (c === '"') { inQ = !inQ; }
+        else if (c === ',' && !inQ) { cols.push(cur.replace(/"/g,"").trim()); cur = ""; }
+        else cur += c;
+      }
+      cols.push(cur.replace(/"/g,"").trim());
+      // col A = Interno, col B = Patente
+      const interno = (cols[0] || "").trim();
+      const patente = (cols[1] || "").trim();
+      if (interno && patente) {
+        nuevos.push({ interno, patente });
+        INTERNO_MAP[interno] = patente;
+      }
+    });
+    // Ordenar por interno numérico
+    nuevos.sort((a,b) => {
+      const na = parseFloat(a.interno) || 0;
+      const nb = parseFloat(b.interno) || 0;
+      return na !== nb ? na - nb : a.interno.localeCompare(b.interno);
+    });
+    VEHICULOS = nuevos;
+    console.log("✓ Rodados cargados:", VEHICULOS.length, "vehículos");
+  } catch(e) {
+    console.warn("No se pudo cargar el sheet de rodados:", e.message);
+    // Si falla, VEHICULOS queda vacío — el selector mostrará vacío
+  }
+}
 
 // Mapa destino → tanques disponibles (para selector en formulario)
 const DESTINO_TANQUES={
@@ -770,16 +679,15 @@ function BaseCR({showToast}){
       showToast("Completá la fecha y los litros.","err"); return;
     }
     const id=editId||String(Date.now());
-    // Serializar distribucion como JSON para guardar en sheet (col 18)
-    const distStr=Object.keys(form.distribucion||{}).length>0?JSON.stringify(form.distribucion):"";
-    const payload={...form,id,tanqueDestino:distStr};
+    // Base CR no usa distribucion — construir payload limpio
+    const payload={fecha:form.fecha,interno:form.interno,patente:form.patente,chofer:form.chofer,litros:form.litros,producto:form.producto,observaciones:form.observaciones,id};
     setMovs(p=>editId?p.map(m=>m.id===id?payload:m):[...p,payload]);
     setEditId(null);setForm(efCR());
     if(!GAS_URL_BASECR.includes("REEMPLAZAR")){
       try{
         await gasPost(GAS_URL_BASECR,{action:editId?"update":"add",...payload});
         showToast(editId?"✓ Actualizado":"✓ Guardado en Base CR Sheets","ok");
-      }catch(e){ showToast("Guardado localmente","err",4000); }
+      }catch(e){ showToast("Error al guardar — verificar conexión","err",4000); }
     } else {
       showToast("✓ Guardado localmente (configurar URL de Base CR)","ok");
     }
@@ -1070,7 +978,10 @@ function App(){
   );
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+// Cargar rodados desde sheet antes de renderizar
+cargarRodados().finally(() => {
+  ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+});
 </script>
 </body>
 </html>
