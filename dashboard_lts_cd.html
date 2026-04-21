@@ -254,14 +254,14 @@ function renderResumen() {
   document.getElementById('mainContent').innerHTML = `
     <div class="kpi-row">
       <div class="kpi"><div class="kpi-label">Total Litros</div><div class="kpi-val">${fmt(grandTotal)}</div></div>
-      <div class="kpi"><div class="kpi-label">Gasoil (Diesel Bio)</div><div class="kpi-val">${fmt(grandDiesel)}</div></div>
-      <div class="kpi"><div class="kpi-label">Euro + Diesel (Euro Bio)</div><div class="kpi-val">${fmt(grandEuro)}<span>${pctEuro}%</span></div></div>
+      <div class="kpi"><div class="kpi-label">Diesel Bio</div><div class="kpi-val">${fmt(grandDiesel)}</div></div>
+      <div class="kpi"><div class="kpi-label">Euro Diesel Bio</div><div class="kpi-val">${fmt(grandEuro)}<span>${pctEuro}%</span></div></div>
     </div>
     <div class="grid2" style="margin-bottom:12px;">
       <div class="panel">
         <div class="panel-title">Litros por mes y combustible</div>
         <table class="res-table">
-          <thead><tr><th>Mes</th><th>Gasoil</th><th>Euro + Diesel</th><th>Total</th><th>% Euro</th></tr></thead>
+          <thead><tr><th>Mes</th><th>Diesel Bio</th><th>Euro Diesel Bio</th><th>Total</th><th>% Euro</th></tr></thead>
           <tbody>${rowsHTML}</tbody>
           <tfoot><tr class="total-row"><td>TOTAL</td><td>${fmtDec(grandDiesel)}</td><td>${fmtDec(grandEuro)}</td><td>${fmtDec(grandTotal)}</td><td>${pctEuro}%</td></tr></tfoot>
         </table>
@@ -269,8 +269,8 @@ function renderResumen() {
       <div class="panel">
         <div class="panel-title">Litros por mes y tipo de combustible</div>
         <div class="legend-row">
-          <div class="legend-item"><div class="legend-dot" style="background:#999;"></div>Gasoil</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#c9a227;"></div>Euro + Diesel</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#999;"></div>Diesel Bio</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#c9a227;"></div>Euro Diesel Bio</div>
         </div>
         <div style="position:relative;height:210px;"><canvas id="chartBar"></canvas></div>
       </div>
@@ -297,8 +297,8 @@ function renderResumen() {
     data:{
       labels: sorted.map(m=>m.split(' ')[0].slice(0,3)+' '+m.split(' ')[1].slice(2)),
       datasets:[
-        {label:'Gasoil',        data:sorted.map(m=>allData[m].diesel), backgroundColor:'#aaa',    stack:'s'},
-        {label:'Euro + Diesel', data:sorted.map(m=>allData[m].euro),   backgroundColor:'#c9a227', stack:'s'}
+        {label:'Diesel Bio',        data:sorted.map(m=>allData[m].diesel), backgroundColor:'#aaa',    stack:'s'},
+        {label:'Euro Diesel Bio', data:sorted.map(m=>allData[m].euro),   backgroundColor:'#c9a227', stack:'s'}
       ]
     },
     options:{
@@ -347,15 +347,15 @@ function renderMes(month) {
   document.getElementById('mainContent').innerHTML = `
     <div class="kpi-row">
       <div class="kpi"><div class="kpi-label">Total Litros</div><div class="kpi-val">${fmt(total)}</div></div>
-      <div class="kpi"><div class="kpi-label">Gasoil (Diesel Bio)</div><div class="kpi-val">${fmt(totalDiesel)}</div></div>
-      <div class="kpi"><div class="kpi-label">Euro + Diesel (Euro Bio)</div><div class="kpi-val">${fmt(totalEuro)}<span>${pctEuro}%</span></div></div>
+      <div class="kpi"><div class="kpi-label">Diesel Bio</div><div class="kpi-val">${fmt(totalDiesel)}</div></div>
+      <div class="kpi"><div class="kpi-label">Euro Diesel Bio</div><div class="kpi-val">${fmt(totalEuro)}<span>${pctEuro}%</span></div></div>
     </div>
     <div class="grid2">
       <div class="panel">
         <div class="panel-title">Litros diarios por combustible</div>
         <div class="legend-row">
-          <div class="legend-item"><div class="legend-dot" style="background:#999;"></div>Gasoil</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#c9a227;"></div>Euro + Diesel</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#999;"></div>Diesel Bio</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#c9a227;"></div>Euro Diesel Bio</div>
         </div>
         <div style="position:relative;height:190px;"><canvas id="chartBar"></canvas></div>
       </div>
@@ -380,8 +380,8 @@ function renderMes(month) {
   charts.bar = new Chart(document.getElementById('chartBar'),{
     type:'bar',
     data:{labels:sortedDays.map(String),datasets:[
-      {label:'Gasoil',        data:dieselArr,backgroundColor:'#aaa',    stack:'s'},
-      {label:'Euro + Diesel', data:euroArr,  backgroundColor:'#c9a227', stack:'s'}
+      {label:'Diesel Bio',        data:dieselArr,backgroundColor:'#aaa',    stack:'s'},
+      {label:'Euro Diesel Bio', data:euroArr,  backgroundColor:'#c9a227', stack:'s'}
     ]},
     options:{
       responsive:true,maintainAspectRatio:false,
