@@ -79,7 +79,10 @@
       <div class="db-title">Dashboard · Litros Vendidos CD</div>
       <div class="db-sub">PETROSAR · Estación de Servicio Cerro Dragón</div>
     </div>
-    <div class="status" id="statusTxt">Cargando datos...</div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div class="status" id="statusTxt">Cargando datos...</div>
+      <button id="btnExcel" onclick="descargarExcel()" style="background:#c9a227;border:none;color:#1a1a1a;padding:7px 16px;border-radius:4px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;display:none;">⬇ Descargar Excel</button>
+    </div>
   </div>
   <div id="content"><div class="loading">Conectando con Google Sheets...</div></div>
 </div>
@@ -416,17 +419,21 @@ function renderAll() {
 }
 
 /* ─── load ───────────────────────────────────────────────────── */
+let rawCSVData = '';
+
 async function loadData() {
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}`;
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error('HTTP '+res.status);
     const text = await res.text();
+    rawCSVData = text;
     allData  = processRows(parseCSV(text));
     months   = Object.keys(allData);
     if (!months.length) { document.getElementById('content').innerHTML='<div class="error">Sin datos.</div>'; return; }
     selectedView = 'resumen';
     document.getElementById('statusTxt').textContent = '✓ Datos actualizados';
+    document.getElementById('btnExcel').style.display = 'inline-block';
     document.getElementById('content').innerHTML = `
       <div class="nav" id="navBar"></div>
       <div id="mainContent"></div>
@@ -438,7 +445,30 @@ async function loadData() {
   }
 }
 
+/* ─── exportar excel ─────────────────────────────────────────── */
+function descargarExcel() {
+  if (!rawCSVData) { alert('Primero esperá que carguen los datos.'); return; }
+  const lines = rawCSVData.trim().split('\n');
+  const data  = lines.map(function(line) {
+    const cols = []; let cur = '', inQ = false;
+    for (let c of line) {
+      if (c === '"') { inQ = !inQ; }
+      else if (c === ',' && !inQ) { cols.push(cur.replace(/"/g,'').trim()); cur = ''; }
+      else cur += c;
+    }
+    cols.push(cur.replace(/"/g,'').trim());
+    return cols;
+  });
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = [{wch:22},{wch:18},{wch:40},{wch:18},{wch:16},{wch:12},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, ws, 'debocd');
+  const fecha = new Date().toLocaleDateString('es-AR').replace(/\//g,'-');
+  XLSX.writeFile(wb, 'Litros_CD_' + fecha + '.xlsx');
+}
+
 loadData();
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </body>
 </html>
