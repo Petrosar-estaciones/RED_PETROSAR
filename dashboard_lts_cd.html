@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard · Litros Vendidos CD</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #f0efeb; font-family: system-ui, sans-serif; padding: 16px; }
+    .db { background: #f5f4f0; color: #1a1a1a; padding: 16px; border-radius: 12px; max-width: 1100px; margin: 0 auto; }
+    .db-header { background: #1a1a1a; border-radius: 8px; padding: 14px 20px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
+    .db-title { font-size: 15px; font-weight: 500; color: #fff; letter-spacing: 0.06em; text-transform: uppercase; }
+    .db-sub { font-size: 11px; color: #c9a227; margin-top: 2px; font-style: italic; }
+    .status { font-size: 10px; color: #888; }
+    .month-bar { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 14px; }
+    .month-btn { background: #fff; border: 0.5px solid #ccc; color: #555; padding: 5px 14px; border-radius: 4px; cursor: pointer; font-size: 12px; font-family: inherit; transition: all .15s; }
+    .month-btn:hover { border-color: #c9a227; color: #c9a227; }
+    .month-btn.active { background: #1a1a1a; border-color: #1a1a1a; color: #fff; font-weight: 500; }
+    .kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+    .kpi { background: #fff; border: 0.5px solid #e0e0e0; border-radius: 8px; padding: 12px 16px; }
+    .kpi-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 4px; }
+    .kpi-val { font-size: 22px; font-weight: 500; color: #1a1a1a; }
+    .kpi-val span { font-size: 12px; color: #c9a227; margin-left: 4px; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    .panel { background: #fff; border: 0.5px solid #e0e0e0; border-radius: 8px; padding: 14px; }
+    .panel-title { font-size: 10px; font-weight: 500; color: #c9a227; text-transform: uppercase; letter-spacing: 0.09em; margin-bottom: 10px; }
+    .legend-row { display: flex; gap: 14px; margin-bottom: 8px; }
+    .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #666; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+    .client-table { width: 100%; font-size: 11px; border-collapse: collapse; }
+    .client-table th { color: #999; text-align: left; padding: 4px 6px; border-bottom: 0.5px solid #eee; font-weight: 400; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em; }
+    .client-table td { padding: 5px 6px; border-bottom: 0.5px solid #f0f0f0; color: #333; }
+    .rank { color: #c9a227; font-weight: 500; }
+    .bar-bg { background: #eee; border-radius: 2px; height: 4px; margin-top: 3px; }
+    .bar-fill { height: 4px; border-radius: 2px; background: #c9a227; }
+    .loading { text-align: center; padding: 40px; color: #888; font-size: 14px; }
+    .error { color: #a32d2d; font-size: 13px; padding: 20px; text-align: center; }
+    @media (max-width: 600px) {
+      .grid2 { grid-template-columns: 1fr; }
+      .kpi-row { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="db">
+  <div class="db-header">
+    <div>
+      <div class="db-title">Dashboard · Litros Vendidos CD</div>
+      <div class="db-sub">PETROSAR · Estación de Servicio Cerro Dragón</div>
+    </div>
+    <div class="status" id="statusTxt">Cargando datos...</div>
+  </div>
+  <div id="content"><div class="loading">Conectando con Google Sheets...</div></div>
+</div>
+
+<script>
+const SHEET_ID = '1gzoHplpsPcCjfZ7g6uv56ZGnBwwGURUfbYU_56GX-Ho';
+const SHEET_NAME = 'debocd';
+let barChart, lineChart;
+let allData = {};
+let months = [];
+let selectedMonth = '';
+
+function fmt(n) { return Math.round(n).toLocaleString('es-AR'); }
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+  return lines.slice(1).map(line => {
+    const cols = [];
+    let cur = '', inQ = false;
+    for (let c of line) {
+      if (c === '"') { inQ = !inQ; }
+      else if (c === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
+      else cur += c;
+    }
+    cols.push(cur.trim());
+    const obj = {};
+    headers.forEach((h, i) => obj[h] = cols[i] || '');
+    return obj;
+  });
+}
+
+function getMonthKey(dateStr) {
+  const m = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const d = new Date(dateStr);
+  if (!isNaN(d.getTime())) return m[d.getMonth()] + ' ' + d.getFullYear();
+  const parts = dateStr.replace(/"/g, '').split(/[\/\s]/);
+  if (parts.length >= 2) {
+    let mo = parseInt(parts[1]) - 1;
+    let yr = parts[2] || new Date().getFullYear();
+    if (!isNaN(mo)) return m[mo] + ' ' + yr;
+  }
+  return null;
+}
+
+function getDayNum(dateStr) {
+  const clean = dateStr.replace(/"/g, '');
+  const d = new Date(clean);
+  if (!isNaN(d.getTime())) return d.getDate();
+  return parseInt(clean.split(/[\/\s]/)[0]);
+}
+
+function processRows(rows) {
+  const data = {};
+  rows.forEach(r => {
+    const fecha = r['Fecha'] || r['fecha'] || '';
+    const cliente = (r['Cliente'] || r['cliente'] || '').replace(/"/g, '').trim();
+    const producto = (r['Producto'] || r['producto'] || '').replace(/"/g, '').trim().toUpperCase();
+    const cantStr = (r['Cantidad'] || r['cantidad'] || '0').replace(/"/g, '').replace(',', '.');
+    const cant = parseFloat(cantStr) || 0;
+    const mkey = getMonthKey(fecha);
+    const day = getDayNum(fecha);
+    if (!mkey || !day || cant <= 0) return;
+    if (!data[mkey]) data[mkey] = { days: {}, clients: {} };
+    if (!data[mkey].days[day]) data[mkey].days[day] = { diesel: 0, euro: 0 };
+    const isDiesel = producto.includes('DIESEL') && !producto.includes('EURO') && !producto.includes('+');
+    if (isDiesel) data[mkey].days[day].diesel += cant;
+    else data[mkey].days[day].euro += cant;
+    if (!data[mkey].clients[cliente]) data[mkey].clients[cliente] = 0;
+    data[mkey].clients[cliente] += cant;
+  });
+  return data;
+}
+
+function renderDashboard() {
+  const d = allData[selectedMonth];
+  if (!d) { document.getElementById('content').innerHTML = '<div class="error">Sin datos para este mes.</div>'; return; }
+
+  const sortedDays = Object.keys(d.days).map(Number).sort((a, b) => a - b);
+  const dieselArr = sortedDays.map(day => d.days[day].diesel);
+  const euroArr = sortedDays.map(day => d.days[day].euro);
+  const totalDiesel = dieselArr.reduce((a, b) => a + b, 0);
+  const totalEuro = euroArr.reduce((a, b) => a + b, 0);
+  const total = totalDiesel + totalEuro;
+  const pctEuro = total > 0 ? ((totalEuro / total) * 100).toFixed(1) : '0.0';
+  const topClients = Object.entries(d.clients).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  const clientTotal = topClients.reduce((a, c) => a + c[1], 0);
+
+  document.getElementById('content').innerHTML = `
+    <div class="month-bar" id="monthBar"></div>
+    <div class="kpi-row">
+      <div class="kpi"><div class="kpi-label">Total Litros</div><div class="kpi-val">${fmt(total)}</div></div>
+      <div class="kpi"><div class="kpi-label">Diesel Bio</div><div class="kpi-val">${fmt(totalDiesel)}</div></div>
+      <div class="kpi"><div class="kpi-label">Euro Diesel Bio</div><div class="kpi-val">${fmt(totalEuro)}<span>${pctEuro}%</span></div></div>
+    </div>
+    <div class="grid2">
+      <div class="panel">
+        <div class="panel-title">Litros diarios por combustible</div>
+        <div class="legend-row">
+          <div class="legend-item"><div class="legend-dot" style="background:#999;"></div>Diesel Bio</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#c9a227;"></div>Euro Diesel Bio</div>
+        </div>
+        <div style="position:relative;height:190px;"><canvas id="barChart"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Evolución total diaria</div>
+        <div style="position:relative;height:220px;"><canvas id="lineChart"></canvas></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Top 10 clientes — ${selectedMonth}</div>
+      <table class="client-table">
+        <thead><tr><th>#</th><th>Cliente</th><th style="text-align:right;">Litros</th><th style="text-align:right;">%</th><th style="min-width:70px;"></th></tr></thead>
+        <tbody>${topClients.map((c, i) => {
+          const pct = ((c[1] / clientTotal) * 100).toFixed(1);
+          const bw = Math.round((c[1] / topClients[0][1]) * 100);
+          return `<tr><td class="rank">${i+1}</td><td>${c[0]}</td><td style="text-align:right;">${fmt(c[1])}</td><td style="text-align:right;color:#aaa;">${pct}%</td><td><div class="bar-bg"><div class="bar-fill" style="width:${bw}%"></div></div></td></tr>`;
+        }).join('')}</tbody>
+      </table>
+    </div>
+  `;
+
+  const mb = document.getElementById('monthBar');
+  months.forEach(m => {
+    const btn = document.createElement('button');
+    btn.className = 'month-btn' + (m === selectedMonth ? ' active' : '');
+    btn.textContent = m;
+    btn.onclick = () => { selectedMonth = m; renderDashboard(); };
+    mb.appendChild(btn);
+  });
+
+  if (barChart) barChart.destroy();
+  barChart = new Chart(document.getElementById('barChart'), {
+    type: 'bar',
+    data: {
+      labels: sortedDays.map(String),
+      datasets: [
+        { label: 'Diesel Bio', data: dieselArr, backgroundColor: '#aaa', stack: 's' },
+        { label: 'Euro Diesel Bio', data: euroArr, backgroundColor: '#c9a227', stack: 's' }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmt(ctx.raw) + ' lts' } } },
+      scales: {
+        x: { stacked: true, ticks: { color: '#999', font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 16 }, grid: { color: '#f0f0f0' } },
+        y: { stacked: true, ticks: { color: '#999', font: { size: 9 }, callback: v => (v / 1000).toFixed(0) + 'k' }, grid: { color: '#f0f0f0' } }
+      }
+    }
+  });
+
+  const totals = sortedDays.map((_, i) => dieselArr[i] + euroArr[i]);
+  if (lineChart) lineChart.destroy();
+  lineChart = new Chart(document.getElementById('lineChart'), {
+    type: 'line',
+    data: {
+      labels: sortedDays.map(String),
+      datasets: [{ label: 'Total', data: totals, borderColor: '#c9a227', backgroundColor: 'rgba(201,162,39,0.07)', pointRadius: 2, pointBackgroundColor: '#c9a227', fill: true, tension: 0.3 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt(ctx.raw) + ' lts' } } },
+      scales: {
+        x: { ticks: { color: '#999', font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 16 }, grid: { color: '#f0f0f0' } },
+        y: { ticks: { color: '#999', font: { size: 9 }, callback: v => (v / 1000).toFixed(0) + 'k' }, grid: { color: '#f0f0f0' } }
+      }
+    }
+  });
+}
+
+async function loadData() {
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const rows = parseCSV(text);
+    allData = processRows(rows);
+    months = Object.keys(allData).sort((a, b) => {
+      const mo = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+      const [ma, ya] = a.split(' '); const [mb2, yb] = b.split(' ');
+      return (parseInt(ya) - parseInt(yb)) || mo.indexOf(ma) - mo.indexOf(mb2);
+    });
+    if (months.length === 0) { document.getElementById('content').innerHTML = '<div class="error">No se encontraron datos en la planilla.</div>'; return; }
+    selectedMonth = months[months.length - 1];
+    document.getElementById('statusTxt').textContent = '✓ Datos actualizados';
+    renderDashboard();
+  } catch (e) {
+    document.getElementById('content').innerHTML = `<div class="error">Error al cargar la planilla: ${e.message}<br><small>Verificá que el sheet sea público (compartir → cualquier persona con el link).</small></div>`;
+    document.getElementById('statusTxt').textContent = 'Error de conexión';
+  }
+}
+
+loadData();
+</script>
+</body>
+</html>
