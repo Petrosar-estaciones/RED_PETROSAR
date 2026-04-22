@@ -449,7 +449,9 @@ async function loadData() {
 function descargarExcel() {
   if (!rawCSVData) { alert('Primero esperá que carguen los datos.'); return; }
   const lines = rawCSVData.trim().split('\n');
-  const data  = lines.map(function(line) {
+  // Columnas numéricas (índice base 0): col 5 = Cantidad
+  const COLS_NUMERICAS = [5];
+  const data = lines.map(function(line, lineIdx) {
     const cols = []; let cur = '', inQ = false;
     for (let c of line) {
       if (c === '"') { inQ = !inQ; }
@@ -457,6 +459,15 @@ function descargarExcel() {
       else cur += c;
     }
     cols.push(cur.replace(/"/g,'').trim());
+    // Convertir columnas numéricas a número real (reemplazar coma por punto)
+    if (lineIdx > 0) { // saltar header
+      COLS_NUMERICAS.forEach(function(i) {
+        if (cols[i] !== undefined && cols[i] !== '') {
+          const n = parseFloat(cols[i].replace(',', '.'));
+          if (!isNaN(n)) cols[i] = n;
+        }
+      });
+    }
     return cols;
   });
   const wb = XLSX.utils.book_new();
