@@ -1804,13 +1804,13 @@ async function cargarAutorizados(){
     const iDominio  = cols.findIndex(c=>/^dominio$/i.test(c.label));
     const iDesc     = cols.findIndex(c=>/^descripci/i.test(c.label));
     const iLinea    = cols.findIndex(c=>/^linea/i.test(c.label));
-    // Columna E (índice 4) = AUTORIZADOS A CARGAR
-    const iAuth     = cols.findIndex(c=>/autorizado/i.test(c.label));
+    // Columna E = "Tipo" → filtrar filas con valor "AUTORIZADOS A CARGAR"
+    const iAuth = cols.findIndex(c=>/^tipo$/i.test(c.label)||/autorizado/i.test(c.label));
     const ci = iInterno>=0?iInterno:0;
     const cd = iDominio>=0?iDominio:1;
     const ce = iDesc>=0?iDesc:3;
     const cl = iLinea>=0?iLinea:7;
-    const ca = iAuth>=0?iAuth:4; // columna E por defecto
+    const ca = iAuth>=0?iAuth:4; // columna E por defecto (índice 4)
     console.log('[Auth] cols:', cols.map(c=>c.label), '| iAuth:', ca);
     AUTH_VEHS=[];
     const seen=new Set();
@@ -1827,10 +1827,10 @@ async function cargarAutorizados(){
       const linea=lineaRaw?String(lineaRaw.f||lineaRaw.v||'').trim():'';
       const authRaw=row.c[ca];
       const authVal=authRaw?(authRaw.f||authRaw.v||''):'';
-      const autorizado=String(authVal).trim();
-      // Solo incluir los que tienen algo en la columna AUTORIZADOS A CARGAR
-      if(!autorizado||autorizado.toUpperCase()==='NO'||autorizado===''||autorizado==='0')continue;
-      AUTH_VEHS.push({Interno:+interno,Dominio:dominio,Descripción:desc,LineaNegocio:linea,Autorizado:autorizado});
+      const autorizado=String(authVal).trim().toUpperCase();
+      // Solo incluir filas donde columna E dice exactamente "AUTORIZADOS A CARGAR"
+      if(autorizado!=='AUTORIZADOS A CARGAR')continue;
+      AUTH_VEHS.push({Interno:+interno,Dominio:dominio,Descripción:desc,LineaNegocio:linea,Autorizado:'AUTORIZADOS A CARGAR'});
     }
     AUTH_VEHS.sort((a,b)=>a.Interno-b.Interno);
     authInicializado=true;
