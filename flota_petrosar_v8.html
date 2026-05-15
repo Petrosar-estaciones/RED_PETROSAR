@@ -1778,9 +1778,9 @@ function vehIcon(d){if(!d)return'🚗';d=d.toUpperCase();if(/IVECO|TECTOR/.test(
 // ═══════════════════════════════════
 // AUTORIZACIONES
 // ═══════════════════════════════════
-let AUTH_VEHS = [];
-let AUTH_DESP = [];
-let authInicializado = false;
+let AUTH_VEHS = [];       // lista de vehículos autorizados (se carga 1 sola vez)
+let AUTH_DESP = [];       // despachos del período consultado
+let authVehsCargados = false;  // true cuando ya leímos Rodados
 let authFiltroTxt = '';
 
 async function iniciarAutorizaciones(){
@@ -1790,17 +1790,18 @@ async function iniciarAutorizaciones(){
     let html = '';
     for(let i=0;i<=5;i++){
       const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
-      const y=d.getFullYear(), m=d.getMonth()+1;
-      const key=`${y}-${String(m).padStart(2,'0')}`;
+      const y=d.getFullYear(), m2=d.getMonth()+1;
+      const key=`${y}-${String(m2).padStart(2,'0')}`;
       const nom=d.toLocaleString('es-AR',{month:'short',year:'2-digit'}).replace('.','');
       html+=`<button class="mes-tab${i===0?' active':''}" data-key="${key}" onclick="selAuthMes('${key}',this)">${nom}</button>`;
     }
     mc.innerHTML=html;
-    const y=now.getFullYear(), m=now.getMonth();
-    document.getElementById('authFrom').value=new Date(y,m,1).toISOString().slice(0,10);
-    document.getElementById('authTo').value=now.toISOString().slice(0,10);
+    const now2=new Date();
+    document.getElementById('authFrom').value=new Date(now2.getFullYear(),now2.getMonth(),1).toISOString().slice(0,10);
+    document.getElementById('authTo').value=now2.toISOString().slice(0,10);
   }
-  if(!authInicializado) await cargarAutorizaciones();
+  // Siempre cargar al abrir la solapa
+  await consultarPeriodoAuth();
 }
 
 function selAuthMes(key, btn){
@@ -1813,10 +1814,17 @@ function selAuthMes(key, btn){
   const hasta=esMesActual?now.toISOString().slice(0,10):new Date(y,m,0).toISOString().slice(0,10);
   document.getElementById('authFrom').value=desde;
   document.getElementById('authTo').value=hasta;
-  cargarAutorizaciones();
+  consultarPeriodoAuth();
+}
+
+// Botón Actualizar — fuerza recarga de Rodados también
+async function cargarAutorizaciones(){
+  authVehsCargados=false;
+  await consultarPeriodoAuth();
 }
 
 async function cargarAutorizados(){
+  if(authVehsCargados && AUTH_VEHS.length>0) return; // ya los tenemos
   try{
     const t = await fetchGviz(SHEET_RODADOS, '766085002');
     if(!t?.rows) return;
@@ -1849,24 +1857,28 @@ async function cargarAutorizados(){
       AUTH_VEHS.push({Interno:+interno,Dominio:dominio,Descripción:desc,LineaNegocio:linea});
     }
     AUTH_VEHS.sort((a,b)=>a.Interno-b.Interno);
+    authVehsCargados=true;
     console.log('[Auth] Autorizados encontrados:', AUTH_VEHS.length);
-  }catch(e){console.warn('Auth error:',e.message);}
+  }catch(e){console.warn('Auth cargarAutorizados error:',e.message);}
 }
 
-async function cargarAutorizaciones(){
-  authInicializado=false;
+// Consulta despachos del período seleccionado y renderiza
+async function consultarPeriodoAuth(){
   document.getElementById('loadingAuth').style.display='block';
   document.getElementById('resAuth').innerHTML='';
+  // 1) Cargar lista de autorizados (solo si no está en caché)
   await cargarAutorizados();
-  const from=document.getElementById('authFrom').value;
-  const to=document.getElementById('authTo').value;
-  if(!from||!to||!AUTH_VEHS.length){
+  if(!AUTH_VEHS.length){
     document.getElementById('loadingAuth').style.display='none';
-    document.getElementById('resAuth').innerHTML=`<div class="empty"><div class="empty-icon">🔒</div><div class="empty-title">No se encontraron vehículos autorizados</div><div style="font-size:13px;margin-top:4px">Verificá la columna Tipo = "AUTORIZADOS A CARGAR" en la solapa Rodados</div></div>`;
+    document.getElementById('resAuth').innerHTML=`<div class="empty"><div class="empty-icon">🔒</div><div class="empty-title">No se encontraron vehículos autorizados</div><div style="font-size:13px;margin-top:4px">Verificá que la columna "Tipo" tenga el valor AUTORIZADOS A CARGAR en la solapa Rodados</div></div>`;
+    document.getElementById('authCount').textContent='0 vehículos';
     return;
   }
+  // 2) Consultar despachos del período
+  const from=document.getElementById('authFrom').value;
+  const to=document.getElementById('authTo').value;
+  if(!from||!to){ document.getElementById('loadingAuth').style.display='none'; return; }
   AUTH_DESP=await consultarTodo(from,to,null);
-  authInicializado=true;
   document.getElementById('loadingAuth').style.display='none';
   renderAuthConsumos(from,to);
 }
