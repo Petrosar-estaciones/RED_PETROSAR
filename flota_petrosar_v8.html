@@ -1878,7 +1878,9 @@ async function consultarPeriodoAuth(){
   const from=document.getElementById('authFrom').value;
   const to=document.getElementById('authTo').value;
   if(!from||!to){ document.getElementById('loadingAuth').style.display='none'; return; }
-  AUTH_DESP=await consultarTodo(from,to,null);
+  const resAuth=await consultarTodo(from,to,null);
+  AUTH_DESP=resAuth.despachos||[];
+  console.log('[Auth] Despachos totales recibidos:', AUTH_DESP.length, '| Errores:', resAuth.errores);
   document.getElementById('loadingAuth').style.display='none';
   renderAuthConsumos(from,to);
 }
