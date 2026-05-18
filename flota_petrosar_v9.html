@@ -1979,8 +1979,9 @@ function renderAuthConsumos(from,to){
     const mis=despPorInt[k]||[];
     const lts=mis.reduce((a,d)=>a+(+d.Litros||0),0);
     const cargas=mis.length;
+    if(cargas===0) continue; // Solo mostrar vehículos que cargaron
     totalLts+=lts; totalCargas+=cargas;
-    if(cargas>0) totalConCarga++;
+    totalConCarga++;
     const ultFecha=mis.length?mis.reduce((a,b)=>a.fecha>b.fecha?a:b).Fecha:'';
     const porProd={};
     for(const d of mis){const p=d.Producto||'EURO';porProd[p]=(porProd[p]||0)+(+d.Litros||0);}
