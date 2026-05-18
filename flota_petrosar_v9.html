@@ -312,8 +312,8 @@
         <span style="background:#f5c400;color:#6d4c00;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:12px;letter-spacing:1.5px;padding:4px 14px;border-radius:20px;text-transform:uppercase;white-space:nowrap">⭐ Autorizados a Cargar</span>
         <span id="authCount" style="background:#fff;border:1.5px solid #f5c400;border-radius:var(--r-sm);padding:4px 12px;font-size:12px;color:#6d4c00;font-weight:600;white-space:nowrap"></span>
         <div style="flex:1"></div>
-        <!-- Selector de meses -->
-        <div id="authMesTabs" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+        <!-- Selector de meses desplegable -->
+        <select id="authMesTabs" onchange="selAuthMesDrop(this.value)" style="font-size:12px;font-weight:600;padding:6px 10px;border:1.5px solid #f5c400;border-radius:var(--r-sm);background:#fff;color:#6d4c00;cursor:pointer"></select>
         <div style="display:flex;gap:6px;align-items:center">
           <input type="date" id="authFrom" style="font-size:12px;padding:6px 10px;border:1.5px solid #f5c400;border-radius:var(--r-sm);background:#fff;color:#6d4c00;width:140px">
           <span style="color:#b8860b;font-weight:600">→</span>
@@ -1785,29 +1785,33 @@ let authFiltroTxt = '';
 let authInicializado = false;
 
 async function iniciarAutorizaciones(){
-  const mc = document.getElementById('authMesTabs');
-  if(!mc.children.length){
+  const sel = document.getElementById('authMesTabs');
+  if(!sel.options.length){
     const now = new Date();
-    let html = '';
-    for(let i=0;i<=5;i++){
-      const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    // Fecha inicio: marzo 2026
+    const inicio = new Date(2026, 2, 1); // mes base 0 → 2 = marzo
+    let opts = '';
+    let d = new Date(now.getFullYear(), now.getMonth(), 1);
+    while(d >= inicio){
       const y=d.getFullYear(), m2=d.getMonth()+1;
       const key=`${y}-${String(m2).padStart(2,'0')}`;
-      const nom=d.toLocaleString('es-AR',{month:'short',year:'2-digit'}).replace('.','');
-      html+=`<button class="mes-tab${i===0?' active':''}" data-key="${key}" onclick="selAuthMes('${key}',this)">${nom}</button>`;
+      const lbl=d.toLocaleString('es-AR',{month:'long',year:'numeric'});
+      const lblFmt=lbl.charAt(0).toUpperCase()+lbl.slice(1);
+      opts += `<option value="${key}">${lblFmt}</option>`;
+      d = new Date(y, d.getMonth()-1, 1);
     }
-    mc.innerHTML=html;
-    const now2=new Date();
-    document.getElementById('authFrom').value=new Date(now2.getFullYear(),now2.getMonth(),1).toISOString().slice(0,10);
-    document.getElementById('authTo').value=now2.toISOString().slice(0,10);
+    sel.innerHTML = opts;
+    sel.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    // Setear fechas al mes actual
+    const desde = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+    const hasta  = now.toISOString().slice(0,10);
+    document.getElementById('authFrom').value = desde;
+    document.getElementById('authTo').value   = hasta;
   }
-  // Siempre cargar al abrir la solapa
   await consultarPeriodoAuth();
 }
 
-function selAuthMes(key, btn){
-  document.querySelectorAll('#authMesTabs .mes-tab').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
+function selAuthMesDrop(key){
   const [y,m]=key.split('-').map(Number);
   const now=new Date();
   const esMesActual=(y===now.getFullYear()&&m===now.getMonth()+1);
@@ -2017,15 +2021,11 @@ function renderAuthConsumos(from,to){
         <div class="kpi-unit">despachos · Datos Conductor</div>
       </div>
       <div class="kpi">
-        <div class="kpi-lbl">Con actividad</div>
+        <div class="kpi-lbl">Vehículos con carga</div>
         <div class="kpi-val">${totalConCarga}</div>
-        <div class="kpi-unit">de ${lista.length} autorizados</div>
+        <div class="kpi-unit">autorizados con actividad</div>
       </div>
-      <div class="kpi">
-        <div class="kpi-lbl">Sin cargas</div>
-        <div class="kpi-val">${lista.length-totalConCarga}</div>
-        <div class="kpi-unit">sin actividad en el período</div>
-      </div>
+
     </div>
     <div class="tbl-wrap fade">
       <div class="tbl-hdr" style="background:#fffde7;border-bottom:1px solid #f5c400">
