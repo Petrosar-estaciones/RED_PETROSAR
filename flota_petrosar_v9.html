@@ -1905,15 +1905,41 @@ async function cargarDespachosAuth(from, to){
       // Litros col N (índice 13)
       const lv=v(row,13), lf_=f(row,13);
       let litros=0;
-      if(typeof lv==='number'){
-        // lv ya es el valor numérico real de la celda (ej: 60.184) — usarlo directamente
-        litros=lv;
-      } else if(typeof lv==='string' && lv.trim()){
-        // Formato AR: punto=miles, coma=decimal  →  "60.184,50" → 60184.50
-        litros=parseFloat(lv.replace(/\./g,'').replace(',','.'))||0;
-      } else if(lf_){
-        // Formatted string: mismo criterio
-        litros=parseFloat(String(lf_).replace(/\./g,'').replace(',','.'))||0;
+      // Estrategia: siempre parsear desde el formatted string (lf_) que refleja
+      // exactamente lo que el usuario ve en el sheet, evitando ambigüedad del valor numérico.
+      // Formato AR: punto = separador de miles, coma = decimal
+      // Ej: "103.121" → 103.121 L | "1.234,56" → 1234.56 L | "46" → 46 L
+      const rawStr = lf_ ? String(lf_).trim() : (typeof lv==='number' ? String(lv) : (typeof lv==='string' ? lv.trim() : ''));
+      if(rawStr){
+        if(/,/.test(rawStr)){
+          // Tiene coma → coma es decimal, puntos son miles
+          litros = parseFloat(rawStr.replace(/\./g,'').replace(',','.'))||0;
+        } else if(/\./.test(rawStr)){
+          // Solo punto(s) → en formato AR el punto es separador de miles
+          // "103.121" → 103121 → pero queremos 103.121
+          // Solución: si el número raw (lv) es integer y rawStr tiene exactamente
+          // grupos de 3 dígitos tras el punto, el valor real es lv interpretado
+          // directamente como número con ese punto como decimal
+          // Chequeamos: ¿rawStr sin puntos * 1 == lv? → era separador de miles
+          const sinPunto = parseFloat(rawStr.replace(/\./g,''));
+          if(typeof lv==='number' && Number.isInteger(lv) && sinPunto===lv){
+            // lv=103121, rawStr="103.121" → valor real = 103.121
+            litros = parseFloat(rawStr.replace(/\./g,'').replace(/^(\d+)(\d{3})$/,'$1.$2'))||lv/Math.pow(10, rawStr.replace(/[^.]/g,'').length*3);
+            // Más simple: reconstruir el float desde rawStr tratando el último grupo como decimales
+            const parts = rawStr.split('.');
+            if(parts.length===2){
+              litros = parseFloat(parts[0]+'.'+parts[1]);
+            } else {
+              // Múltiples puntos: "1.234.567" → unir sin puntos → entero
+              litros = sinPunto;
+            }
+          } else {
+            litros = sinPunto||lv||0;
+          }
+        } else {
+          // Sin puntos ni comas → número plano
+          litros = parseFloat(rawStr)||0;
+        }
       }
       if(!litros) continue;
       const prod = normProd(s(row,12)||'');
@@ -1968,57 +1994,66 @@ function authListaFiltrada(){
 
 function renderAuthConsumos(from,to){
   const lista=authListaFiltrada();
+  const listaInternos=new Set(lista.map(v=>String(v.Interno)));
 
+  // Mapa de vehículos para lookup
+  const vehMap={};
+  for(const v of AUTH_VEHS) vehMap[String(v.Interno)]=v;
 
-  const authInternos=new Set(AUTH_VEHS.map(v=>String(v.Interno)));
-  // Agrupar despachos por interno (AUTH_DESP viene de cargarDespachosAuth — solo SHEET_DC)
-  const despPorInt={};
-  for(const d of AUTH_DESP){
-    const k=String(d.Interno||'');
-    if(!authInternos.has(k))continue;
-    if(!despPorInt[k])despPorInt[k]=[];
-    despPorInt[k].push(d);
-  }
+  // Todos los despachos del período, filtrados por internos que pasan el filtro de texto
+  const despFiltrados = AUTH_DESP
+    .filter(d=>listaInternos.has(String(d.Interno||'')))
+    .sort((a,b)=>a.fecha-b.fecha);
 
-  let totalLts=0, totalCargas=0, totalConCarga=0;
+  let totalLts=0;
+  const internosConCarga=new Set();
   let rows='';
   const exportData=[];
 
-  for(const veh of lista){
-    const k=String(veh.Interno);
-    const mis=despPorInt[k]||[];
-    const lts=mis.reduce((a,d)=>a+(+d.Litros||0),0);
-    const cargas=mis.length;
-    if(cargas===0) continue; // Solo mostrar vehículos que cargaron
-    totalLts+=lts; totalCargas+=cargas;
-    totalConCarga++;
-    const ultFecha=mis.length?mis.reduce((a,b)=>a.fecha>b.fecha?a:b).Fecha:'';
-    const porProd={};
-    for(const d of mis){const p=d.Producto||'EURO';porProd[p]=(porProd[p]||0)+(+d.Litros||0);}
-    const prodStr=Object.entries(porProd).map(([p,l])=>`<span style="font-size:10px;color:var(--muted)">${p}: <b>${fmtN(l,0)}L</b></span>`).join('&nbsp;&nbsp;');
-    const icon=vehIcon(veh.Descripción);
+  for(const d of despFiltrados){
+    const k=String(d.Interno);
+    const veh=vehMap[k]||{};
+    const lts=+d.Litros||0;
+    totalLts+=lts;
+    internosConCarga.add(k);
+
+    const fechaFmt = d.Fecha ? d.Fecha.split('-').reverse().join('/') : '—';
+    const icon=vehIcon(veh.Descripcion||veh['Descripción']||'');
+    const prod=d.Producto||'EURO';
+    const isGas=prod==='GASOIL';
+    const prodBadge=`<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:${isGas?'#e8f5e9':'#e3f2fd'};color:${isGas?'#2e7d32':'#1565c0'}">${prod}</span>`;
+
     rows+=`<tr>
-      <td><span class="auth-int" style="font-size:15px">${veh.Interno}</span></td>
-      <td><span class="auth-pat">${veh.Dominio}</span></td>
-      <td>${icon} <span style="font-size:12px;color:var(--muted)">${veh.Descripción||'—'}</span></td>
+      <td style="font-size:13px;font-weight:700;color:#d4580a">${veh.Interno||k}</td>
+      <td><span class="auth-pat">${veh.Dominio||'—'}</span></td>
+      <td>${icon} <span style="font-size:12px;color:var(--muted)">${veh['Descripción']||veh.Descripcion||'—'}</span></td>
       <td><span style="font-size:11px;font-weight:600;color:#1a5fa8;background:#e0f0ff;padding:2px 8px;border-radius:4px">${veh.LineaNegocio||'—'}</span></td>
-      <td style="text-align:right"><span class="${cargas>0?'auth-lts':'auth-nocar'}">${cargas>0?fmtN(lts,0)+' L':'Sin cargas'}</span></td>
-      <td style="text-align:center;font-size:12px;color:var(--muted)">${cargas>0?cargas:'—'}</td>
-      <td style="font-size:12px;color:var(--muted)">${ultFecha?ultFecha:'—'}</td>
-      <td>${prodStr}</td>
-      <td><button class="btn btn-ghost" style="font-size:11px;padding:3px 10px;height:auto" onclick="verConsumoAuth(${veh.Interno},'${veh.Dominio}')">Ver detalle →</button></td>
+      <td style="text-align:center;font-size:13px;font-weight:600;color:var(--fg)">${fechaFmt}</td>
+      <td style="text-align:right"><span class="auth-lts">${fmtN(lts,3)} L</span></td>
+      <td style="text-align:center">${prodBadge}</td>
     </tr>`;
-    exportData.push({Interno:veh.Interno,Patente:veh.Dominio,'Descripción':veh.Descripción,'Línea':veh.LineaNegocio,Litros:lts,Cargas:cargas,'Última carga':ultFecha||'—'});
+    exportData.push({
+      Fecha: fechaFmt,
+      Interno: veh.Interno||k,
+      Patente: veh.Dominio||'',
+      'Descripción': veh['Descripción']||veh.Descripcion||'',
+      'Línea': veh.LineaNegocio||'',
+      Producto: prod,
+      Litros: lts
+    });
   }
 
   window._authExportData=exportData;
   window._authExportPeriodo=`${from}_al_${to}`.replace(/\//g,'-');
 
+  const totalCargas=despFiltrados.length;
+  const totalConCarga=internosConCarga.size;
+
   document.getElementById('resAuth').innerHTML=`
     <div class="kpi-grid" style="margin-bottom:16px">
       <div class="kpi accent" style="background:#d4a800;border-color:#d4a800">
         <div class="kpi-lbl">Total litros</div>
-        <div class="kpi-val">${fmtN(totalLts,0)}</div>
+        <div class="kpi-val">${fmtN(totalLts,3)}</div>
         <div class="kpi-unit">${fmtDate(from)} → ${fmtDate(to)}</div>
       </div>
       <div class="kpi">
@@ -2031,101 +2066,65 @@ function renderAuthConsumos(from,to){
         <div class="kpi-val">${totalConCarga}</div>
         <div class="kpi-unit">autorizados con actividad</div>
       </div>
-
     </div>
     <div class="tbl-wrap fade">
       <div class="tbl-hdr" style="background:#fffde7;border-bottom:1px solid #f5c400">
-        <span class="tbl-title" style="color:#6d4c00">Consumos · Autorizados a Cargar — Fuente: Datos Conductor</span>
+        <span class="tbl-title" style="color:#6d4c00">Despachos · Autorizados a Cargar — Datos Conductor</span>
         <span class="tbl-count" style="background:#fff;border-color:#f5c400;color:#6d4c00">${fmtDate(from)} → ${fmtDate(to)}</span>
       </div>
       <table class="auth-grid">
         <thead><tr>
           <th>Interno</th><th>Patente</th><th>Descripción</th><th>Línea</th>
-          <th style="text-align:right">Litros</th><th style="text-align:center">Cargas</th>
-          <th>Última carga</th><th>Productos</th><th></th>
+          <th style="text-align:center">Fecha</th>
+          <th style="text-align:right">Litros</th>
+          <th style="text-align:center">Producto</th>
         </tr></thead>
-        <tbody>${rows}</tbody>
+        <tbody>${rows||'<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">Sin despachos en el período</td></tr>'}</tbody>
         <tfoot><tr>
           <td colspan="4" style="font-weight:700;color:#6d4c00;background:#fffde7">TOTAL</td>
-          <td style="font-weight:700;color:var(--orange);font-size:15px;background:#fffde7;text-align:right">${fmtN(totalLts,0)} L</td>
-          <td style="font-weight:700;color:var(--muted);background:#fffde7;text-align:center">${totalCargas}</td>
-          <td colspan="3" style="background:#fffde7"></td>
+          <td style="background:#fffde7"></td>
+          <td style="font-weight:700;color:var(--orange);font-size:15px;background:#fffde7;text-align:right">${fmtN(totalLts,3)} L</td>
+          <td style="font-weight:700;color:var(--muted);background:#fffde7;text-align:center">${totalCargas} cargas</td>
         </tr></tfoot>
       </table>
     </div>`;
 }
 
+
 function exportAuthExcel(){
   const data = window._authExportData;
   if(!data||!data.length){alert('Primero consultá los consumos.');return;}
   const periodo = window._authExportPeriodo||'periodo';
-  const from = document.getElementById('authFrom').value;
-  const to   = document.getElementById('authTo').value;
 
   const wb = XLSX.utils.book_new();
+  const fmtLts = '#,##0.000';
 
-  // ── HOJA 1: Resumen por vehículo ──────────────────────────────────
-  const h1 = ['Interno','Patente','Descripción','Línea de Negocio','Litros','Cargas','Última Carga'];
-  const r1 = data.map(r=>[
+  // ── HOJA ÚNICA: Un despacho por fila ─────────────────────────────
+  const h = ['Fecha','Interno','Patente','Descripción','Línea de Negocio','Producto','Litros'];
+  const rows = data.map(r=>[
+    r['Fecha']||'',
     r['Interno'],
-    r['Patente'],
+    r['Patente']||'',
     r['Descripción']||'',
     r['Línea']||'',
-    r['Litros'],          // número real
-    r['Cargas'],
-    r['Última carga']||''
+    r['Producto']||'',
+    +r['Litros']
   ]);
+
   // Fila de totales
   const totLts = data.reduce((a,r)=>a+(+r['Litros']||0),0);
-  const totCar = data.reduce((a,r)=>a+(+r['Cargas']||0),0);
-  r1.push(['TOTAL','','','', totLts, totCar,'']);
+  rows.push(['TOTAL','','','','','', totLts]);
 
-  const ws1 = XLSX.utils.aoa_to_sheet([h1,...r1]);
+  const ws = XLSX.utils.aoa_to_sheet([h,...rows]);
 
-  // Formato numérico con 3 decimales separador de miles
-  const fmtLts = '#,##0.000';
-  const fmtInt = '0';
-  r1.forEach((_,i)=>{
-    const rowIdx = i+1; // 0=header
-    const cellLts = XLSX.utils.encode_cell({r:rowIdx, c:4});
-    const cellCar = XLSX.utils.encode_cell({r:rowIdx, c:5});
-    if(ws1[cellLts] && typeof ws1[cellLts].v==='number') ws1[cellLts].z = fmtLts;
-    if(ws1[cellCar] && typeof ws1[cellCar].v==='number') ws1[cellCar].z = fmtInt;
+  // Formato numérico litros
+  rows.forEach((_,i)=>{
+    const cell = XLSX.utils.encode_cell({r:i+1, c:6});
+    if(ws[cell] && typeof ws[cell].v==='number') ws[cell].z = fmtLts;
   });
-  ws1['!cols']=[{wch:10},{wch:12},{wch:36},{wch:22},{wch:14},{wch:9},{wch:14}];
-  XLSX.utils.book_append_sheet(wb, ws1, 'Resumen');
 
-  // ── HOJA 2: Detalle de despachos ──────────────────────────────────
-  // Armar desde AUTH_DESP filtrando los internos que quedaron en data
-  const authInternos = new Set(data.map(r=>String(r['Interno'])));
-  const h2 = ['Fecha','Interno','Patente','Descripción','Línea de Negocio','Producto','Litros'];
-  // Obtener info de vehículo por interno para descripción y línea
-  const vehMap = {};
-  for(const v of AUTH_VEHS) vehMap[String(v.Interno)]={desc:v.Descripción,linea:v.LineaNegocio,dom:v.Dominio};
-
-  const r2 = AUTH_DESP
-    .filter(d=>authInternos.has(String(d.Interno)))
-    .sort((a,b)=>a.fecha-b.fecha)
-    .map(d=>{
-      const inf = vehMap[String(d.Interno)]||{};
-      return [
-        d.Fecha,          // 'YYYY-MM-DD'
-        +d.Interno,
-        inf.dom||'',
-        inf.desc||'',
-        inf.linea||'',
-        d.Producto||'',
-        +d.Litros         // número real
-      ];
-    });
-
-  const ws2 = XLSX.utils.aoa_to_sheet([h2,...r2]);
-  r2.forEach((_,i)=>{
-    const cellLts = XLSX.utils.encode_cell({r:i+1, c:6});
-    if(ws2[cellLts] && typeof ws2[cellLts].v==='number') ws2[cellLts].z = fmtLts;
-  });
-  ws2['!cols']=[{wch:13},{wch:10},{wch:12},{wch:36},{wch:22},{wch:10},{wch:12}];
-  XLSX.utils.book_append_sheet(wb, ws2, 'Despachos');
+  ws['!cols']=[{wch:13},{wch:10},{wch:12},{wch:36},{wch:22},{wch:10},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Despachos');
 
   XLSX.writeFile(wb, `Autorizados_${periodo}.xlsx`);
 }
