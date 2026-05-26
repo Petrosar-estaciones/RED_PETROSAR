@@ -1906,11 +1906,13 @@ async function cargarDespachosAuth(from, to){
       const lv=v(row,13), lf_=f(row,13);
       let litros=0;
       if(typeof lv==='number'){
-        const fromFmt=parseFloat(String(lf_).replace(/\./g,'').replace(',','.'))||0;
-        litros=fromFmt||lv;
-      } else if(typeof lv==='string'){
+        // lv ya es el valor numérico real de la celda (ej: 60.184) — usarlo directamente
+        litros=lv;
+      } else if(typeof lv==='string' && lv.trim()){
+        // Formato AR: punto=miles, coma=decimal  →  "60.184,50" → 60184.50
         litros=parseFloat(lv.replace(/\./g,'').replace(',','.'))||0;
       } else if(lf_){
+        // Formatted string: mismo criterio
         litros=parseFloat(String(lf_).replace(/\./g,'').replace(',','.'))||0;
       }
       if(!litros) continue;
@@ -2054,12 +2056,78 @@ function renderAuthConsumos(from,to){
 }
 
 function exportAuthExcel(){
-  const data=window._authExportData;
+  const data = window._authExportData;
   if(!data||!data.length){alert('Primero consultá los consumos.');return;}
-  const periodo=window._authExportPeriodo||'periodo';
-  const headers=['Interno','Patente','Descripción','Línea','Litros','Cargas','Última carga'];
-  const rows=data.map(r=>headers.map(h=>r[h]??''));
-  exportToExcel(rows,headers,`Autorizados_${periodo}.xlsx`,'Autorizados');
+  const periodo = window._authExportPeriodo||'periodo';
+  const from = document.getElementById('authFrom').value;
+  const to   = document.getElementById('authTo').value;
+
+  const wb = XLSX.utils.book_new();
+
+  // ── HOJA 1: Resumen por vehículo ──────────────────────────────────
+  const h1 = ['Interno','Patente','Descripción','Línea de Negocio','Litros','Cargas','Última Carga'];
+  const r1 = data.map(r=>[
+    r['Interno'],
+    r['Patente'],
+    r['Descripción']||'',
+    r['Línea']||'',
+    r['Litros'],          // número real
+    r['Cargas'],
+    r['Última carga']||''
+  ]);
+  // Fila de totales
+  const totLts = data.reduce((a,r)=>a+(+r['Litros']||0),0);
+  const totCar = data.reduce((a,r)=>a+(+r['Cargas']||0),0);
+  r1.push(['TOTAL','','','', totLts, totCar,'']);
+
+  const ws1 = XLSX.utils.aoa_to_sheet([h1,...r1]);
+
+  // Formato numérico con 3 decimales separador de miles
+  const fmtLts = '#,##0.000';
+  const fmtInt = '0';
+  r1.forEach((_,i)=>{
+    const rowIdx = i+1; // 0=header
+    const cellLts = XLSX.utils.encode_cell({r:rowIdx, c:4});
+    const cellCar = XLSX.utils.encode_cell({r:rowIdx, c:5});
+    if(ws1[cellLts] && typeof ws1[cellLts].v==='number') ws1[cellLts].z = fmtLts;
+    if(ws1[cellCar] && typeof ws1[cellCar].v==='number') ws1[cellCar].z = fmtInt;
+  });
+  ws1['!cols']=[{wch:10},{wch:12},{wch:36},{wch:22},{wch:14},{wch:9},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, ws1, 'Resumen');
+
+  // ── HOJA 2: Detalle de despachos ──────────────────────────────────
+  // Armar desde AUTH_DESP filtrando los internos que quedaron en data
+  const authInternos = new Set(data.map(r=>String(r['Interno'])));
+  const h2 = ['Fecha','Interno','Patente','Descripción','Línea de Negocio','Producto','Litros'];
+  // Obtener info de vehículo por interno para descripción y línea
+  const vehMap = {};
+  for(const v of AUTH_VEHS) vehMap[String(v.Interno)]={desc:v.Descripción,linea:v.LineaNegocio,dom:v.Dominio};
+
+  const r2 = AUTH_DESP
+    .filter(d=>authInternos.has(String(d.Interno)))
+    .sort((a,b)=>a.fecha-b.fecha)
+    .map(d=>{
+      const inf = vehMap[String(d.Interno)]||{};
+      return [
+        d.Fecha,          // 'YYYY-MM-DD'
+        +d.Interno,
+        inf.dom||'',
+        inf.desc||'',
+        inf.linea||'',
+        d.Producto||'',
+        +d.Litros         // número real
+      ];
+    });
+
+  const ws2 = XLSX.utils.aoa_to_sheet([h2,...r2]);
+  r2.forEach((_,i)=>{
+    const cellLts = XLSX.utils.encode_cell({r:i+1, c:6});
+    if(ws2[cellLts] && typeof ws2[cellLts].v==='number') ws2[cellLts].z = fmtLts;
+  });
+  ws2['!cols']=[{wch:13},{wch:10},{wch:12},{wch:36},{wch:22},{wch:10},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Despachos');
+
+  XLSX.writeFile(wb, `Autorizados_${periodo}.xlsx`);
 }
 
 function verConsumoAuth(interno, dominio){
