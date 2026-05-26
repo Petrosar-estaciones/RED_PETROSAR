@@ -310,7 +310,7 @@
     <div class="card" style="border:2px solid #f5c400;background:#fffde7;margin-bottom:16px">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <span style="background:#f5c400;color:#6d4c00;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:12px;letter-spacing:1.5px;padding:4px 14px;border-radius:20px;text-transform:uppercase;white-space:nowrap">⭐ Autorizados a Cargar</span>
-        <span id="authCount" style="background:#fff;border:1.5px solid #f5c400;border-radius:var(--r-sm);padding:4px 12px;font-size:12px;color:#6d4c00;font-weight:600;white-space:nowrap"></span>
+
         <div style="flex:1"></div>
         <!-- Selector de meses desplegable -->
         <select id="authMesTabs" onchange="selAuthMesDrop(this.value)" style="font-size:12px;font-weight:600;padding:6px 10px;border:1.5px solid #f5c400;border-radius:var(--r-sm);background:#fff;color:#6d4c00;cursor:pointer"></select>
@@ -1795,7 +1795,11 @@ async function iniciarAutorizaciones(){
     while(d >= inicio){
       const y=d.getFullYear(), m2=d.getMonth()+1;
       const key=`${y}-${String(m2).padStart(2,'0')}`;
-      const lbl=d.toLocaleString('es-AR',{month:'long',year:'numeric'});
+      const esCurrent = (y===now.getFullYear() && m2===now.getMonth()+1);
+      const desdeDt = new Date(y, m2-1, 1);
+      const hastaDt = esCurrent ? now : new Date(y, m2, 0);
+      const fmt = dt => dt.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'});
+      const lbl=d.toLocaleString('es-AR',{month:'long',year:'numeric'}) + '  ·  ' + fmt(desdeDt) + ' → ' + fmt(hastaDt);
       const lblFmt=lbl.charAt(0).toUpperCase()+lbl.slice(1);
       opts += `<option value="${key}">${lblFmt}</option>`;
       d = new Date(y, d.getMonth()-1, 1);
@@ -1929,7 +1933,7 @@ async function consultarPeriodoAuth(){
   if(!AUTH_VEHS.length){
     document.getElementById('loadingAuth').style.display='none';
     document.getElementById('resAuth').innerHTML=`<div class="empty"><div class="empty-icon">🔒</div><div class="empty-title">No se encontraron vehículos autorizados</div><div style="font-size:13px;margin-top:4px">Verificá que la columna E del sheet Rodados tenga el valor "AUTORIZADOS A CARGAR"</div></div>`;
-    document.getElementById('authCount').textContent='0 vehículos';
+
     return;
   }
   // 2) Consultar SOLO despachos del sheet Datos Conductor para internos autorizados
@@ -1962,7 +1966,7 @@ function authListaFiltrada(){
 
 function renderAuthConsumos(from,to){
   const lista=authListaFiltrada();
-  document.getElementById('authCount').textContent=`${lista.length} vehículo${lista.length!==1?'s':''} autorizado${lista.length!==1?'s':''}`;
+
 
   const authInternos=new Set(AUTH_VEHS.map(v=>String(v.Interno)));
   // Agrupar despachos por interno (AUTH_DESP viene de cargarDespachosAuth — solo SHEET_DC)
