@@ -1913,16 +1913,38 @@ async function cargarDespachosAuth(from, to){
       //   lf_="63,75"      → coma decimal AR   → 63.75
       //   lf_="1.234,56"   → miles+decimal AR  → 1234.56
       //   lf_="828"        → entero plano       → 828
-      // El sheet guarda Cantidad con coma decimal (ej: "22,246" = 22.246 litros).
-      // La API gviz devuelve lv=22.246 (float real) y lf_="22,246" (string formateado).
-      // Solución: usar lv directamente cuando es número — es el valor real sin ambigüedad.
+      // La columna Cantidad tiene dos tipos de datos según cómo fue ingresada:
+      // TIPO A: número con decimales → lv=22.246 (float), lf_="22,246" (coma decimal AR)
+      // TIPO B: número entero (ingresado sin decimales) → lv=60798, lf_="60.798" (punto=miles AR)
+      //         En este caso el valor real ES 60.798 litros, no 60798.
+      // Detección: si lv es float (tiene decimales) → usar lv directo.
+      //            si lv es entero → el valor real tiene punto decimal → lv/1000.
+      // Verificación cruzada con lf_: si lf_ tiene coma → es TIPO A (lv ya es float).
+      //                               si lf_ solo tiene punto → es TIPO B (lv es entero x1000).
       let litros=0;
       if(typeof lv==='number'){
-        litros = lv;
+        const _lf = lf_ ? String(lf_).trim() : '';
+        if(!Number.isInteger(lv)){
+          // lv es float real: 22.246 → usarlo directo
+          litros = lv;
+        } else if(_lf.includes(',')){
+          // lf_ tiene coma decimal AR ("39,368") → parsear lf_
+          litros = parseFloat(_lf.replace(/\./g,'').replace(',','.'))||0;
+        } else if(_lf.includes('.')){
+          // lf_ tiene punto como separador de miles ("60.798") → valor real = lv/1000
+          litros = lv / 1000;
+        } else {
+          // Sin pistas en lf_: asumir que lv entero grande = x1000
+          litros = lv > 999 ? lv/1000 : lv;
+        }
       } else if(lf_){
-        litros = parseFloat(String(lf_).trim().replace(/\./g,'').replace(',','.'))||0;
+        const _lf=String(lf_).trim();
+        if(_lf.includes(','))
+          litros=parseFloat(_lf.replace(/\./g,'').replace(',','.'))||0;
+        else
+          litros=parseFloat(_lf)||0;
       } else if(typeof lv==='string'){
-        litros = parseFloat(lv.replace(',','.'))||0;
+        litros=parseFloat(lv.replace(',','.'))||0;
       }
       // DEBUG: guardar primeras 5 filas para mostrar panel
       if(window._authDebug && window._authDebug.length < 8){
