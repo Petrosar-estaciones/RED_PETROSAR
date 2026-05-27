@@ -696,7 +696,7 @@ function App(){
   const [estLoading,setEstLoading]=useState({});
   const [uploading,setUploading]=useState({});
   const [toast,setToast]=useState({msg:"",type:""});
-  const [tab,setTab]=useState("dashboard");
+  const [tab,setTab]=useState(()=>{ const h=window.location.hash.replace("#","").toLowerCase(); return ["dashboard","despachos","ingresos"].includes(h)?h:"dashboard"; });
   const [modalIngreso,setModalIngreso]=useState(false);
   const [formIng,setFormIng]=useState({estacion:"ANTICLINAL",tanque:"tk1",litros:"",fecha:new Date().toISOString().slice(0,10),obs:""});
   const [detalleEst,setDetalleEst]=useState(null);
