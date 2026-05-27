@@ -43,7 +43,7 @@ input[type=file]{display:none}
 </style>
 </head>
 <body>
-<div id="root"></div>
+<div id="root" style="opacity:0;transition:opacity 0.15s"></div>
 <script type="text/babel">
 const {useState,useMemo,useRef,useCallback,useEffect}=React;
 
@@ -697,6 +697,7 @@ function App(){
   const [uploading,setUploading]=useState({});
   const [toast,setToast]=useState({msg:"",type:""});
   const [tab,setTab]=useState(()=>{ const h=window.location.hash.replace("#","").toLowerCase(); return ["dashboard","despachos","ingresos"].includes(h)?h:"dashboard"; });
+  useEffect(()=>{ window._setTab=setTab; return ()=>{ window._setTab=null; }; },[setTab]);
   const [modalIngreso,setModalIngreso]=useState(false);
   const [formIng,setFormIng]=useState({estacion:"ANTICLINAL",tanque:"tk1",litros:"",fecha:new Date().toISOString().slice(0,10),obs:""});
   const [detalleEst,setDetalleEst]=useState(null);
@@ -1465,7 +1466,20 @@ function App(){
   );
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+const _root = ReactDOM.createRoot(document.getElementById("root"));
+_root.render(<App/>);
+// Reveal after React mounts
+requestAnimationFrame(()=>requestAnimationFrame(()=>{
+  document.getElementById("root").style.opacity="1";
+}));
+// Also support hash changes while page is open
+window.addEventListener("hashchange",()=>{
+  const h=window.location.hash.replace("#","").toLowerCase();
+  if(["dashboard","despachos","ingresos"].includes(h)){
+    // Trigger re-render by dispatching a custom event
+    window._setTab && window._setTab(h);
+  }
+});
 </script>
 </body>
 </html>
