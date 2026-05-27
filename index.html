@@ -1156,14 +1156,17 @@ function App(){
         {/* ── DESPACHOS ── */}
         {tab==="despachos"&&(
           <div>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,flexWrap:"wrap",gap:12}}>
+            {/* ── Encabezado ejecutivo ── */}
+            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:24,flexWrap:"wrap",gap:16}}>
               <div>
-                <div style={{fontFamily:"'Bebas Neue'",fontSize:22,letterSpacing:2,color:"#1e293b"}}>Top 10 Clientes por Estación</div>
-                <div style={{fontFamily:"'DM Mono'",fontSize:11,color:"#16a34a",marginTop:2}}>
-                  📅 {mesLabel(mesSeleccionado)}
+                <div style={{fontFamily:"'Bebas Neue'",fontSize:26,letterSpacing:3,color:"#1e293b",lineHeight:1}}>
+                  Despachos por Estación
+                </div>
+                <div style={{fontFamily:"'DM Mono'",fontSize:11,color:"#16a34a",marginTop:4,display:"flex",alignItems:"center",gap:8}}>
+                  <span>📅 {mesLabel(mesSeleccionado)}</span>
                   {mesSeleccionado===mesActual()
-                    ?<span style={{color:"#94a3b8"}}> — mes en curso</span>
-                    :<span style={{color:"#f59e0b"}}> — mes anterior</span>}
+                    ?<span style={{background:"#dcfce7",color:"#16a34a",padding:"2px 8px",borderRadius:4,fontSize:10}}>mes en curso</span>
+                    :<span style={{background:"#fef3c7",color:"#d97706",padding:"2px 8px",borderRadius:4,fontSize:10}}>mes anterior</span>}
                 </div>
               </div>
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
@@ -1180,47 +1183,114 @@ function App(){
                 </button>
               </div>
             </div>
-            {loadingClientes&&<div style={{textAlign:"center",padding:40,color:"#94a3b8",fontFamily:"'DM Mono'"}}>Cargando datos de clientes...</div>}
-            {!loadingClientes&&clientesData&&(
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:20}}>
-                {[
-                  {key:"AG", nombre:"Anticlinal Grande", color:"#e87030", lista:clientesData?.AG||[]},
-                  {key:"TP", nombre:"Tres Picos",        color:"#3a8fd4", lista:clientesData?.TP||[]},
-                  {key:"VH", nombre:"Valle Hermoso",     color:"#8b5cf6", lista:clientesData?.VH||[]},
-                  {key:"CD", nombre:"Estación CD",       color:"#20c0a0", lista:clientesData?.CD||[]},
-                  {key:"PG", nombre:"Planta Granel",     color:"#e87030", lista:topClientesPlantaMes},
-                ].map(({key,nombre,color,lista})=>{
-                  const totalTop=lista.reduce((a,b)=>a+b.litros,0);
-                  return(
-                    <div key={key} style={{background:"#fff",borderRadius:16,padding:20,border:`1.5px solid ${color}22`,boxShadow:"0 2px 8px rgba(0,0,0,.06)"}}>
-                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-                        <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2,color}}>{nombre}</div>
-                        <div style={{fontFamily:"'DM Mono'",fontSize:10,color:"#94a3b8"}}>{fmt(totalTop)} L total</div>
-                      </div>
-                      {lista.length===0&&<div style={{color:"#94a3b8",fontFamily:"'DM Mono'",fontSize:11}}>Sin datos cargados</div>}
-                      {lista.map((item,idx)=>{
-                        const pct=totalTop>0?(item.litros/totalTop*100):0;
+
+            {loadingClientes&&(
+              <div style={{textAlign:"center",padding:60,color:"#94a3b8",fontFamily:"'DM Mono'",fontSize:12}}>
+                <span className="spin" style={{fontSize:22,display:"block",marginBottom:12}}>⟳</span>
+                Cargando datos de clientes...
+              </div>
+            )}
+
+            {!loadingClientes&&clientesData&&(()=>{
+              const estaciones=[
+                {key:"AG", nombre:"Anticlinal Grande", color:"#e87030", lista:clientesData?.AG||[], total:clientesData.AG_total||0},
+                {key:"TP", nombre:"Tres Picos",        color:"#3a8fd4", lista:clientesData?.TP||[], total:clientesData.TP_total||0},
+                {key:"VH", nombre:"Valle Hermoso",     color:"#8b5cf6", lista:clientesData?.VH||[], total:clientesData.VH_total||0},
+                {key:"CD", nombre:"Estación CD",       color:"#20c0a0", lista:clientesData?.CD||[], total:clientesData.CD_total||0},
+                {key:"PG", nombre:"Planta Granel",     color:"#e8a020", lista:topClientesPlantaMes, total:plantaData?.despachoExternoMes??plantaData?.despachoExterno??0},
+              ];
+              const totalRed=estaciones.reduce((a,e)=>a+e.total,0);
+              const maxTotal=Math.max(...estaciones.map(e=>e.total),1);
+
+              return(
+                <div>
+                  {/* ── Resumen consolidado para gerencia ── */}
+                  <div style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:14,padding:"20px 24px",marginBottom:24,boxShadow:"0 1px 6px rgba(0,0,0,.05)"}}>
+                    <div style={{fontFamily:"'DM Mono'",fontSize:10,color:"#94a3b8",letterSpacing:1.5,textTransform:"uppercase",marginBottom:16}}>Resumen del período — {mesLabel(mesSeleccionado)}</div>
+                    <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"flex-end",marginBottom:20}}>
+                      {estaciones.map(e=>{
+                        const pct=totalRed>0?(e.total/totalRed*100):0;
+                        const barH=maxTotal>0?Math.max((e.total/maxTotal)*80,4):4;
                         return(
-                          <div key={idx} style={{marginBottom:10}}>
-                            <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-                              <div style={{fontFamily:"'DM Sans'",fontSize:11,color:"#1e293b",fontWeight:500,flex:1,marginRight:8,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}
-                                title={item.cliente}>
-                                <span style={{fontFamily:"'DM Mono'",fontSize:10,color:"#94a3b8",marginRight:6}}>#{idx+1}</span>
-                                {item.cliente}
-                              </div>
-                              <div style={{fontFamily:"'DM Mono'",fontSize:11,color,fontWeight:700,whiteSpace:"nowrap"}}>{fmt(item.litros)} L</div>
-                            </div>
-                            <div style={{height:4,background:"#f1f5f9",borderRadius:2}}>
-                              <div style={{width:`${pct}%`,height:"100%",background:color,borderRadius:2,opacity:.7,transition:"width .6s"}}/>
-                            </div>
+                          <div key={e.key} style={{flex:1,minWidth:90,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                            <div style={{fontFamily:"'DM Mono'",fontSize:11,color:e.color,fontWeight:700}}>{fmt(e.total)}</div>
+                            <div style={{width:"100%",height:barH,background:`linear-gradient(180deg,${e.color},${e.color}66)`,borderRadius:"4px 4px 0 0",minHeight:4,transition:"height .6s"}}/>
+                            <div style={{fontFamily:"'DM Mono'",fontSize:9,color:"#64748b",textAlign:"center",lineHeight:1.3}}>{e.nombre.split(" ")[0]}<br/><span style={{color:"#94a3b8"}}>{pct.toFixed(1)}%</span></div>
                           </div>
                         );
                       })}
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                    <div style={{borderTop:"1px solid #f1f5f9",paddingTop:14,display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
+                      <div>
+                        <span style={{fontFamily:"'DM Mono'",fontSize:10,color:"#94a3b8",letterSpacing:1,textTransform:"uppercase"}}>Total Red — </span>
+                        <span style={{fontFamily:"'Bebas Neue'",fontSize:26,color:"#e87030",letterSpacing:1}}>{fmt(totalRed)}</span>
+                        <span style={{fontFamily:"'DM Mono'",fontSize:13,color:"#94a3b8",marginLeft:4}}>L</span>
+                      </div>
+                      <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
+                        {estaciones.map(e=>(
+                          <div key={e.key} style={{display:"flex",alignItems:"center",gap:5}}>
+                            <div style={{width:8,height:8,borderRadius:"50%",background:e.color,flexShrink:0}}/>
+                            <span style={{fontFamily:"'DM Mono'",fontSize:10,color:"#64748b"}}>{e.nombre}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Top 10 por estación ── */}
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:16}}>
+                    {estaciones.map(({key,nombre,color,lista,total})=>{
+                      const maxLitros=lista.length>0?lista[0].litros:1;
+                      return(
+                        <div key={key} style={{background:"#fff",borderRadius:14,overflow:"hidden",boxShadow:"0 1px 6px rgba(0,0,0,.06)",border:"1px solid #f1f5f9"}}>
+                          {/* cabecera color */}
+                          <div style={{background:`linear-gradient(135deg,${color}18,${color}08)`,borderBottom:`2px solid ${color}`,padding:"14px 18px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                            <div>
+                              <div style={{fontFamily:"'Bebas Neue'",fontSize:17,letterSpacing:2,color:"#1e293b"}}>{nombre}</div>
+                              <div style={{fontFamily:"'DM Mono'",fontSize:10,color:"#94a3b8",marginTop:1}}>top {Math.min(lista.length,10)} clientes</div>
+                            </div>
+                            <div style={{textAlign:"right"}}>
+                              <div style={{fontFamily:"'Bebas Neue'",fontSize:22,color,letterSpacing:1,lineHeight:1}}>{fmt(total)}</div>
+                              <div style={{fontFamily:"'DM Mono'",fontSize:9,color:"#94a3b8"}}>L total</div>
+                            </div>
+                          </div>
+                          {/* lista */}
+                          <div style={{padding:"12px 18px"}}>
+                            {lista.length===0&&(
+                              <div style={{color:"#cbd5e1",fontFamily:"'DM Mono'",fontSize:11,textAlign:"center",padding:"20px 0"}}>Sin datos para este período</div>
+                            )}
+                            {lista.map((item,idx)=>{
+                              const pct=maxLitros>0?(item.litros/maxLitros*100):0;
+                              const isTop=(idx===0);
+                              return(
+                                <div key={idx} style={{marginBottom:idx<lista.length-1?10:0,padding:isTop?"8px 10px":"4px 0",background:isTop?`${color}0a`:"transparent",borderRadius:isTop?6:0,transition:"background .2s"}}>
+                                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                                    <div style={{display:"flex",alignItems:"center",gap:6,flex:1,minWidth:0}}>
+                                      <span style={{fontFamily:"'DM Mono'",fontSize:9,color:isTop?color:"#cbd5e1",fontWeight:isTop?700:400,minWidth:16}}>#{idx+1}</span>
+                                      <span style={{fontFamily:"'DM Sans'",fontSize:12,color:"#1e293b",fontWeight:isTop?600:400,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}
+                                        title={item.cliente}>
+                                        {item.cliente}
+                                      </span>
+                                    </div>
+                                    <span style={{fontFamily:"'DM Mono'",fontSize:12,color:isTop?color:"#475569",fontWeight:isTop?700:500,whiteSpace:"nowrap",marginLeft:8}}>
+                                      {fmt(item.litros)} L
+                                    </span>
+                                  </div>
+                                  <div style={{height:3,background:"#f1f5f9",borderRadius:2}}>
+                                    <div style={{width:`${pct}%`,height:"100%",background:color,borderRadius:2,opacity:isTop?1:.5,transition:"width .7s"}}/>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
             {!loadingClientes&&!clientesData&&(
               <div style={{textAlign:"center",padding:60,color:"#94a3b8",fontFamily:"'DM Mono'",fontSize:12}}>
                 <span className="spin" style={{fontSize:20,display:"block",marginBottom:12}}>⟳</span>
