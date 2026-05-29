@@ -118,7 +118,29 @@
   .precio-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
   .precio-inp{display:flex;flex-direction:column;gap:4px}
   .precio-inp label{font-size:11px;font-weight:600;color:var(--muted)}
-  /* LOADING/EMPTY */
+  .tab.tab-auth{color:#b8860b;font-weight:700;background:#fffde7;border-bottom:2.5px solid transparent;letter-spacing:.5px}
+  .tab.tab-auth:hover:not(.active){background:#fff9c4;color:#8a6500}
+  .tab.tab-auth.active{color:#6d4c00;border-bottom-color:#f5c400;background:#fff176}
+  /* AUTH TAB */
+  .auth-header{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+  .auth-badge{background:#f5c400;color:#6d4c00;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:12px;letter-spacing:1.5px;padding:4px 14px;border-radius:20px;text-transform:uppercase}
+  .auth-search{flex:1;max-width:320px}
+  .auth-stat{background:#fffde7;border:1.5px solid #f5c400;border-radius:var(--r-sm);padding:6px 16px;font-size:13px;color:#6d4c00;font-weight:600}
+  .auth-row{display:grid;grid-template-columns:80px 120px 1fr 110px 140px;gap:0;align-items:center}
+  .auth-row th,.auth-row td{padding:10px 14px}
+  .auth-grid{width:100%;border-collapse:collapse;font-size:13px}
+  .auth-grid th{font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);background:var(--bg)}
+  .auth-grid td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--txt)}
+  .auth-grid tr:last-child td{border-bottom:none}
+  .auth-grid tr:hover td{background:#fffde7}
+  .auth-int{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;color:var(--orange)}
+  .auth-pat{font-weight:700;font-size:12px;letter-spacing:1.5px;background:var(--blue-pale);color:var(--blue);padding:3px 10px;border-radius:4px}
+  .auth-ok{display:inline-block;background:#e8f7ee;color:#1a7a4a;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;letter-spacing:.5px}
+  .auth-lts{font-weight:700;color:var(--orange);font-size:14px}
+  .auth-fecha{font-size:12px;color:var(--muted)}
+  .auth-fuente{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:2px 8px;border-radius:4px}
+  .auth-nocar{color:var(--muted);font-style:italic;font-size:12px}
+  .auth-period{display:flex;gap:8px;align-items:flex-end}
   .loading{display:none;padding:48px;text-align:center;color:var(--muted)}
   .spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 14px}
   @keyframes spin{to{transform:rotate(360deg)}}
@@ -151,6 +173,7 @@
   <div class="tab" onclick="switchTab('veh')">Por Vehículo</div>
   <div class="tab" onclick="switchTab('valorizacion')">Valorización</div>
   <div class="tab" onclick="switchTab('ingreso')">Ingreso ESCD x Vta</div>
+  <div class="tab tab-auth" onclick="switchTab('autorizaciones')">⭐ AUTORIZACIONES</div>
 </nav>
 <main class="main">
 
@@ -279,6 +302,30 @@
     <div class="mes-tabs" id="mesTabsIng"></div>
     <div id="loadingIng" class="loading"><div class="spinner"></div>Calculando ingreso...</div>
     <div id="resIng"><div class="empty"><div class="empty-icon">📈</div><div class="empty-title">Seleccioná un período y calculá</div><div style="font-size:13px;margin-top:4px;color:var(--muted)">Requiere precios neto venta en el sheet (cols 7 y 8)</div></div></div>
+  </div>
+
+  <!-- TAB AUTORIZACIONES -->
+  <div id="tab-autorizaciones" style="display:none">
+    <!-- Barra de control -->
+    <div class="card" style="border:2px solid #f5c400;background:#fffde7;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="background:#f5c400;color:#6d4c00;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:12px;letter-spacing:1.5px;padding:4px 14px;border-radius:20px;text-transform:uppercase;white-space:nowrap">⭐ Autorizados a Cargar</span>
+
+        <div style="flex:1"></div>
+        <!-- Selector de meses desplegable -->
+        <select id="authMesTabs" onchange="selAuthMesDrop(this.value)" style="font-size:12px;font-weight:600;padding:6px 10px;border:1.5px solid #f5c400;border-radius:var(--r-sm);background:#fff;color:#6d4c00;cursor:pointer"></select>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="date" id="authFrom" style="font-size:12px;padding:6px 10px;border:1.5px solid #f5c400;border-radius:var(--r-sm);background:#fff;color:#6d4c00;width:140px">
+          <span style="color:#b8860b;font-weight:600">→</span>
+          <input type="date" id="authTo" style="font-size:12px;padding:6px 10px;border:1.5px solid #f5c400;border-radius:var(--r-sm);background:#fff;color:#6d4c00;width:140px">
+          <button class="btn" onclick="cargarAutorizaciones()" style="background:#d4a800;color:#fff;font-size:12px;padding:6px 16px;height:auto">↺ Actualizar</button>
+        </div>
+        <input type="text" id="authSearch" placeholder="🔍 Filtrar..." oninput="filtrarAuthTabla(this.value)" style="font-size:12px;padding:6px 10px;border:1.5px solid #f5c400;border-radius:var(--r-sm);background:#fff;width:150px">
+        <button class="btn" onclick="exportAuthExcel()" style="background:#1a7a4a;color:#fff;font-size:12px;padding:6px 14px;height:auto">📥 Exportar Excel</button>
+      </div>
+    </div>
+    <div id="loadingAuth" class="loading"><div class="spinner" style="border-top-color:#d4a800"></div>Consultando consumos de autorizados...</div>
+    <div id="resAuth"></div>
   </div>
 
 </main>
@@ -660,13 +707,16 @@ async function cargarFlota(){
 // ═══════════════════════════════════
 // TABS
 // ═══════════════════════════════════
-function switchTab(t){
-  ['veh','totales','valorizacion','ingreso'].forEach(id=>document.getElementById('tab-'+id).style.display=id===t?'block':'none');
-  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['totales','veh','valorizacion','ingreso'][i]===t));
+async function switchTab(t){
+  ['veh','totales','valorizacion','ingreso','autorizaciones'].forEach(id=>document.getElementById('tab-'+id).style.display=id===t?'block':'none');
+  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['totales','veh','valorizacion','ingreso','autorizaciones'][i]===t));
   if(t==='veh') poblarLineas();
-  if(t==='totales'&&!document.getElementById('mesTabs').children.length){buildMesesDesplegable('mesTabs','totFrom','totTo',cargarTotales);}
+  if(t==='totales'&&!document.getElementById('mesTabs').children.length){
+    await buildMesesDesplegable('mesTabs','totFrom','totTo',cargarTotales);
+    cargarTotales();
+  }
   if(t==='valorizacion'&&!document.getElementById('mesTabsVal').children.length){
-    buildMesesDesplegable('mesTabsVal','valFrom','valTo',cargarValorizacion);
+    await buildMesesDesplegable('mesTabsVal','valFrom','valTo',cargarValorizacion);
     // Aplicar precios del mes actual
     const now=new Date();
     const mesKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
@@ -674,33 +724,97 @@ function switchTab(t){
       const keys=Object.keys(preciosHistorial).sort();
       if(keys.length>0) aplicarPreciosMes(keys[keys.length-1]);
     }
+    cargarValorizacion();
   }
   if(t==='ingreso'&&!document.getElementById('mesTabsIng').children.length){
-    buildMesesDesplegable('mesTabsIng','ingFrom','ingTo',cargarIngreso);
+    await buildMesesDesplegable('mesTabsIng','ingFrom','ingTo',cargarIngreso);
+    cargarIngreso();
   }
+  if(t==='autorizaciones') iniciarAutorizaciones();
 }
 function setDates(f,t){const now=new Date();document.getElementById(f).value=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);document.getElementById(t).value=now.toISOString().slice(0,10);}
-function buildMesesDesplegable(cid, fromId, toId, callback) {
+async function buildMesesDesplegable(cid, fromId, toId, callback) {
   const container = document.getElementById(cid);
-  // Select con meses disponibles (últimos 12 meses + opción custom)
+  // Mostrar loading mientras carga
+  container.innerHTML = `<div style="font-size:12px;color:var(--muted);margin-bottom:18px">Cargando meses disponibles...</div>`;
+
+  // Obtener meses reales con datos del sheet principal (CD)
+  let mesesConDatos = new Set();
+  try {
+    const t = await fetchGvizCached(SHEET_DC, '578541772');
+    if(t?.rows){
+      for(const row of t.rows){
+        if(!row.c) continue;
+        const fecha = parseFecha(row, 0);
+        if(!fecha || isNaN(fecha)) continue;
+        const key = `${fecha.getFullYear()}-${fecha.getMonth()}`;
+        mesesConDatos.add(key);
+      }
+    }
+  } catch(e){ console.warn('buildMesesDesplegable: error leyendo fechas', e); }
+
+  // También incluir meses de otras fuentes
+  try {
+    const keys = Object.keys(FUENTES);
+    const results = await Promise.allSettled(
+      keys.map(k => fetchGvizCached(FUENTES[k].id, FUENTES[k].ref))
+    );
+    results.forEach((r, i) => {
+      if(r.status !== 'fulfilled' || !r.value?.rows) return;
+      for(const row of r.value.rows){
+        if(!row.c) continue;
+        const fecha = parseFecha(row, FUENTES[keys[i]].iFecha);
+        if(!fecha || isNaN(fecha)) continue;
+        const key = `${fecha.getFullYear()}-${fecha.getMonth()}`;
+        mesesConDatos.add(key);
+      }
+    });
+  } catch(e){ console.warn('buildMesesDesplegable: error fuentes', e); }
+
+  // Ordenar meses de más reciente a más antiguo
+  const mesesOrdenados = Array.from(mesesConDatos).sort((a, b) => {
+    const [ay, am] = a.split('-').map(Number);
+    const [by, bm] = b.split('-').map(Number);
+    return (by * 12 + bm) - (ay * 12 + am);
+  });
+
   const now = new Date();
+  const mesActualKey = `${now.getFullYear()}-${now.getMonth()}`;
+  // Si no hay datos del mes actual, seleccionar el más reciente
+  const primerSel = mesesOrdenados.includes(mesActualKey) ? mesActualKey : (mesesOrdenados[0] || mesActualKey);
+
   let opts = '<option value="custom">Período personalizado</option>';
-  for(let i=0; i<=11; i++){
-    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
-    const y = d.getFullYear(), m = d.getMonth();
-    const lbl = d.toLocaleString('es-AR',{month:'long',year:'numeric'});
-    const sel = i===0 ? 'selected' : '';
-    opts += `<option value="${y}-${m}" ${sel}>${lbl.charAt(0).toUpperCase()+lbl.slice(1)}</option>`;
+  if(mesesOrdenados.length === 0){
+    // Fallback: últimos 3 meses si no se pudo leer
+    for(let i=0; i<=2; i++){
+      const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+      const y = d.getFullYear(), m = d.getMonth();
+      const lbl = d.toLocaleString('es-AR',{month:'long',year:'numeric'});
+      const key = `${y}-${m}`;
+      const sel = i===0 ? 'selected' : '';
+      opts += `<option value="${key}" ${sel}>${lbl.charAt(0).toUpperCase()+lbl.slice(1)}</option>`;
+    }
+  } else {
+    mesesOrdenados.forEach(key => {
+      const [y, m] = key.split('-').map(Number);
+      const d = new Date(y, m, 1);
+      const lbl = d.toLocaleString('es-AR',{month:'long',year:'numeric'});
+      const sel = key === primerSel ? 'selected' : '';
+      opts += `<option value="${key}" ${sel}>${lbl.charAt(0).toUpperCase()+lbl.slice(1)}</option>`;
+    });
   }
+
   container.innerHTML = `<div style="display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap">
     <select id="${cid}-sel" onchange="selMesDrop('${cid}','${fromId}','${toId}')" style="max-width:220px;font-weight:600">
       ${opts}
     </select>
     <span style="font-size:12px;color:var(--muted)">o usá el filtro de fechas arriba</span>
   </div>`;
-  // Setear fechas del mes actual
-  const from = new Date(now.getFullYear(), now.getMonth(), 1);
-  const to   = new Date(now.getFullYear(), now.getMonth()+1, 0);
+
+  // Setear fechas del mes seleccionado
+  const [sy, sm] = primerSel.split('-').map(Number);
+  const from = new Date(sy, sm, 1);
+  const to   = new Date(sy, sm+1, 0);
   document.getElementById(fromId).value = from.toISOString().slice(0,10);
   document.getElementById(toId).value   = to.toISOString().slice(0,10);
 }
@@ -778,8 +892,7 @@ function selValCC(cc){
     }
   });
   // Arrancar en Totales por Sector
-  buildMesesDesplegable('mesTabs','totFrom','totTo',cargarTotales);
-  setDates('totFrom','totTo');
+  await buildMesesDesplegable('mesTabs','totFrom','totTo',cargarTotales);
   cargarTotales();
 })();
 
@@ -1320,41 +1433,13 @@ async function cargarValorizacion(){
     ${errores.length?`<div class="alert alert-warn fade">⚠ Sin datos de: ${errores.map(e=>e.split(':')[0]).join(', ')}</div>`:''}
 
     <!-- KPIs resumen -->
-    <div style="margin-bottom:8px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">PETROSAR — Consumo Interno Flota</div>
-    <div class="kpi-grid fade" style="margin-bottom:6px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));max-width:900px">
-      <div class="kpi">
-        <div class="kpi-lbl">Litros Petrosar</div>
-        <div class="kpi-val">${fmtN(totP.ltsEuro+totP.ltsGasoil)}</div>
-        <div class="kpi-unit">${fmtN(totP.ltsEuro)} Euro · ${fmtN(totP.ltsGasoil)} Gasoil</div>
-      </div>
-      <div class="kpi" style="border-left:3px solid var(--orange)">
-        <div class="kpi-lbl">Neto Costo Petrosar</div>
-        <div class="kpi-val" style="font-size:19px;color:var(--orange)">${fmtARS(totP.costoNetoEuro+totP.costoNetoGasoil)}</div>
-        <div class="kpi-unit" style="color:var(--muted)">a precio compra neto · sin imp.</div>
-      </div>
-      <div class="kpi" style="border-left:3px solid var(--green)">
-        <div class="kpi-lbl">Neto Venta Petrosar</div>
-        <div class="kpi-val" style="font-size:19px;color:var(--green)">${fmtARS(totVta)}</div>
-        <div class="kpi-unit" style="color:var(--muted)">a precio neto venta ESCD</div>
-      </div>
-    </div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;padding:6px 10px;background:var(--bg);border-radius:6px;border:1px solid var(--border)">
-      ℹ Imp. Interno Petrosar: <strong>${fmtARS((totP.costoImpEuro+totP.costoImpGasoil)+(totP.costoCO2Euro+totP.costoCO2Gasoil))}</strong> 
-      <span style="margin:0 8px;color:var(--border)">|</span>
-      Total costo c/imp: <strong>${fmtARS(totPCostoTotal)}</strong>
-    </div>
-    <div style="margin-bottom:8px;margin-top:18px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">EESS CD — Consumo Interno Estación</div>
-    <div class="kpi-grid fade" style="margin-bottom:4px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));max-width:600px">
-      <div class="kpi" style="border-left:3px solid #0891b2">
-        <div class="kpi-lbl">Litros EESS CD</div>
-        <div class="kpi-val">${fmtN(totE.ltsEuro+totE.ltsGasoil)}</div>
-        <div class="kpi-unit">${fmtN(totE.ltsEuro)} Euro · ${fmtN(totE.ltsGasoil)} Gasoil</div>
-      </div>
-      <div class="kpi" style="border-left:3px solid #0891b2">
-        <div class="kpi-lbl">Neto Costo EESS CD</div>
-        <div class="kpi-val" style="font-size:19px;color:#0891b2">${fmtARS(totE.costoNetoEuro+totE.costoNetoGasoil)}</div>
-        <div class="kpi-unit" style="color:var(--muted)">a precio compra neto · sin imp.</div>
-      </div>
+    <div class="kpi-grid fade">
+      <div class="kpi"><div class="kpi-lbl">Petrosar — lts</div><div class="kpi-val">${fmtN(totP.ltsEuro+totP.ltsGasoil)}</div><div class="kpi-unit">costo: ${fmtARS(totPCostoTotal)}</div></div>
+      <div class="kpi"><div class="kpi-lbl">EESS CD — lts</div><div class="kpi-val">${fmtN(totE.ltsEuro+totE.ltsGasoil)}</div><div class="kpi-unit">costo: ${fmtARS(totECostoTotal)}</div></div>
+      ${pVtaEuro>0||pVtaGasoil>0?`
+      <div class="kpi" style="border-color:var(--green)"><div class="kpi-lbl">Petrosar — Neto Vta</div><div class="kpi-val" style="font-size:18px;color:var(--green)">${fmtARS(totVta)}</div><div class="kpi-unit">precio neto de venta</div></div>
+      <div class="kpi accent" style="background:var(--green);border-color:var(--green)"><div class="kpi-lbl">Ingreso ESCD x Vta</div><div class="kpi-val" style="font-size:18px">${fmtARS(ingresoEscd)}</div><div class="kpi-unit">neto vta − costo Petrosar</div></div>
+      `:`<div class="kpi" style="border-color:#fde68a;background:#fffbeb"><div class="kpi-lbl">⚠ Ingreso ESCD</div><div class="kpi-val" style="font-size:14px;color:#92400e">Sin precio vta</div><div class="kpi-unit">Agregar cols 7-8 al sheet Precios</div></div>`}
     </div>
 
     <!-- Tabla PETROSAR -->
@@ -1751,7 +1836,400 @@ async function buscarSinIdentificar(){
     </div>`;
 }
 
+
 function vehIcon(d){if(!d)return'🚗';d=d.toUpperCase();if(/IVECO|TECTOR/.test(d))return'🚛';if(/BUS|EUROBUS|MIDIBUS|SPRINTER/.test(d))return'🚐';if(/SCANIA|CAMION|CARGO|VOLKSWAGEN 3/.test(d))return'🚌';if(/ACOPLADO|SEMIRREMOLQUE/.test(d))return'🚜';return'🚗';}
+
+
+// ═══════════════════════════════════
+// AUTORIZACIONES
+// ═══════════════════════════════════
+let AUTH_VEHS = [];       // lista de vehículos autorizados (se carga 1 sola vez)
+let AUTH_DESP = [];       // despachos del período consultado
+let authVehsCargados = false;  // true cuando ya leímos Rodados
+let authFiltroTxt = '';
+let authInicializado = false;
+
+async function iniciarAutorizaciones(){
+  const sel = document.getElementById('authMesTabs');
+  if(!sel.options.length){
+    const now = new Date();
+    // Fecha inicio: marzo 2026
+    const inicio = new Date(2026, 2, 1); // mes base 0 → 2 = marzo
+    let opts = '';
+    let d = new Date(now.getFullYear(), now.getMonth(), 1);
+    while(d >= inicio){
+      const y=d.getFullYear(), m2=d.getMonth()+1;
+      const key=`${y}-${String(m2).padStart(2,'0')}`;
+      const esCurrent = (y===now.getFullYear() && m2===now.getMonth()+1);
+      const desdeDt = new Date(y, m2-1, 1);
+      const hastaDt = esCurrent ? now : new Date(y, m2, 0);
+      const fmt = dt => dt.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'});
+      const lbl=d.toLocaleString('es-AR',{month:'long',year:'numeric'}) + '  ·  ' + fmt(desdeDt) + ' → ' + fmt(hastaDt);
+      const lblFmt=lbl.charAt(0).toUpperCase()+lbl.slice(1);
+      opts += `<option value="${key}">${lblFmt}</option>`;
+      d = new Date(y, d.getMonth()-1, 1);
+    }
+    sel.innerHTML = opts;
+    sel.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    // Setear fechas al mes actual
+    const desde = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+    const hasta  = now.toISOString().slice(0,10);
+    document.getElementById('authFrom').value = desde;
+    document.getElementById('authTo').value   = hasta;
+  }
+  await consultarPeriodoAuth();
+}
+
+function selAuthMesDrop(key){
+  const [y,m]=key.split('-').map(Number);
+  const now=new Date();
+  const esMesActual=(y===now.getFullYear()&&m===now.getMonth()+1);
+  const desde=new Date(y,m-1,1).toISOString().slice(0,10);
+  const hasta=esMesActual?now.toISOString().slice(0,10):new Date(y,m,0).toISOString().slice(0,10);
+  document.getElementById('authFrom').value=desde;
+  document.getElementById('authTo').value=hasta;
+  consultarPeriodoAuth();
+}
+
+// Botón Actualizar — fuerza recarga de Rodados también
+async function cargarAutorizaciones(){
+  authVehsCargados=false;
+  await consultarPeriodoAuth();
+}
+
+async function cargarAutorizados(){
+  if(authVehsCargados && AUTH_VEHS.length>0) return; // ya los tenemos
+  try{
+    const t = await fetchGviz(SHEET_RODADOS, '766085002');
+    if(!t?.rows) return;
+    const cols = t.cols||[];
+    // Columna A = Interno (índice 0), B = Dominio (1), D = Descripción (3), E = Tipo (4), H = Línea (7)
+    // Buscar por nombre de columna primero, fallback a índice fijo
+    const iInterno = cols.findIndex(c=>/^interno$/i.test(c.label));
+    const iDominio = cols.findIndex(c=>/^dominio$/i.test(c.label));
+    const iDesc    = cols.findIndex(c=>/^descripci/i.test(c.label));
+    const iLinea   = cols.findIndex(c=>/^linea/i.test(c.label));
+    // Columna E (índice 4) = Tipo — buscamos "AUTORIZADOS A CARGAR"
+    const iAuth    = cols.findIndex(c=>/tipo/i.test(c.label)||/autorizado/i.test(c.label));
+    const ci = iInterno>=0?iInterno:0;
+    const cd = iDominio>=0?iDominio:1;
+    const ce = iDesc>=0?iDesc:3;
+    const cl = iLinea>=0?iLinea:7;
+    // Si no encontramos por nombre, forzar índice 4 (columna E del sheet Rodados)
+    const ca = iAuth>=0?iAuth:4;
+    console.log('[Auth] cols:', cols.map(c=>c.label), '| col Tipo idx:', ca);
+    AUTH_VEHS=[];
+    const seen=new Set();
+    for(const row of t.rows){
+      if(!row.c)continue;
+      const interno=row.c[ci]?.v;
+      const dominio=String(row.c[cd]?.v||'').trim().toUpperCase();
+      if(!interno||!dominio||dominio==='NAN')continue;
+      const k=String(interno);
+      if(seen.has(k))continue;
+      // Verificar columna E (índice 4) = "AUTORIZADOS A CARGAR"
+      // También chequeamos índice dinámico por si el header tiene otro nombre
+      const authRaw4 = row.c[4]; // siempre col E (índice 4)
+      const authRawDyn = ca!==4 ? row.c[ca] : null;
+      const authVal4   = String(authRaw4?(authRaw4.f||authRaw4.v||''):'').trim().toUpperCase();
+      const authValDyn = authRawDyn?String(authRawDyn.f||authRawDyn.v||'').trim().toUpperCase():'';
+      const esAutorizado = authVal4==='AUTORIZADOS A CARGAR' || authValDyn==='AUTORIZADOS A CARGAR';
+      if(!esAutorizado) continue;
+      seen.add(k);
+      const desc=String(row.c[ce]?.v||'').trim();
+      const lineaRaw=row.c[cl];
+      const linea=lineaRaw?String(lineaRaw.f||lineaRaw.v||'').trim():'';
+      AUTH_VEHS.push({Interno:+interno,Dominio:dominio,Descripción:desc,LineaNegocio:linea});
+    }
+    AUTH_VEHS.sort((a,b)=>a.Interno-b.Interno);
+    authVehsCargados=true;
+    console.log('[Auth] Autorizados encontrados:', AUTH_VEHS.length, AUTH_VEHS.map(v=>v.Interno));
+  }catch(e){console.warn('Auth cargarAutorizados error:',e.message);}
+}
+
+// Consulta SOLO el sheet de Datos Conductor (SHEET_DC, gid=578541772)
+// col A=Fecha(0), col C=Interno(2), col G=Patente(6), col M=Producto(12), col N=Litros(13)
+async function cargarDespachosAuth(from, to){
+  try{
+    const t = await fetchGvizCached(SHEET_DC, '578541772');
+    if(!t?.rows) return [];
+    const authInternos = new Set(AUTH_VEHS.map(v=>String(v.Interno)));
+    const desde = from ? new Date(from+'T00:00:00') : null;
+    const hasta  = to   ? new Date(to+'T23:59:59')   : null;
+    const res = [];
+    for(const row of t.rows){
+      if(!row.c) continue;
+      // Columna C = Interno (índice 2)
+      const internoRaw = String(v(row,2)||'').trim();
+      if(!internoRaw || !authInternos.has(internoRaw)) continue;
+      // Fecha col A (índice 0)
+      const fecha = parseFecha(row, 0);
+      if(!fecha || isNaN(fecha)) continue;
+      if(desde && fecha < desde) continue;
+      if(hasta  && fecha > hasta)  continue;
+      // Litros col N (índice 13)
+      const lv=v(row,13), lf_=f(row,13);
+      // La API gviz devuelve lv como número y lf_ como string formateado.
+      // El sheet usa locale AR: punto=miles, coma=decimal.
+      // lv puede llegar escalado x1000 (ej: 22246 cuando el valor real es 22.246)
+      // La forma más confiable: parsear lf_ con reglas AR.
+      // Casos:
+      //   lf_="22.246"     → punto de miles AR → 22.246
+      //   lf_="63,75"      → coma decimal AR   → 63.75
+      //   lf_="1.234,56"   → miles+decimal AR  → 1234.56
+      //   lf_="828"        → entero plano       → 828
+      // La columna Cantidad tiene dos tipos de datos según cómo fue ingresada:
+      // TIPO A: número con decimales → lv=22.246 (float), lf_="22,246" (coma decimal AR)
+      // TIPO B: número entero (ingresado sin decimales) → lv=60798, lf_="60.798" (punto=miles AR)
+      //         En este caso el valor real ES 60.798 litros, no 60798.
+      // Detección: si lv es float (tiene decimales) → usar lv directo.
+      //            si lv es entero → el valor real tiene punto decimal → lv/1000.
+      // Verificación cruzada con lf_: si lf_ tiene coma → es TIPO A (lv ya es float).
+      //                               si lf_ solo tiene punto → es TIPO B (lv es entero x1000).
+      let litros=0;
+      if(typeof lv==='number'){
+        const _lf = lf_ ? String(lf_).trim() : '';
+        if(!Number.isInteger(lv)){
+          // lv es float real: 22.246 → usarlo directo
+          litros = lv;
+        } else if(_lf.includes(',')){
+          // lf_ tiene coma decimal AR ("39,368") → parsear lf_
+          litros = parseFloat(_lf.replace(/\./g,'').replace(',','.'))||0;
+        } else if(_lf.includes('.')){
+          // lf_ tiene punto como separador de miles ("60.798") → valor real = lv/1000
+          litros = lv / 1000;
+        } else {
+          // Sin pistas en lf_: asumir que lv entero grande = x1000
+          litros = lv > 999 ? lv/1000 : lv;
+        }
+      } else if(lf_){
+        const _lf=String(lf_).trim();
+        if(_lf.includes(','))
+          litros=parseFloat(_lf.replace(/\./g,'').replace(',','.'))||0;
+        else
+          litros=parseFloat(_lf)||0;
+      } else if(typeof lv==='string'){
+        litros=parseFloat(lv.replace(',','.'))||0;
+      }
+      // DEBUG: guardar primeras 5 filas para mostrar panel
+      if(window._authDebug && window._authDebug.length < 8){
+        window._authDebug.push({interno:internoRaw, lv, lf_, litros});
+      }
+      if(!litros) continue;
+      const prod = normProd(s(row,12)||'');
+      const pat  = norm(s(row,6));
+      const mes  = `${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,'0')}`;
+      res.push({Interno: internoRaw, Litros: litros, Producto: prod, Patente: pat, Fecha: mes+'-'+String(fecha.getDate()).padStart(2,'0'), fecha});
+    }
+    console.log('[Auth] Despachos DC para autorizados:', res.length, 'litros total:', res.reduce((a,d)=>a+d.Litros,0).toFixed(0));
+    return res;
+  }catch(e){console.warn('Auth cargarDespachosAuth error:',e.message); return [];}
+}
+
+// Consulta despachos del período seleccionado y renderiza
+async function consultarPeriodoAuth(){
+  document.getElementById('loadingAuth').style.display='block';
+  document.getElementById('resAuth').innerHTML='';
+  // 1) Cargar lista de autorizados (solo si no está en caché)
+  await cargarAutorizados();
+  if(!AUTH_VEHS.length){
+    document.getElementById('loadingAuth').style.display='none';
+    document.getElementById('resAuth').innerHTML=`<div class="empty"><div class="empty-icon">🔒</div><div class="empty-title">No se encontraron vehículos autorizados</div><div style="font-size:13px;margin-top:4px">Verificá que la columna E del sheet Rodados tenga el valor "AUTORIZADOS A CARGAR"</div></div>`;
+
+    return;
+  }
+  // 2) Consultar SOLO despachos del sheet Datos Conductor para internos autorizados
+  const from=document.getElementById('authFrom').value;
+  const to=document.getElementById('authTo').value;
+  if(!from||!to){ document.getElementById('loadingAuth').style.display='none'; return; }
+  window._authDebug = [];
+  AUTH_DESP = await cargarDespachosAuth(from, to);
+  console.log('[Auth] Despachos para autorizados:', AUTH_DESP.length);
+  // Mostrar panel debug
+  const dbg = window._authDebug||[];
+  if(dbg.length){
+    const rows = dbg.map(d=>`<tr><td>${d.interno}</td><td><code>${JSON.stringify(d.lv)}</code></td><td><code>${JSON.stringify(d.lf_)}</code></td><td style="font-weight:700;color:${Math.abs(d.litros - parseFloat(String(d.lf_||d.lv).replace(/\./g,'').replace(',','.'))) < 0.001 ? 'green':'red'}">${d.litros}</td></tr>`).join('');
+    document.getElementById('resAuth').innerHTML = `<div style="background:#fff3cd;border:2px solid #f5c400;border-radius:8px;padding:16px;margin-bottom:16px">
+      <b>🔍 DEBUG — Primeras filas de la API (col N = Cantidad):</b>
+      <table style="width:100%;margin-top:8px;font-size:12px;border-collapse:collapse">
+        <thead><tr><th style="text-align:left;padding:4px">Interno</th><th style="text-align:left;padding:4px">lv (valor numérico)</th><th style="text-align:left;padding:4px">lf_ (string formateado)</th><th style="text-align:left;padding:4px">litros parseado</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div style="margin-top:8px;font-size:11px;color:#6d4c00">Verificá que "litros parseado" coincida con lo que ves en el sheet. Luego avisame.</div>
+    </div>`;
+  }
+  authInicializado = true;
+  document.getElementById('loadingAuth').style.display='none';
+  renderAuthConsumos(from,to);
+}
+
+function filtrarAuthTabla(val){
+  authFiltroTxt=val.trim().toUpperCase();
+  if(authInicializado){
+    const from=document.getElementById('authFrom').value;
+    const to=document.getElementById('authTo').value;
+    renderAuthConsumos(from,to);
+  }
+}
+
+function authListaFiltrada(){
+  if(!authFiltroTxt) return AUTH_VEHS;
+  return AUTH_VEHS.filter(v=>{
+    const q=authFiltroTxt.replace(/[\s\-]/g,'');
+    return String(v.Interno).includes(q)||norm(v.Dominio).includes(q)||v.Descripción.toUpperCase().includes(authFiltroTxt);
+  });
+}
+
+function renderAuthConsumos(from,to){
+  const lista=authListaFiltrada();
+  const listaInternos=new Set(lista.map(v=>String(v.Interno)));
+
+  // Mapa de vehículos para lookup
+  const vehMap={};
+  for(const v of AUTH_VEHS) vehMap[String(v.Interno)]=v;
+
+  // Todos los despachos del período, filtrados por internos que pasan el filtro de texto
+  const despFiltrados = AUTH_DESP
+    .filter(d=>listaInternos.has(String(d.Interno||'')))
+    .sort((a,b)=>a.fecha-b.fecha);
+
+  let totalLts=0;
+  const internosConCarga=new Set();
+  let rows='';
+  const exportData=[];
+
+  for(const d of despFiltrados){
+    const k=String(d.Interno);
+    const veh=vehMap[k]||{};
+    const lts=+d.Litros||0;
+    totalLts+=lts;
+    internosConCarga.add(k);
+
+    const fechaFmt = d.Fecha ? d.Fecha.split('-').reverse().join('/') : '—';
+    const icon=vehIcon(veh.Descripcion||veh['Descripción']||'');
+    const prod=d.Producto||'EURO';
+    const isGas=prod==='GASOIL';
+    const prodBadge=`<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:${isGas?'#e8f5e9':'#e3f2fd'};color:${isGas?'#2e7d32':'#1565c0'}">${prod}</span>`;
+
+    rows+=`<tr>
+      <td style="font-size:13px;font-weight:700;color:#d4580a">${veh.Interno||k}</td>
+      <td><span class="auth-pat">${veh.Dominio||'—'}</span></td>
+      <td>${icon} <span style="font-size:12px;color:var(--muted)">${veh['Descripción']||veh.Descripcion||'—'}</span></td>
+      <td><span style="font-size:11px;font-weight:600;color:#1a5fa8;background:#e0f0ff;padding:2px 8px;border-radius:4px">${veh.LineaNegocio||'—'}</span></td>
+      <td style="text-align:center;font-size:13px;font-weight:600;color:var(--fg)">${fechaFmt}</td>
+      <td style="text-align:right"><span class="auth-lts">${fmtN(lts,3)} L</span></td>
+      <td style="text-align:center">${prodBadge}</td>
+    </tr>`;
+    exportData.push({
+      Fecha: fechaFmt,
+      Interno: veh.Interno||k,
+      Patente: veh.Dominio||'',
+      'Descripción': veh['Descripción']||veh.Descripcion||'',
+      'Línea': veh.LineaNegocio||'',
+      Producto: prod,
+      Litros: lts
+    });
+  }
+
+  window._authExportData=exportData;
+  window._authExportPeriodo=`${from}_al_${to}`.replace(/\//g,'-');
+
+  const totalCargas=despFiltrados.length;
+  const totalConCarga=internosConCarga.size;
+
+  document.getElementById('resAuth').innerHTML=`
+    <div class="kpi-grid" style="margin-bottom:16px">
+      <div class="kpi accent" style="background:#d4a800;border-color:#d4a800">
+        <div class="kpi-lbl">Total litros</div>
+        <div class="kpi-val">${fmtN(totalLts,3)}</div>
+        <div class="kpi-unit">${fmtDate(from)} → ${fmtDate(to)}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-lbl">Cargas realizadas</div>
+        <div class="kpi-val">${totalCargas}</div>
+        <div class="kpi-unit">despachos · Datos Conductor</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-lbl">Vehículos con carga</div>
+        <div class="kpi-val">${totalConCarga}</div>
+        <div class="kpi-unit">autorizados con actividad</div>
+      </div>
+    </div>
+    <div class="tbl-wrap fade">
+      <div class="tbl-hdr" style="background:#fffde7;border-bottom:1px solid #f5c400">
+        <span class="tbl-title" style="color:#6d4c00">Despachos · Autorizados a Cargar — Datos Conductor</span>
+        <span class="tbl-count" style="background:#fff;border-color:#f5c400;color:#6d4c00">${fmtDate(from)} → ${fmtDate(to)}</span>
+      </div>
+      <table class="auth-grid">
+        <thead><tr>
+          <th>Interno</th><th>Patente</th><th>Descripción</th><th>Línea</th>
+          <th style="text-align:center">Fecha</th>
+          <th style="text-align:right">Litros</th>
+          <th style="text-align:center">Producto</th>
+        </tr></thead>
+        <tbody>${rows||'<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">Sin despachos en el período</td></tr>'}</tbody>
+        <tfoot><tr>
+          <td colspan="4" style="font-weight:700;color:#6d4c00;background:#fffde7">TOTAL</td>
+          <td style="background:#fffde7"></td>
+          <td style="font-weight:700;color:var(--orange);font-size:15px;background:#fffde7;text-align:right">${fmtN(totalLts,3)} L</td>
+          <td style="font-weight:700;color:var(--muted);background:#fffde7;text-align:center">${totalCargas} cargas</td>
+        </tr></tfoot>
+      </table>
+    </div>`;
+}
+
+
+function exportAuthExcel(){
+  const data = window._authExportData;
+  if(!data||!data.length){alert('Primero consultá los consumos.');return;}
+  const periodo = window._authExportPeriodo||'periodo';
+
+  const wb = XLSX.utils.book_new();
+  const fmtLts = '#,##0.000';
+
+  // ── HOJA ÚNICA: Un despacho por fila ─────────────────────────────
+  const h = ['Fecha','Interno','Patente','Descripción','Línea de Negocio','Producto','Litros'];
+  const rows = data.map(r=>[
+    r['Fecha']||'',
+    r['Interno'],
+    r['Patente']||'',
+    r['Descripción']||'',
+    r['Línea']||'',
+    r['Producto']||'',
+    +r['Litros']
+  ]);
+
+  // Fila de totales
+  const totLts = data.reduce((a,r)=>a+(+r['Litros']||0),0);
+  rows.push(['TOTAL','','','','','', totLts]);
+
+  const ws = XLSX.utils.aoa_to_sheet([h,...rows]);
+
+  // Formato numérico litros
+  rows.forEach((_,i)=>{
+    const cell = XLSX.utils.encode_cell({r:i+1, c:6});
+    if(ws[cell] && typeof ws[cell].v==='number') ws[cell].z = fmtLts;
+  });
+
+  ws['!cols']=[{wch:13},{wch:10},{wch:12},{wch:36},{wch:22},{wch:10},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Despachos');
+
+  XLSX.writeFile(wb, `Autorizados_${periodo}.xlsx`);
+}
+
+function verConsumoAuth(interno, dominio){
+  switchTab('veh');
+  document.getElementById('vehSearch').value=`${interno} — ${dominio}`;
+  const found=FLOTA.find(f=>f.Interno===+interno);
+  if(found){selVeh=found;}
+  const af=document.getElementById('authFrom').value;
+  const at=document.getElementById('authTo').value;
+  if(af) document.getElementById('vehFrom').value=af;
+  if(at) document.getElementById('vehTo').value=at;
+  buscarVeh();
+}
+
+
 </script>
 </body>
 </html>
