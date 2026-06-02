@@ -294,7 +294,7 @@
       <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
         Diferencia contable entre el <strong>neto de venta</strong> de los litros consumidos por Petrosar 
         y el <strong>costo de compra</strong> valorizado a esos mismos litros.<br>
-        <span style="color:var(--green);font-weight:600">Ingreso = (Litros Petrosar × Precio Neto Vta) − (Litros Petrosar × Precio Neto Costo)</span>
+        <span style="color:var(--green);font-weight:600">Ingreso = (Litros Petrosar × Precio Neto Vta) − (Litros Petrosar × Precio Neto Costo) — ambos sin impuestos internos ni CO2</span>
       </div>
       <div class="row" style="margin-bottom:14px">
         <div class="fg"><label class="lbl">Desde</label><input type="date" id="ingFrom"></div>
@@ -1446,21 +1446,22 @@ async function cargarValorizacion(){
       </div>`;
   }
 
-  const totPCostoTotal=(totP.costoNetoEuro+totP.costoNetoGasoil)+(totP.costoImpEuro+totP.costoImpGasoil)+(totP.costoCO2Euro+totP.costoCO2Gasoil);
+  const totPCostoNeto=(totP.costoNetoEuro+totP.costoNetoGasoil);
+  const totPCostoTotal=totPCostoNeto+(totP.costoImpEuro+totP.costoImpGasoil)+(totP.costoCO2Euro+totP.costoCO2Gasoil);
   const totECostoTotal=(totE.costoNetoEuro+totE.costoNetoGasoil)+(totE.costoImpEuro+totE.costoImpGasoil)+(totE.costoCO2Euro+totE.costoCO2Gasoil);
   const totVta=totP.vtaNetoEuro+totP.vtaNetoGasoil;
-  const ingresoEscd=totVta-totPCostoTotal;
+  const ingresoEscd=totVta-totPCostoNeto; // Neto Vta − Neto Costo (sin imp. internos ni CO2)
 
   document.getElementById('resVal').innerHTML=`
     ${errores.length?`<div class="alert alert-warn fade">⚠ Sin datos de: ${errores.map(e=>e.split(':')[0]).join(', ')}</div>`:''}
 
     <!-- KPIs resumen -->
     <div class="kpi-grid fade">
-      <div class="kpi"><div class="kpi-lbl">Petrosar — lts</div><div class="kpi-val">${fmtN(totP.ltsEuro+totP.ltsGasoil)}</div><div class="kpi-unit">costo: ${fmtARS(totPCostoTotal)}</div></div>
-      <div class="kpi"><div class="kpi-lbl">EESS CD — lts</div><div class="kpi-val">${fmtN(totE.ltsEuro+totE.ltsGasoil)}</div><div class="kpi-unit">costo: ${fmtARS(totECostoTotal)}</div></div>
+      <div class="kpi"><div class="kpi-lbl">Petrosar — lts</div><div class="kpi-val">${fmtN(totP.ltsEuro+totP.ltsGasoil)}</div><div class="kpi-unit">neto costo: ${fmtARS(totPCostoNeto)} · total: ${fmtARS(totPCostoTotal)}</div></div>
+      <div class="kpi"><div class="kpi-lbl">EESS CD — lts</div><div class="kpi-val">${fmtN(totE.ltsEuro+totE.ltsGasoil)}</div><div class="kpi-unit">total costo: ${fmtARS(totECostoTotal)}</div></div>
       ${pVtaEuro>0||pVtaGasoil>0?`
       <div class="kpi" style="border-color:var(--green)"><div class="kpi-lbl">Petrosar — Neto Vta</div><div class="kpi-val" style="font-size:18px;color:var(--green)">${fmtARS(totVta)}</div><div class="kpi-unit">precio neto de venta</div></div>
-      <div class="kpi accent" style="background:var(--green);border-color:var(--green)"><div class="kpi-lbl">Ingreso ESCD x Vta</div><div class="kpi-val" style="font-size:18px">${fmtARS(ingresoEscd)}</div><div class="kpi-unit">neto vta − costo Petrosar</div></div>
+      <div class="kpi accent" style="background:var(--green);border-color:var(--green)"><div class="kpi-lbl">Ingreso ESCD x Vta</div><div class="kpi-val" style="font-size:18px">${fmtARS(ingresoEscd)}</div><div class="kpi-unit">neto vta − neto costo (sin imp.)</div></div>
       `:`<div class="kpi" style="border-color:#fde68a;background:#fffbeb"><div class="kpi-lbl">⚠ Ingreso ESCD</div><div class="kpi-val" style="font-size:14px;color:#92400e">Sin precio vta</div><div class="kpi-unit">Agregar cols 7-8 al sheet Precios</div></div>`}
     </div>
 
@@ -2332,15 +2333,6 @@ function parseEdenredRows(table) {
     rows.push({ comp, fecha, mesRaw, importe });
   }
   return rows;
-}
-
-const MES_ORDEN = {ENE:1,FEB:2,MAR:3,ABR:4,MAY:5,JUN:6,JUL:7,AGO:8,SEP:9,OCT:10,NOV:11,DIC:12};
-const MES_NOMBRE = {1:'Enero',2:'Febrero',3:'Marzo',4:'Abril',5:'Mayo',6:'Junio',7:'Julio',8:'Agosto',9:'Septiembre',10:'Octubre',11:'Noviembre',12:'Diciembre'};
-
-function mesNumero(raw) {
-  if (!raw) return 0;
-  const u = raw.toUpperCase().trim().slice(0,3);
-  return MES_ORDEN[u] || 0;
 }
 
 let _edenredInicializado = false;
