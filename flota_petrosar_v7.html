@@ -341,7 +341,6 @@
         <select id="edenredAnio" onchange="cargarEdenred()" style="font-size:12px;font-weight:600;padding:6px 10px;border:1.5px solid #e84c3d;border-radius:var(--r-sm);background:#fff;color:#7b241c;cursor:pointer">
           <option value="2026">2026</option>
         </select>
-        <span id="edenredAnioStatus" style="font-size:11px;color:var(--muted)">Detectando años disponibles...</span>
         <button class="btn" onclick="exportEdenredExcel()" style="background:#1a7a4a;color:#fff;font-size:12px;padding:6px 14px;height:auto">📥 Exportar Excel</button>
       </div>
     </div>
@@ -2257,7 +2256,14 @@ function verConsumoAuth(interno, dominio){
 // TAB EDENRED — Compensación
 // ═══════════════════════════════════
 const SHEET_EDENRED = '1YN8ZX0_EFtHZzUEph30Nl_1so7msKYm3grGXyKaUrIc';
-const EDENRED_ANIOS_POSIBLES = [2026,2025,2024,2023,2022,2021,2020,2019,2018];
+
+// Genera el rango de años a chequear: desde 2018 hasta el año actual + 1
+function edenredAniosPosibles() {
+  const anioActual = new Date().getFullYear();
+  const anios = [];
+  for (let a = anioActual + 1; a >= 2018; a--) anios.push(a);
+  return anios;
+}
 
 let _edenredCache = {};
 let _edenredAnioActual = null;
@@ -2274,12 +2280,12 @@ async function fetchEdenredAnio(anio) {
 async function detectarAniosDisponibles() {
   if (_edenredAniosDetectados) return _edenredAniosDetectados;
 
+  const aniosPosibles = edenredAniosPosibles();
   const checks = await Promise.allSettled(
-    EDENRED_ANIOS_POSIBLES.map(async anio => {
+    aniosPosibles.map(async anio => {
       try {
         const t = await fetchGviz(SHEET_EDENRED, String(anio));
         if (!t?.rows) return null;
-        // Verificar que tenga al menos 1 fila con comprobante RC/RA
         const tieneRC = t.rows.some(r => r.c && String(r.c[0]?.v||r.c[0]?.f||'').match(/^R[CA]\s/i));
         return tieneRC ? anio : null;
       } catch(e) { return null; }
@@ -2288,7 +2294,8 @@ async function detectarAniosDisponibles() {
 
   _edenredAniosDetectados = checks
     .map(r => r.status === 'fulfilled' ? r.value : null)
-    .filter(Boolean);
+    .filter(Boolean)
+    .sort((a, b) => b - a); // más reciente primero
 
   return _edenredAniosDetectados;
 }
@@ -2341,26 +2348,19 @@ async function iniciarEdenred() {
   if (_edenredInicializado) return;
   _edenredInicializado = true;
 
-  const statusEl = document.getElementById('edenredAnioStatus');
   const sel = document.getElementById('edenredAnio');
 
-  // Primero cargar 2026 (ya está en el select) inmediatamente
+  // Cargar 2026 inmediatamente
   cargarEdenred();
 
-  // En paralelo, detectar otros años disponibles
+  // En paralelo detectar todos los años con datos reales
   detectarAniosDisponibles().then(anios => {
-    if (!anios || !anios.length) {
-      if (statusEl) statusEl.textContent = '';
-      return;
-    }
-    // Reconstruir el select con solo los años detectados
+    if (!anios || !anios.length) return;
+    const current = sel.value;
     sel.innerHTML = anios.map(a =>
-      `<option value="${a}" ${a == (_edenredAnioActual||2026) ? 'selected' : ''}>${a}</option>`
+      `<option value="${a}" ${String(a) === String(current) ? 'selected' : ''}>${a}</option>`
     ).join('');
-    if (statusEl) statusEl.textContent = `${anios.length} año${anios.length>1?'s':''} disponible${anios.length>1?'s':''}`;
-  }).catch(() => {
-    if (statusEl) statusEl.textContent = '';
-  });
+  }).catch(() => {});
 }
 
 async function cargarEdenred() {
