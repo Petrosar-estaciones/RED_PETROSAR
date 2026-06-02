@@ -444,6 +444,7 @@ function f(row,i){return(row.c&&row.c[i])?(row.c[i].f||''):'';}
 function norm(x){return String(x||'').trim().toUpperCase().replace(/[\s\-]/g,'');}
 function fmtN(n,d=2){return(+n||0).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});}
 function fmtARS(n){return '$'+fmtN(n,0);}
+function fmtARS2(n){return '$'+fmtN(n,2);}
 function fmtDate(d){if(!d)return'—';const[y,m,day]=d.split('-');return`${day}/${m}/${y}`;}
 
 function parseFecha(row,i){
@@ -1391,7 +1392,7 @@ async function cargarValorizacion(){
     const totCostoTotal=totCostoNeto+totCostoImp+totCostoCO2;
     const totVtaNeto=tot.vtaNetoEuro+tot.vtaNetoGasoil;
     const vtaCol=showVta?`<th style="background:#e8f7f2;color:var(--green)">Neto Venta ($)</th>`:'';
-    const vtaFoot=showVta?`<td style="color:var(--green);font-weight:700">${fmtARS(totVtaNeto)}</td>`:'';
+    const vtaFoot=showVta?`<td style="color:var(--green);font-weight:700">${fmtARS2(totVtaNeto)}</td>`:'';
     return `
       <div class="tbl-wrap fade" style="margin-bottom:20px">
         <div class="tbl-hdr" style="background:${color}10;border-bottom:2px solid ${color}30">
@@ -1413,21 +1414,21 @@ async function cargarValorizacion(){
                 <td style="font-weight:500">${nom}</td>
                 <td><span class="badge b-euro">Euro Diesel</span></td>
                 <td>${fmtN(d.ltsEuro)}</td>
-                <td>${fmtARS(d.costoNetoEuro)}</td>
-                <td>${fmtARS(d.costoImpEuro)}</td>
-                <td>${fmtARS(d.costoCO2Euro)}</td>
-                <td style="font-weight:700;color:var(--orange)">${fmtARS(d.costoNetoEuro+d.costoImpEuro+d.costoCO2Euro)}</td>
-                ${showVta?`<td style="font-weight:700;color:var(--green)">${fmtARS(d.vtaNetoEuro)}</td>`:''}
+                <td>${fmtARS2(d.costoNetoEuro)}</td>
+                <td>${fmtARS2(d.costoImpEuro)}</td>
+                <td>${fmtARS2(d.costoCO2Euro)}</td>
+                <td style="font-weight:700;color:var(--orange)">${fmtARS2(d.costoNetoEuro+d.costoImpEuro+d.costoCO2Euro)}</td>
+                ${showVta?`<td style="font-weight:700;color:var(--green)">${fmtARS2(d.vtaNetoEuro)}</td>`:''}
               </tr>`);
               if(d.ltsGasoil>0) rows.push(`<tr>
                 <td style="font-weight:500">${d.ltsEuro>0?'':nom}</td>
                 <td><span class="badge b-gasoil">Gasoil</span></td>
                 <td>${fmtN(d.ltsGasoil)}</td>
-                <td>${fmtARS(d.costoNetoGasoil)}</td>
-                <td>${fmtARS(d.costoImpGasoil)}</td>
-                <td>${fmtARS(d.costoCO2Gasoil)}</td>
-                <td style="font-weight:700;color:var(--orange)">${fmtARS(d.costoNetoGasoil+d.costoImpGasoil+d.costoCO2Gasoil)}</td>
-                ${showVta?`<td style="font-weight:700;color:var(--green)">${fmtARS(d.vtaNetoGasoil)}</td>`:''}
+                <td>${fmtARS2(d.costoNetoGasoil)}</td>
+                <td>${fmtARS2(d.costoImpGasoil)}</td>
+                <td>${fmtARS2(d.costoCO2Gasoil)}</td>
+                <td style="font-weight:700;color:var(--orange)">${fmtARS2(d.costoNetoGasoil+d.costoImpGasoil+d.costoCO2Gasoil)}</td>
+                ${showVta?`<td style="font-weight:700;color:var(--green)">${fmtARS2(d.vtaNetoGasoil)}</td>`:''}
               </tr>`);
               return rows;
             }).join('')}
@@ -1435,10 +1436,10 @@ async function cargarValorizacion(){
           <tfoot><tr>
             <td colspan="2">TOTAL</td>
             <td>${fmtN(tot.ltsEuro+tot.ltsGasoil)}</td>
-            <td>${fmtARS(totCostoNeto)}</td>
-            <td>${fmtARS(totCostoImp)}</td>
-            <td>${fmtARS(totCostoCO2)}</td>
-            <td style="color:var(--orange)">${fmtARS(totCostoTotal)}</td>
+            <td>${fmtARS2(totCostoNeto)}</td>
+            <td>${fmtARS2(totCostoImp)}</td>
+            <td>${fmtARS2(totCostoCO2)}</td>
+            <td style="color:var(--orange)">${fmtARS2(totCostoTotal)}</td>
             ${vtaFoot}
           </tr></tfoot>
         </table>
@@ -1456,11 +1457,11 @@ async function cargarValorizacion(){
 
     <!-- KPIs resumen -->
     <div class="kpi-grid fade">
-      <div class="kpi"><div class="kpi-lbl">Petrosar — lts</div><div class="kpi-val">${fmtN(totP.ltsEuro+totP.ltsGasoil)}</div><div class="kpi-unit">neto costo: ${fmtARS(totPCostoNeto)} · total: ${fmtARS(totPCostoTotal)}</div></div>
-      <div class="kpi"><div class="kpi-lbl">EESS CD — lts</div><div class="kpi-val">${fmtN(totE.ltsEuro+totE.ltsGasoil)}</div><div class="kpi-unit">total costo: ${fmtARS(totECostoTotal)}</div></div>
+      <div class="kpi"><div class="kpi-lbl">Petrosar — lts</div><div class="kpi-val">${fmtN(totP.ltsEuro+totP.ltsGasoil)}</div><div class="kpi-unit">neto costo: ${fmtARS2(totPCostoNeto)} · total: ${fmtARS2(totPCostoTotal)}</div></div>
+      <div class="kpi"><div class="kpi-lbl">EESS CD — lts</div><div class="kpi-val">${fmtN(totE.ltsEuro+totE.ltsGasoil)}</div><div class="kpi-unit">total costo: ${fmtARS2(totECostoTotal)}</div></div>
       ${pVtaEuro>0||pVtaGasoil>0?`
-      <div class="kpi" style="border-color:var(--green)"><div class="kpi-lbl">Petrosar — Neto Vta</div><div class="kpi-val" style="font-size:18px;color:var(--green)">${fmtARS(totVta)}</div><div class="kpi-unit">precio neto de venta</div></div>
-      <div class="kpi accent" style="background:var(--green);border-color:var(--green)"><div class="kpi-lbl">Ingreso ESCD x Vta</div><div class="kpi-val" style="font-size:18px">${fmtARS(ingresoEscd)}</div><div class="kpi-unit">neto vta − neto costo (sin imp.)</div></div>
+      <div class="kpi" style="border-color:var(--green)"><div class="kpi-lbl">Petrosar — Neto Vta</div><div class="kpi-val" style="font-size:18px;color:var(--green)">${fmtARS2(totVta)}</div><div class="kpi-unit">precio neto de venta</div></div>
+      <div class="kpi accent" style="background:var(--green);border-color:var(--green)"><div class="kpi-lbl">Ingreso ESCD x Vta</div><div class="kpi-val" style="font-size:18px">${fmtARS2(ingresoEscd)}</div><div class="kpi-unit">neto vta − neto costo (sin imp.)</div></div>
       `:`<div class="kpi" style="border-color:#fde68a;background:#fffbeb"><div class="kpi-lbl">⚠ Ingreso ESCD</div><div class="kpi-val" style="font-size:14px;color:#92400e">Sin precio vta</div><div class="kpi-unit">Agregar cols 7-8 al sheet Precios</div></div>`}
     </div>
 
@@ -1624,11 +1625,11 @@ async function cargarIngreso(){
 
     <div class="kpi-grid fade">
       <div class="kpi"><div class="kpi-lbl">Litros Petrosar</div><div class="kpi-val">${fmtN(totLts)}</div><div class="kpi-unit">${fmtN(tot.ltsEuro)} Euro · ${fmtN(tot.ltsGasoil)} Gasoil</div></div>
-      <div class="kpi"><div class="kpi-lbl">Valoriz. Costo Neto</div><div class="kpi-val" style="font-size:18px">${fmtARS(totCostoNeto)}</div><div class="kpi-unit">sin imp. interno ni CO2</div></div>
-      <div class="kpi" style="border-color:var(--green)"><div class="kpi-lbl">Valoriz. Neto Venta</div><div class="kpi-val" style="font-size:18px;color:var(--green)">${fmtARS(totVtaNeto)}</div><div class="kpi-unit">precio neto venta Petrosar</div></div>
+      <div class="kpi"><div class="kpi-lbl">Valoriz. Costo Neto</div><div class="kpi-val" style="font-size:18px">${fmtARS2(totCostoNeto)}</div><div class="kpi-unit">sin imp. interno ni CO2</div></div>
+      <div class="kpi" style="border-color:var(--green)"><div class="kpi-lbl">Valoriz. Neto Venta</div><div class="kpi-val" style="font-size:18px;color:var(--green)">${fmtARS2(totVtaNeto)}</div><div class="kpi-unit">precio neto venta Petrosar</div></div>
       <div class="kpi accent" style="background:${ingresoTotal>=0?'var(--green)':'var(--red)'};border-color:${ingresoTotal>=0?'var(--green)':'var(--red)'}">
         <div class="kpi-lbl">INGRESO ESCD x VTA</div>
-        <div class="kpi-val" style="font-size:18px">${fmtARS(ingresoTotal)}</div>
+        <div class="kpi-val" style="font-size:18px">${fmtARS2(ingresoTotal)}</div>
         <div class="kpi-unit">Neto Vta − Costo Neto Petrosar</div>
       </div>
     </div>
@@ -1657,9 +1658,9 @@ async function cargarIngreso(){
                 <td style="font-weight:500">${nom}</td>
                 <td><span class="badge b-euro">Euro Diesel</span></td>
                 <td>${fmtN(d.ltsEuro)}</td>
-                <td>${fmtARS(d.costoNetoEuro)}</td>
-                <td style="color:var(--green);font-weight:600">${fmtARS(d.vtaNetoEuro)}</td>
-                <td style="font-weight:700;color:${ing>=0?'var(--green)':'var(--red)'}">${fmtARS(ing)}</td>
+                <td>${fmtARS2(d.costoNetoEuro)}</td>
+                <td style="color:var(--green);font-weight:600">${fmtARS2(d.vtaNetoEuro)}</td>
+                <td style="font-weight:700;color:${ing>=0?'var(--green)':'var(--red)'}">${fmtARS2(ing)}</td>
               </tr>`);
             }
             if(d.ltsGasoil>0){
@@ -1668,9 +1669,9 @@ async function cargarIngreso(){
                 <td style="font-weight:500">${d.ltsEuro>0?'':nom}</td>
                 <td><span class="badge b-gasoil">Gasoil</span></td>
                 <td>${fmtN(d.ltsGasoil)}</td>
-                <td>${fmtARS(d.costoNetoGasoil)}</td>
-                <td style="color:var(--green);font-weight:600">${fmtARS(d.vtaNetoGasoil)}</td>
-                <td style="font-weight:700;color:${ing>=0?'var(--green)':'var(--red)'}">${fmtARS(ing)}</td>
+                <td>${fmtARS2(d.costoNetoGasoil)}</td>
+                <td style="color:var(--green);font-weight:600">${fmtARS2(d.vtaNetoGasoil)}</td>
+                <td style="font-weight:700;color:${ing>=0?'var(--green)':'var(--red)'}">${fmtARS2(ing)}</td>
               </tr>`);
             }
             return rows;
@@ -1679,9 +1680,9 @@ async function cargarIngreso(){
         <tfoot><tr>
           <td colspan="2">TOTAL</td>
           <td>${fmtN(totLts)}</td>
-          <td>${fmtARS(totCostoNeto)}</td>
-          <td style="color:var(--green)">${fmtARS(totVtaNeto)}</td>
-          <td style="color:${ingresoTotal>=0?'var(--green)':'var(--red)'}">${fmtARS(ingresoTotal)}</td>
+          <td>${fmtARS2(totCostoNeto)}</td>
+          <td style="color:var(--green)">${fmtARS2(totVtaNeto)}</td>
+          <td style="color:${ingresoTotal>=0?'var(--green)':'var(--red)'}">${fmtARS2(ingresoTotal)}</td>
         </tr></tfoot>
       </table>
     </div>`;
