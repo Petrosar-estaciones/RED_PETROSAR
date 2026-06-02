@@ -121,6 +121,9 @@
   .tab.tab-auth{color:#b8860b;font-weight:700;background:#fffde7;border-bottom:2.5px solid transparent;letter-spacing:.5px}
   .tab.tab-auth:hover:not(.active){background:#fff9c4;color:#8a6500}
   .tab.tab-auth.active{color:#6d4c00;border-bottom-color:#f5c400;background:#fff176}
+  .tab.tab-edenred{color:#b03a2e;font-weight:700;background:#fdf2f0;border-bottom:2.5px solid transparent;letter-spacing:.5px}
+  .tab.tab-edenred:hover:not(.active){background:#fce4e0;color:#922b21}
+  .tab.tab-edenred.active{color:#7b241c;border-bottom-color:#e84c3d;background:#fde8e6}
   /* AUTH TAB */
   .auth-header{display:flex;align-items:center;gap:12px;margin-bottom:20px}
   .auth-badge{background:#f5c400;color:#6d4c00;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:12px;letter-spacing:1.5px;padding:4px 14px;border-radius:20px;text-transform:uppercase}
@@ -174,6 +177,7 @@
   <div class="tab" onclick="switchTab('valorizacion')">Valorización</div>
   <div class="tab" onclick="switchTab('ingreso')">Ingreso ESCD x Vta</div>
   <div class="tab tab-auth" onclick="switchTab('autorizaciones')">⭐ AUTORIZACIONES</div>
+  <div class="tab tab-edenred" onclick="switchTab('edenred')">💳 EDENRED</div>
 </nav>
 <main class="main">
 
@@ -290,7 +294,7 @@
       <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
         Diferencia contable entre el <strong>neto de venta</strong> de los litros consumidos por Petrosar 
         y el <strong>costo de compra</strong> valorizado a esos mismos litros.<br>
-        <span style="color:var(--green);font-weight:600">Ingreso = (Litros Petrosar × Precio Neto Vta) − (Litros Petrosar × Precio Neto Costo)</span>
+        <span style="color:var(--green);font-weight:600">Ingreso = (Litros Petrosar × Precio Neto Vta) − (Litros Petrosar × Precio Neto Costo) — ambos sin impuestos internos ni CO2</span>
       </div>
       <div class="row" style="margin-bottom:14px">
         <div class="fg"><label class="lbl">Desde</label><input type="date" id="ingFrom"></div>
@@ -326,6 +330,22 @@
     </div>
     <div id="loadingAuth" class="loading"><div class="spinner" style="border-top-color:#d4a800"></div>Consultando consumos de autorizados...</div>
     <div id="resAuth"></div>
+  </div>
+
+  <!-- TAB EDENRED -->
+  <div id="tab-edenred" style="display:none">
+    <div class="card" style="border:2px solid #e84c3d;background:#fdf2f0;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="background:#e84c3d;color:#fff;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:12px;letter-spacing:1.5px;padding:4px 14px;border-radius:20px;text-transform:uppercase;white-space:nowrap">💳 Compensación Edenred</span>
+        <div style="flex:1"></div>
+        <select id="edenredAnio" onchange="cargarEdenred()" style="font-size:12px;font-weight:600;padding:6px 10px;border:1.5px solid #e84c3d;border-radius:var(--r-sm);background:#fff;color:#7b241c;cursor:pointer">
+          <option value="2026">2026</option>
+        </select>
+        <button class="btn" onclick="exportEdenredExcel()" style="background:#1a7a4a;color:#fff;font-size:12px;padding:6px 14px;height:auto">📥 Exportar Excel</button>
+      </div>
+    </div>
+    <div id="loadingEdenred" class="loading"><div class="spinner" style="border-top-color:#e84c3d"></div>Cargando cobros Edenred...</div>
+    <div id="resEdenred"><div class="empty"><div class="empty-icon">💳</div><div class="empty-title">Seleccioná un año para ver los cobros</div></div></div>
   </div>
 
 </main>
@@ -424,6 +444,7 @@ function f(row,i){return(row.c&&row.c[i])?(row.c[i].f||''):'';}
 function norm(x){return String(x||'').trim().toUpperCase().replace(/[\s\-]/g,'');}
 function fmtN(n,d=2){return(+n||0).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});}
 function fmtARS(n){return '$'+fmtN(n,0);}
+function fmtARS2(n){return '$'+fmtN(n,2);}
 function fmtDate(d){if(!d)return'—';const[y,m,day]=d.split('-');return`${day}/${m}/${y}`;}
 
 function parseFecha(row,i){
@@ -708,8 +729,8 @@ async function cargarFlota(){
 // TABS
 // ═══════════════════════════════════
 async function switchTab(t){
-  ['veh','totales','valorizacion','ingreso','autorizaciones'].forEach(id=>document.getElementById('tab-'+id).style.display=id===t?'block':'none');
-  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['totales','veh','valorizacion','ingreso','autorizaciones'][i]===t));
+  ['veh','totales','valorizacion','ingreso','autorizaciones','edenred'].forEach(id=>document.getElementById('tab-'+id).style.display=id===t?'block':'none');
+  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['totales','veh','valorizacion','ingreso','autorizaciones','edenred'][i]===t));
   if(t==='veh') poblarLineas();
   if(t==='totales'&&!document.getElementById('mesTabs').children.length){
     await buildMesesDesplegable('mesTabs','totFrom','totTo',cargarTotales);
@@ -731,6 +752,7 @@ async function switchTab(t){
     cargarIngreso();
   }
   if(t==='autorizaciones') iniciarAutorizaciones();
+  if(t==='edenred') iniciarEdenred();
 }
 function setDates(f,t){const now=new Date();document.getElementById(f).value=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);document.getElementById(t).value=now.toISOString().slice(0,10);}
 async function buildMesesDesplegable(cid, fromId, toId, callback) {
@@ -1370,7 +1392,7 @@ async function cargarValorizacion(){
     const totCostoTotal=totCostoNeto+totCostoImp+totCostoCO2;
     const totVtaNeto=tot.vtaNetoEuro+tot.vtaNetoGasoil;
     const vtaCol=showVta?`<th style="background:#e8f7f2;color:var(--green)">Neto Venta ($)</th>`:'';
-    const vtaFoot=showVta?`<td style="color:var(--green);font-weight:700">${fmtARS(totVtaNeto)}</td>`:'';
+    const vtaFoot=showVta?`<td style="color:var(--green);font-weight:700">${fmtARS2(totVtaNeto)}</td>`:'';
     return `
       <div class="tbl-wrap fade" style="margin-bottom:20px">
         <div class="tbl-hdr" style="background:${color}10;border-bottom:2px solid ${color}30">
@@ -1392,21 +1414,21 @@ async function cargarValorizacion(){
                 <td style="font-weight:500">${nom}</td>
                 <td><span class="badge b-euro">Euro Diesel</span></td>
                 <td>${fmtN(d.ltsEuro)}</td>
-                <td>${fmtARS(d.costoNetoEuro)}</td>
-                <td>${fmtARS(d.costoImpEuro)}</td>
-                <td>${fmtARS(d.costoCO2Euro)}</td>
-                <td style="font-weight:700;color:var(--orange)">${fmtARS(d.costoNetoEuro+d.costoImpEuro+d.costoCO2Euro)}</td>
-                ${showVta?`<td style="font-weight:700;color:var(--green)">${fmtARS(d.vtaNetoEuro)}</td>`:''}
+                <td>${fmtARS2(d.costoNetoEuro)}</td>
+                <td>${fmtARS2(d.costoImpEuro)}</td>
+                <td>${fmtARS2(d.costoCO2Euro)}</td>
+                <td style="font-weight:700;color:var(--orange)">${fmtARS2(d.costoNetoEuro+d.costoImpEuro+d.costoCO2Euro)}</td>
+                ${showVta?`<td style="font-weight:700;color:var(--green)">${fmtARS2(d.vtaNetoEuro)}</td>`:''}
               </tr>`);
               if(d.ltsGasoil>0) rows.push(`<tr>
                 <td style="font-weight:500">${d.ltsEuro>0?'':nom}</td>
                 <td><span class="badge b-gasoil">Gasoil</span></td>
                 <td>${fmtN(d.ltsGasoil)}</td>
-                <td>${fmtARS(d.costoNetoGasoil)}</td>
-                <td>${fmtARS(d.costoImpGasoil)}</td>
-                <td>${fmtARS(d.costoCO2Gasoil)}</td>
-                <td style="font-weight:700;color:var(--orange)">${fmtARS(d.costoNetoGasoil+d.costoImpGasoil+d.costoCO2Gasoil)}</td>
-                ${showVta?`<td style="font-weight:700;color:var(--green)">${fmtARS(d.vtaNetoGasoil)}</td>`:''}
+                <td>${fmtARS2(d.costoNetoGasoil)}</td>
+                <td>${fmtARS2(d.costoImpGasoil)}</td>
+                <td>${fmtARS2(d.costoCO2Gasoil)}</td>
+                <td style="font-weight:700;color:var(--orange)">${fmtARS2(d.costoNetoGasoil+d.costoImpGasoil+d.costoCO2Gasoil)}</td>
+                ${showVta?`<td style="font-weight:700;color:var(--green)">${fmtARS2(d.vtaNetoGasoil)}</td>`:''}
               </tr>`);
               return rows;
             }).join('')}
@@ -1414,31 +1436,32 @@ async function cargarValorizacion(){
           <tfoot><tr>
             <td colspan="2">TOTAL</td>
             <td>${fmtN(tot.ltsEuro+tot.ltsGasoil)}</td>
-            <td>${fmtARS(totCostoNeto)}</td>
-            <td>${fmtARS(totCostoImp)}</td>
-            <td>${fmtARS(totCostoCO2)}</td>
-            <td style="color:var(--orange)">${fmtARS(totCostoTotal)}</td>
+            <td>${fmtARS2(totCostoNeto)}</td>
+            <td>${fmtARS2(totCostoImp)}</td>
+            <td>${fmtARS2(totCostoCO2)}</td>
+            <td style="color:var(--orange)">${fmtARS2(totCostoTotal)}</td>
             ${vtaFoot}
           </tr></tfoot>
         </table>
       </div>`;
   }
 
-  const totPCostoTotal=(totP.costoNetoEuro+totP.costoNetoGasoil)+(totP.costoImpEuro+totP.costoImpGasoil)+(totP.costoCO2Euro+totP.costoCO2Gasoil);
+  const totPCostoNeto=(totP.costoNetoEuro+totP.costoNetoGasoil);
+  const totPCostoTotal=totPCostoNeto+(totP.costoImpEuro+totP.costoImpGasoil)+(totP.costoCO2Euro+totP.costoCO2Gasoil);
   const totECostoTotal=(totE.costoNetoEuro+totE.costoNetoGasoil)+(totE.costoImpEuro+totE.costoImpGasoil)+(totE.costoCO2Euro+totE.costoCO2Gasoil);
   const totVta=totP.vtaNetoEuro+totP.vtaNetoGasoil;
-  const ingresoEscd=totVta-totPCostoTotal;
+  const ingresoEscd=totVta-totPCostoNeto; // Neto Vta − Neto Costo (sin imp. internos ni CO2)
 
   document.getElementById('resVal').innerHTML=`
     ${errores.length?`<div class="alert alert-warn fade">⚠ Sin datos de: ${errores.map(e=>e.split(':')[0]).join(', ')}</div>`:''}
 
     <!-- KPIs resumen -->
     <div class="kpi-grid fade">
-      <div class="kpi"><div class="kpi-lbl">Petrosar — lts</div><div class="kpi-val">${fmtN(totP.ltsEuro+totP.ltsGasoil)}</div><div class="kpi-unit">costo: ${fmtARS(totPCostoTotal)}</div></div>
-      <div class="kpi"><div class="kpi-lbl">EESS CD — lts</div><div class="kpi-val">${fmtN(totE.ltsEuro+totE.ltsGasoil)}</div><div class="kpi-unit">costo: ${fmtARS(totECostoTotal)}</div></div>
+      <div class="kpi"><div class="kpi-lbl">Petrosar — lts</div><div class="kpi-val">${fmtN(totP.ltsEuro+totP.ltsGasoil)}</div><div class="kpi-unit">neto costo: ${fmtARS2(totPCostoNeto)} · total: ${fmtARS2(totPCostoTotal)}</div></div>
+      <div class="kpi"><div class="kpi-lbl">EESS CD — lts</div><div class="kpi-val">${fmtN(totE.ltsEuro+totE.ltsGasoil)}</div><div class="kpi-unit">total costo: ${fmtARS2(totECostoTotal)}</div></div>
       ${pVtaEuro>0||pVtaGasoil>0?`
-      <div class="kpi" style="border-color:var(--green)"><div class="kpi-lbl">Petrosar — Neto Vta</div><div class="kpi-val" style="font-size:18px;color:var(--green)">${fmtARS(totVta)}</div><div class="kpi-unit">precio neto de venta</div></div>
-      <div class="kpi accent" style="background:var(--green);border-color:var(--green)"><div class="kpi-lbl">Ingreso ESCD x Vta</div><div class="kpi-val" style="font-size:18px">${fmtARS(ingresoEscd)}</div><div class="kpi-unit">neto vta − costo Petrosar</div></div>
+      <div class="kpi" style="border-color:var(--green)"><div class="kpi-lbl">Petrosar — Neto Vta</div><div class="kpi-val" style="font-size:18px;color:var(--green)">${fmtARS2(totVta)}</div><div class="kpi-unit">precio neto de venta</div></div>
+      <div class="kpi accent" style="background:var(--green);border-color:var(--green)"><div class="kpi-lbl">Ingreso ESCD x Vta</div><div class="kpi-val" style="font-size:18px">${fmtARS2(ingresoEscd)}</div><div class="kpi-unit">neto vta − neto costo (sin imp.)</div></div>
       `:`<div class="kpi" style="border-color:#fde68a;background:#fffbeb"><div class="kpi-lbl">⚠ Ingreso ESCD</div><div class="kpi-val" style="font-size:14px;color:#92400e">Sin precio vta</div><div class="kpi-unit">Agregar cols 7-8 al sheet Precios</div></div>`}
     </div>
 
@@ -1602,11 +1625,11 @@ async function cargarIngreso(){
 
     <div class="kpi-grid fade">
       <div class="kpi"><div class="kpi-lbl">Litros Petrosar</div><div class="kpi-val">${fmtN(totLts)}</div><div class="kpi-unit">${fmtN(tot.ltsEuro)} Euro · ${fmtN(tot.ltsGasoil)} Gasoil</div></div>
-      <div class="kpi"><div class="kpi-lbl">Valoriz. Costo Neto</div><div class="kpi-val" style="font-size:18px">${fmtARS(totCostoNeto)}</div><div class="kpi-unit">sin imp. interno ni CO2</div></div>
-      <div class="kpi" style="border-color:var(--green)"><div class="kpi-lbl">Valoriz. Neto Venta</div><div class="kpi-val" style="font-size:18px;color:var(--green)">${fmtARS(totVtaNeto)}</div><div class="kpi-unit">precio neto venta Petrosar</div></div>
+      <div class="kpi"><div class="kpi-lbl">Valoriz. Costo Neto</div><div class="kpi-val" style="font-size:18px">${fmtARS2(totCostoNeto)}</div><div class="kpi-unit">sin imp. interno ni CO2</div></div>
+      <div class="kpi" style="border-color:var(--green)"><div class="kpi-lbl">Valoriz. Neto Venta</div><div class="kpi-val" style="font-size:18px;color:var(--green)">${fmtARS2(totVtaNeto)}</div><div class="kpi-unit">precio neto venta Petrosar</div></div>
       <div class="kpi accent" style="background:${ingresoTotal>=0?'var(--green)':'var(--red)'};border-color:${ingresoTotal>=0?'var(--green)':'var(--red)'}">
         <div class="kpi-lbl">INGRESO ESCD x VTA</div>
-        <div class="kpi-val" style="font-size:18px">${fmtARS(ingresoTotal)}</div>
+        <div class="kpi-val" style="font-size:18px">${fmtARS2(ingresoTotal)}</div>
         <div class="kpi-unit">Neto Vta − Costo Neto Petrosar</div>
       </div>
     </div>
@@ -1635,9 +1658,9 @@ async function cargarIngreso(){
                 <td style="font-weight:500">${nom}</td>
                 <td><span class="badge b-euro">Euro Diesel</span></td>
                 <td>${fmtN(d.ltsEuro)}</td>
-                <td>${fmtARS(d.costoNetoEuro)}</td>
-                <td style="color:var(--green);font-weight:600">${fmtARS(d.vtaNetoEuro)}</td>
-                <td style="font-weight:700;color:${ing>=0?'var(--green)':'var(--red)'}">${fmtARS(ing)}</td>
+                <td>${fmtARS2(d.costoNetoEuro)}</td>
+                <td style="color:var(--green);font-weight:600">${fmtARS2(d.vtaNetoEuro)}</td>
+                <td style="font-weight:700;color:${ing>=0?'var(--green)':'var(--red)'}">${fmtARS2(ing)}</td>
               </tr>`);
             }
             if(d.ltsGasoil>0){
@@ -1646,9 +1669,9 @@ async function cargarIngreso(){
                 <td style="font-weight:500">${d.ltsEuro>0?'':nom}</td>
                 <td><span class="badge b-gasoil">Gasoil</span></td>
                 <td>${fmtN(d.ltsGasoil)}</td>
-                <td>${fmtARS(d.costoNetoGasoil)}</td>
-                <td style="color:var(--green);font-weight:600">${fmtARS(d.vtaNetoGasoil)}</td>
-                <td style="font-weight:700;color:${ing>=0?'var(--green)':'var(--red)'}">${fmtARS(ing)}</td>
+                <td>${fmtARS2(d.costoNetoGasoil)}</td>
+                <td style="color:var(--green);font-weight:600">${fmtARS2(d.vtaNetoGasoil)}</td>
+                <td style="font-weight:700;color:${ing>=0?'var(--green)':'var(--red)'}">${fmtARS2(ing)}</td>
               </tr>`);
             }
             return rows;
@@ -1657,9 +1680,9 @@ async function cargarIngreso(){
         <tfoot><tr>
           <td colspan="2">TOTAL</td>
           <td>${fmtN(totLts)}</td>
-          <td>${fmtARS(totCostoNeto)}</td>
-          <td style="color:var(--green)">${fmtARS(totVtaNeto)}</td>
-          <td style="color:${ingresoTotal>=0?'var(--green)':'var(--red)'}">${fmtARS(ingresoTotal)}</td>
+          <td>${fmtARS2(totCostoNeto)}</td>
+          <td style="color:var(--green)">${fmtARS2(totVtaNeto)}</td>
+          <td style="color:${ingresoTotal>=0?'var(--green)':'var(--red)'}">${fmtARS2(ingresoTotal)}</td>
         </tr></tfoot>
       </table>
     </div>`;
@@ -2229,6 +2252,589 @@ function verConsumoAuth(interno, dominio){
   buscarVeh();
 }
 
+
+// ═══════════════════════════════════
+// TAB EDENRED — Compensación
+// ═══════════════════════════════════
+const SHEET_EDENRED = '1YN8ZX0_EFtHZzUEph30Nl_1so7msKYm3grGXyKaUrIc';
+
+// Genera el rango de años a chequear: desde 2026 hasta el año actual + 1
+function edenredAniosPosibles() {
+  const anioActual = new Date().getFullYear();
+  const anios = [];
+  for (let a = Math.max(anioActual + 1, 2027); a >= 2026; a--) anios.push(a);
+  return anios;
+}
+
+let _edenredCache = {};
+let _edenredAnioActual = null;
+let _edenredAniosDetectados = null;
+
+// Formato con decimales para importes Edenred
+function fmtARSDec(n){ return '$'+(+n||0).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+async function fetchEdenredAnio(anio) {
+  if (_edenredCache[anio]) return _edenredCache[anio];
+  const t = await fetchGviz(SHEET_EDENRED, String(anio));
+  _edenredCache[anio] = t;
+  return t;
+}
+
+// Detecta qué años tienen hojas accesibles con datos reales (comprobantes RC/RA)
+async function detectarAniosDisponibles() {
+  if (_edenredAniosDetectados) return _edenredAniosDetectados;
+
+  const aniosPosibles = edenredAniosPosibles();
+  const checks = await Promise.allSettled(
+    aniosPosibles.map(async anio => {
+      try {
+        const t = await fetchGviz(SHEET_EDENRED, String(anio));
+        if (!t?.rows) return null;
+        const tieneRC = t.rows.some(r => r.c && String(r.c[0]?.v||r.c[0]?.f||'').match(/^R[CA]\s/i));
+        return tieneRC ? anio : null;
+      } catch(e) { return null; }
+    })
+  );
+
+  _edenredAniosDetectados = checks
+    .map(r => r.status === 'fulfilled' ? r.value : null)
+    .filter(Boolean)
+    .sort((a, b) => b - a); // más reciente primero
+
+  return _edenredAniosDetectados;
+}
+
+function parseEdenredRows(table) {
+  if (!table?.rows) return [];
+  const rows = [];
+  for (const row of table.rows) {
+    if (!row.c) continue;
+    const comp = String(row.c[0]?.v || row.c[0]?.f || '').trim();
+    if (!comp.match(/^R[CA]\s/i)) continue;
+
+    let fecha = null;
+    const fc = row.c[1];
+    if (fc) {
+      const fv = String(fc.f || fc.v || '').trim();
+      let m = fv.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if (m) fecha = new Date(+m[3], +m[2]-1, +m[1]);
+      else {
+        m = fv.match(/(\d{4})-(\d{2})-(\d{2})/);
+        if (m) fecha = new Date(+m[1], +m[2]-1, +m[3]);
+        else if (typeof fc.v === 'string') {
+          const dm = fc.v.match(/Date\((\d+),(\d+),(\d+)/);
+          if (dm) fecha = new Date(+dm[1], +dm[2], +dm[3]);
+        }
+      }
+    }
+
+    const mesRaw = String(row.c[3]?.v || row.c[3]?.f || '').trim().toUpperCase();
+
+    let importe = 0;
+    const ic = row.c[5];
+    if (ic) {
+      if (typeof ic.v === 'number') importe = ic.v;
+      else {
+        const s = String(ic.f || ic.v || '').replace(/\$/g,'').replace(/\s/g,'').replace(/\./g,'').replace(',','.');
+        importe = parseFloat(s) || 0;
+      }
+    }
+    if (!importe) continue;
+
+    rows.push({ comp, fecha, mesRaw, importe });
+  }
+  return rows;
+}
+
+let _edenredInicializado = false;
+
+async function iniciarEdenred() {
+  if (_edenredInicializado) return;
+  _edenredInicializado = true;
+
+  const sel = document.getElementById('edenredAnio');
+
+  // Cargar 2026 inmediatamente
+  cargarEdenred();
+
+  // En paralelo detectar todos los años con datos reales
+  detectarAniosDisponibles().then(anios => {
+    if (!anios || !anios.length) return;
+    const current = sel.value;
+    sel.innerHTML = anios.map(a =>
+      `<option value="${a}" ${String(a) === String(current) ? 'selected' : ''}>${a}</option>`
+    ).join('');
+  }).catch(() => {});
+}
+
+async function cargarEdenred() {
+  const anio = document.getElementById('edenredAnio').value;
+  if (_edenredAnioActual === anio && document.getElementById('resEdenred').innerHTML.includes('tbl-wrap')) return;
+  _edenredAnioActual = anio;
+
+  document.getElementById('loadingEdenred').style.display = 'block';
+  document.getElementById('resEdenred').innerHTML = '';
+
+  let cobros = [];
+  try {
+    const t = await fetchEdenredAnio(anio);
+    cobros = parseEdenredRows(t);
+  } catch(e) {
+    document.getElementById('loadingEdenred').style.display = 'none';
+    document.getElementById('resEdenred').innerHTML = `<div class="alert alert-err">⚠ No se pudo cargar la hoja ${anio}: ${e.message}</div>`;
+    return;
+  }
+  document.getElementById('loadingEdenred').style.display = 'none';
+
+  if (!cobros.length) {
+    document.getElementById('resEdenred').innerHTML = `<div class="empty"><div class="empty-icon">💳</div><div class="empty-title">Sin comprobantes en ${anio}</div><div style="font-size:13px;margin-top:4px;color:var(--muted)">Verificá que la hoja "${anio}" tenga datos</div></div>`;
+    return;
+  }
+
+  const porMes = {};
+  cobros.forEach(c => {
+    const n = mesNumero(c.mesRaw) || (c.fecha ? c.fecha.getMonth()+1 : 0);
+    if (!n) return;
+    if (!porMes[n]) porMes[n] = { num: n, nombre: MES_NOMBRE[n]||c.mesRaw, cobros: [], total: 0 };
+    porMes[n].cobros.push(c);
+    porMes[n].total += c.importe;
+  });
+  const meses = Object.values(porMes).sort((a,b) => a.num - b.num);
+  const totalAnio = cobros.reduce((s,c) => s + c.importe, 0);
+  const maxMes = Math.max(...meses.map(m => m.total));
+
+  window._edenredExportData = cobros;
+  window._edenredExportAnio = anio;
+  window._edenredMeses = meses;
+
+  const kpis = `
+    <div class="kpi-grid" style="margin-bottom:20px">
+      <div class="kpi accent" style="background:#e84c3d;border-color:#e84c3d">
+        <div class="kpi-lbl">Total cobrado ${anio}</div>
+        <div class="kpi-val">${fmtARSDec(totalAnio)}</div>
+        <div class="kpi-unit">${cobros.length} comprobantes</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-lbl">Promedio mensual</div>
+        <div class="kpi-val">${fmtARSDec(meses.length ? totalAnio/meses.length : 0)}</div>
+        <div class="kpi-unit">${meses.length} meses con actividad</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-lbl">Mayor cobro mensual</div>
+        <div class="kpi-val">${fmtARSDec(maxMes)}</div>
+        <div class="kpi-unit">${meses.find(m=>m.total===maxMes)?.nombre||'—'}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-lbl">Promedio por comprobante</div>
+        <div class="kpi-val">${fmtARSDec(cobros.length ? totalAnio/cobros.length : 0)}</div>
+        <div class="kpi-unit">por RC emitido</div>
+      </div>
+    </div>`;
+
+  const BAR_H = 180;
+  const BAR_W = Math.max(60, Math.floor(560 / Math.max(meses.length, 1)));
+  const bars = meses.map(m => {
+    const pct = maxMes ? m.total / maxMes : 0;
+    const barH = Math.max(4, Math.round(pct * BAR_H));
+    return `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:${BAR_W}px">
+        <div style="font-size:10px;font-weight:700;color:#e84c3d">${fmtARSDec(m.total)}</div>
+        <div style="width:${Math.max(BAR_W-10,30)}px;height:${BAR_H}px;display:flex;align-items:flex-end;justify-content:center">
+          <div style="width:100%;height:${barH}px;background:#e84c3d;border-radius:4px 4px 0 0;transition:height .4s" title="${m.nombre}: ${fmtARSDec(m.total)}"></div>
+        </div>
+        <div style="font-size:11px;font-weight:600;color:var(--muted)">${m.nombre.slice(0,3)}</div>
+        <div style="font-size:10px;color:var(--muted)">${m.cobros.length} RC</div>
+      </div>`;
+  }).join('');
+
+  const chart = `
+    <div class="tbl-wrap fade" style="margin-bottom:20px">
+      <div class="tbl-hdr" style="background:#fdf2f0;border-bottom:1px solid #f5c5c0">
+        <span class="tbl-title" style="color:#7b241c">Cobros por mes — ${anio}</span>
+        <span class="tbl-count" style="background:#fff;border-color:#f5c5c0;color:#7b241c">${cobros.length} comprobantes · ${fmtARSDec(totalAnio)}</span>
+      </div>
+      <div style="padding:20px 24px;overflow-x:auto">
+        <div style="display:flex;gap:6px;align-items:flex-end;min-width:${meses.length*BAR_W}px">
+          ${bars}
+        </div>
+        <div style="height:1px;background:var(--border);margin-top:4px"></div>
+      </div>
+    </div>`;
+
+  let tableRows = '';
+  meses.forEach(m => {
+    tableRows += `
+      <tr style="background:#fdf2f0;cursor:pointer" onclick="toggleEdenredMes('mes-${m.num}')">
+        <td colspan="3" style="font-weight:700;color:#7b241c;padding:10px 18px">
+          <span style="margin-right:8px">▸</span>${m.nombre} ${anio}
+          <span style="font-size:11px;font-weight:500;color:var(--muted);margin-left:10px">${m.cobros.length} comprobantes</span>
+        </td>
+        <td style="font-weight:700;color:#e84c3d;text-align:right;padding:10px 18px;font-size:15px">${fmtARSDec(m.total)}</td>
+      </tr>`;
+    const sorted = [...m.cobros].sort((a,b)=>(a.fecha||0)-(b.fecha||0));
+    sorted.forEach(c => {
+      const fechaFmt = c.fecha ? `${String(c.fecha.getDate()).padStart(2,'0')}/${String(c.fecha.getMonth()+1).padStart(2,'0')}/${c.fecha.getFullYear()}` : '—';
+      tableRows += `
+        <tr class="edenred-det-mes-${m.num}" style="display:none">
+          <td style="padding:9px 18px 9px 36px;font-size:12px;color:var(--muted)">${c.comp}</td>
+          <td style="padding:9px 18px;font-size:12px;text-align:center">${fechaFmt}</td>
+          <td style="padding:9px 18px;font-size:12px;text-align:center">
+            <span style="background:#fde8e6;color:#e84c3d;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px">${c.mesRaw}</span>
+          </td>
+          <td style="padding:9px 18px;text-align:right;font-weight:600;font-size:13px">${fmtARSDec(c.importe)}</td>
+        </tr>`;
+    });
+  });
+
+  tableRows += `
+    <tr style="background:#fdf2f0">
+      <td colspan="3" style="font-weight:700;color:#7b241c;padding:12px 18px">TOTAL ${anio}</td>
+      <td style="font-weight:700;color:#e84c3d;font-size:16px;text-align:right;padding:12px 18px">${fmtARSDec(totalAnio)}</td>
+    </tr>`;
+
+  const tabla = `
+    <div class="tbl-wrap fade">
+      <div class="tbl-hdr" style="background:#fdf2f0;border-bottom:1px solid #f5c5c0">
+        <span class="tbl-title" style="color:#7b241c">Detalle de Comprobantes — ${anio}</span>
+        <span style="font-size:11px;color:var(--muted)">Hacé clic en el mes para expandir</span>
+      </div>
+      <table class="dt" style="width:100%">
+        <thead>
+          <tr>
+            <th>Comprobante</th>
+            <th style="text-align:center">Fecha</th>
+            <th style="text-align:center">Mes</th>
+            <th style="text-align:right">Importe</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>`;
+
+  document.getElementById('resEdenred').innerHTML = `<div class="fade">${kpis}${chart}${tabla}</div>`;
+}
+
+function toggleEdenredMes(id) {
+  const n = id.replace('mes-','');
+  const rows = document.querySelectorAll(`.edenred-det-mes-${n}`);
+  const isOpen = rows.length && rows[0].style.display !== 'none';
+  rows.forEach(r => r.style.display = isOpen ? 'none' : 'table-row');
+  document.querySelectorAll('tr').forEach(tr => {
+    if (tr.getAttribute('onclick') === `toggleEdenredMes('mes-${n}')`) {
+      const arrow = tr.querySelector('span');
+      if (arrow) arrow.textContent = isOpen ? '▸' : '▾';
+    }
+  });
+}
+
+function exportEdenredExcel() {
+  const data = window._edenredExportData;
+  if (!data || !data.length) { alert('Primero cargá los datos de Edenred.'); return; }
+  const anio = window._edenredExportAnio || '';
+  const meses = window._edenredMeses || [];
+
+  const wb = XLSX.utils.book_new();
+
+  const hDet = ['Comprobante','Fecha','Mes','Importe'];
+  const rDet = data.map(c => {
+    const fechaFmt = c.fecha ? `${String(c.fecha.getDate()).padStart(2,'0')}/${String(c.fecha.getMonth()+1).padStart(2,'0')}/${c.fecha.getFullYear()}` : '';
+    return [c.comp, fechaFmt, c.mesRaw, +c.importe];
+  });
+  const total = data.reduce((s,c) => s + c.importe, 0);
+  rDet.push(['TOTAL','','', total]);
+  const wsDet = XLSX.utils.aoa_to_sheet([hDet, ...rDet]);
+  wsDet['!cols'] = [{wch:22},{wch:12},{wch:6},{wch:18}];
+  rDet.forEach((_,i) => {
+    const cell = XLSX.utils.encode_cell({r: i+1, c: 3});
+    if (wsDet[cell] && typeof wsDet[cell].v === 'number') wsDet[cell].z = '#,##0.00';
+  });
+  XLSX.utils.book_append_sheet(wb, wsDet, 'Comprobantes');
+
+  const hRes = ['Mes','Comprobantes','Total'];
+  const rRes = meses.map(m => [m.nombre, m.cobros.length, +m.total]);
+  rRes.push(['TOTAL', data.length, total]);
+  const wsRes = XLSX.utils.aoa_to_sheet([hRes, ...rRes]);
+  wsRes['!cols'] = [{wch:14},{wch:16},{wch:18}];
+  rRes.forEach((_,i) => {
+    const cell = XLSX.utils.encode_cell({r: i+1, c: 2});
+    if (wsRes[cell] && typeof wsRes[cell].v === 'number') wsRes[cell].z = '#,##0.00';
+  });
+  XLSX.utils.book_append_sheet(wb, wsRes, 'Resumen por Mes');
+
+  XLSX.writeFile(wb, `Edenred_Compensacion_${anio}.xlsx`);
+}
+
+function parseEdenredRows(table) {
+  // Estructura vista en la imagen:
+  // Col 0: COMPROBANTE  Col 1: FECHA  Col 2: CLIENTE  Col 3: MES  Col 4: DETALLE  Col 5: IMPORTE  Col 6: COBRADOR
+  // Filas de encabezado (1-7) con metadata; datos desde fila 8 (headerRows=7 aprox)
+  // Usamos gviz con headers=1 → la 1ra fila se convierte en header
+  // Buscamos filas donde col 0 empieza con "RC" o "RA"
+  if (!table?.rows) return [];
+  const rows = [];
+  for (const row of table.rows) {
+    if (!row.c) continue;
+    const comp = String(row.c[0]?.v || row.c[0]?.f || '').trim();
+    if (!comp.match(/^R[CA]\s/i)) continue; // filtrar solo comprobantes tipo RC/RA
+
+    // Fecha: col 1
+    let fecha = null;
+    const fc = row.c[1];
+    if (fc) {
+      const fv = String(fc.f || fc.v || '').trim();
+      // Puede venir como "2/1/2026", "2026-01-02", o Date(...)
+      let m = fv.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if (m) fecha = new Date(+m[3], +m[2]-1, +m[1]);
+      else {
+        m = fv.match(/(\d{4})-(\d{2})-(\d{2})/);
+        if (m) fecha = new Date(+m[1], +m[2]-1, +m[3]);
+        else if (typeof fc.v === 'string') {
+          const dm = fc.v.match(/Date\((\d+),(\d+),(\d+)/);
+          if (dm) fecha = new Date(+dm[1], +dm[2], +dm[3]);
+        }
+      }
+    }
+
+    // Mes: col 3 (ENE, FEB, MAR... o número)
+    const mesRaw = String(row.c[3]?.v || row.c[3]?.f || '').trim().toUpperCase();
+
+    // Importe: col 5 — puede venir como número o string con formato AR
+    let importe = 0;
+    const ic = row.c[5];
+    if (ic) {
+      if (typeof ic.v === 'number') importe = ic.v;
+      else {
+        const s = String(ic.f || ic.v || '').replace(/\$/g,'').replace(/\s/g,'').replace(/\./g,'').replace(',','.');
+        importe = parseFloat(s) || 0;
+      }
+    }
+    if (!importe) continue;
+
+    rows.push({ comp, fecha, mesRaw, importe });
+  }
+  return rows;
+}
+
+const MES_ORDEN = {ENE:1,FEB:2,MAR:3,ABR:4,MAY:5,JUN:6,JUL:7,AGO:8,SEP:9,OCT:10,NOV:11,DIC:12};
+const MES_NOMBRE = {1:'Enero',2:'Febrero',3:'Marzo',4:'Abril',5:'Mayo',6:'Junio',7:'Julio',8:'Agosto',9:'Septiembre',10:'Octubre',11:'Noviembre',12:'Diciembre'};
+
+function mesNumero(raw) {
+  if (!raw) return 0;
+  const u = raw.toUpperCase().trim().slice(0,3);
+  return MES_ORDEN[u] || 0;
+}
+
+async function cargarEdenred() {
+  const anio = document.getElementById('edenredAnio').value;
+  if (_edenredAnioActual === anio && document.getElementById('resEdenred').innerHTML.includes('tbl-wrap')) return;
+  _edenredAnioActual = anio;
+
+  document.getElementById('loadingEdenred').style.display = 'block';
+  document.getElementById('resEdenred').innerHTML = '';
+
+  let cobros = [];
+  try {
+    const t = await fetchEdenredAnio(anio);
+    cobros = parseEdenredRows(t);
+  } catch(e) {
+    document.getElementById('loadingEdenred').style.display = 'none';
+    document.getElementById('resEdenred').innerHTML = `<div class="alert alert-err">⚠ No se pudo cargar la hoja ${anio}: ${e.message}</div>`;
+    return;
+  }
+  document.getElementById('loadingEdenred').style.display = 'none';
+
+  if (!cobros.length) {
+    document.getElementById('resEdenred').innerHTML = `<div class="empty"><div class="empty-icon">💳</div><div class="empty-title">Sin comprobantes en ${anio}</div><div style="font-size:13px;margin-top:4px;color:var(--muted)">Verificá que la hoja "${anio}" tenga datos</div></div>`;
+    return;
+  }
+
+  // Agrupar por mes
+  const porMes = {};
+  cobros.forEach(c => {
+    const n = mesNumero(c.mesRaw) || (c.fecha ? c.fecha.getMonth()+1 : 0);
+    if (!n) return;
+    if (!porMes[n]) porMes[n] = { num: n, nombre: MES_NOMBRE[n]||c.mesRaw, cobros: [], total: 0 };
+    porMes[n].cobros.push(c);
+    porMes[n].total += c.importe;
+  });
+  const meses = Object.values(porMes).sort((a,b) => a.num - b.num);
+  const totalAnio = cobros.reduce((s,c) => s + c.importe, 0);
+  const maxMes = Math.max(...meses.map(m => m.total));
+
+  // Guardar para exportar
+  window._edenredExportData = cobros;
+  window._edenredExportAnio = anio;
+  window._edenredMeses = meses;
+
+  // ── KPIs ──────────────────────────────
+  const kpis = `
+    <div class="kpi-grid" style="margin-bottom:20px">
+      <div class="kpi accent" style="background:#e84c3d;border-color:#e84c3d">
+        <div class="kpi-lbl">Total cobrado ${anio}</div>
+        <div class="kpi-val">${fmtARSDec(totalAnio)}</div>
+        <div class="kpi-unit">${cobros.length} comprobantes</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-lbl">Promedio mensual</div>
+        <div class="kpi-val">${fmtARSDec(meses.length ? totalAnio/meses.length : 0)}</div>
+        <div class="kpi-unit">${meses.length} meses con actividad</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-lbl">Mayor cobro mensual</div>
+        <div class="kpi-val">${fmtARSDec(maxMes)}</div>
+        <div class="kpi-unit">${meses.find(m=>m.total===maxMes)?.nombre||'—'}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-lbl">Promedio por comprobante</div>
+        <div class="kpi-val">${fmtARSDec(cobros.length ? totalAnio/cobros.length : 0)}</div>
+        <div class="kpi-unit">por RC emitido</div>
+      </div>
+    </div>`;
+
+  // ── Gráfico de barras por mes ──────────
+  const BAR_H = 180;
+  const BAR_W = Math.max(60, Math.floor(560 / Math.max(meses.length, 1)));
+  const bars = meses.map((m, i) => {
+    const pct = maxMes ? m.total / maxMes : 0;
+    const barH = Math.max(4, Math.round(pct * BAR_H));
+    const color = '#e84c3d';
+    const colorLight = '#fde8e6';
+    return `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:${BAR_W}px">
+        <div style="font-size:10px;font-weight:700;color:#e84c3d">${fmtARSDec(m.total)}</div>
+        <div style="width:${Math.max(BAR_W-10,30)}px;height:${BAR_H}px;display:flex;align-items:flex-end;justify-content:center">
+          <div style="width:100%;height:${barH}px;background:${color};border-radius:4px 4px 0 0;transition:height .4s" title="${m.nombre}: ${fmtARSDec(m.total)}"></div>
+        </div>
+        <div style="font-size:11px;font-weight:600;color:var(--muted)">${m.nombre.slice(0,3)}</div>
+        <div style="font-size:10px;color:var(--muted)">${m.cobros.length} RC</div>
+      </div>`;
+  }).join('');
+
+  const chart = `
+    <div class="tbl-wrap fade" style="margin-bottom:20px">
+      <div class="tbl-hdr" style="background:#fdf2f0;border-bottom:1px solid #f5c5c0">
+        <span class="tbl-title" style="color:#7b241c">Cobros por mes — ${anio}</span>
+        <span class="tbl-count" style="background:#fff;border-color:#f5c5c0;color:#7b241c">${cobros.length} comprobantes · ${fmtARSDec(totalAnio)}</span>
+      </div>
+      <div style="padding:20px 24px;overflow-x:auto">
+        <div style="display:flex;gap:6px;align-items:flex-end;min-width:${meses.length*BAR_W}px">
+          ${bars}
+        </div>
+        <div style="height:1px;background:var(--border);margin-top:4px"></div>
+      </div>
+    </div>`;
+
+  // ── Tabla de comprobantes ──────────────
+  // Agrupar por mes con acordeón
+  let tableRows = '';
+  meses.forEach(m => {
+    // Fila resumen de mes
+    tableRows += `
+      <tr style="background:#fdf2f0;cursor:pointer" onclick="toggleEdenredMes('mes-${m.num}')">
+        <td colspan="3" style="font-weight:700;color:#7b241c;padding:10px 18px">
+          <span style="margin-right:8px">▸</span>${m.nombre} ${anio}
+          <span style="font-size:11px;font-weight:500;color:var(--muted);margin-left:10px">${m.cobros.length} comprobantes</span>
+        </td>
+        <td style="font-weight:700;color:#e84c3d;text-align:right;padding:10px 18px;font-size:15px">${fmtARSDec(m.total)}</td>
+      </tr>`;
+    // Filas detalle (colapsadas)
+    const sorted = [...m.cobros].sort((a,b)=>(a.fecha||0)-(b.fecha||0));
+    sorted.forEach(c => {
+      const fechaFmt = c.fecha ? `${String(c.fecha.getDate()).padStart(2,'0')}/${String(c.fecha.getMonth()+1).padStart(2,'0')}/${c.fecha.getFullYear()}` : '—';
+      tableRows += `
+        <tr class="edenred-det-mes-${m.num}" style="display:none">
+          <td style="padding:9px 18px 9px 36px;font-size:12px;color:var(--muted)">${c.comp}</td>
+          <td style="padding:9px 18px;font-size:12px;text-align:center">${fechaFmt}</td>
+          <td style="padding:9px 18px;font-size:12px;text-align:center">
+            <span style="background:#fde8e6;color:#e84c3d;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px">${c.mesRaw}</span>
+          </td>
+          <td style="padding:9px 18px;text-align:right;font-weight:600;font-size:13px">${fmtARSDec(c.importe)}</td>
+        </tr>`;
+    });
+  });
+
+  // Fila total
+  tableRows += `
+    <tr style="background:#fdf2f0">
+      <td colspan="3" style="font-weight:700;color:#7b241c;padding:12px 18px">TOTAL ${anio}</td>
+      <td style="font-weight:700;color:#e84c3d;font-size:16px;text-align:right;padding:12px 18px">${fmtARSDec(totalAnio)}</td>
+    </tr>`;
+
+  const tabla = `
+    <div class="tbl-wrap fade">
+      <div class="tbl-hdr" style="background:#fdf2f0;border-bottom:1px solid #f5c5c0">
+        <span class="tbl-title" style="color:#7b241c">Detalle de Comprobantes — ${anio}</span>
+        <span style="font-size:11px;color:var(--muted)">Hacé clic en el mes para expandir</span>
+      </div>
+      <table class="dt" style="width:100%">
+        <thead>
+          <tr>
+            <th>Comprobante</th>
+            <th style="text-align:center">Fecha</th>
+            <th style="text-align:center">Mes</th>
+            <th style="text-align:right">Importe</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>`;
+
+  document.getElementById('resEdenred').innerHTML = `<div class="fade">${kpis}${chart}${tabla}</div>`;
+}
+
+function toggleEdenredMes(id) {
+  const n = id.replace('mes-','');
+  const rows = document.querySelectorAll(`.edenred-det-mes-${n}`);
+  const isOpen = rows.length && rows[0].style.display !== 'none';
+  rows.forEach(r => r.style.display = isOpen ? 'none' : 'table-row');
+  // Rotar flecha
+  document.querySelectorAll('tr').forEach(tr => {
+    if (tr.getAttribute('onclick') === `toggleEdenredMes('mes-${n}')`) {
+      const arrow = tr.querySelector('span');
+      if (arrow) arrow.textContent = isOpen ? '▸' : '▾';
+    }
+  });
+}
+
+function exportEdenredExcel() {
+  const data = window._edenredExportData;
+  if (!data || !data.length) { alert('Primero cargá los datos de Edenred.'); return; }
+  const anio = window._edenredExportAnio || '';
+  const meses = window._edenredMeses || [];
+
+  const wb = XLSX.utils.book_new();
+
+  // Hoja detalle comprobantes
+  const hDet = ['Comprobante','Fecha','Mes','Importe'];
+  const rDet = data.map(c => {
+    const fechaFmt = c.fecha ? `${String(c.fecha.getDate()).padStart(2,'0')}/${String(c.fecha.getMonth()+1).padStart(2,'0')}/${c.fecha.getFullYear()}` : '';
+    return [c.comp, fechaFmt, c.mesRaw, +c.importe];
+  });
+  const total = data.reduce((s,c) => s + c.importe, 0);
+  rDet.push(['TOTAL','','', total]);
+  const wsDet = XLSX.utils.aoa_to_sheet([hDet, ...rDet]);
+  wsDet['!cols'] = [{wch:22},{wch:12},{wch:6},{wch:18}];
+  // Formato moneda en col importe
+  rDet.forEach((_,i) => {
+    const cell = XLSX.utils.encode_cell({r: i+1, c: 3});
+    if (wsDet[cell] && typeof wsDet[cell].v === 'number') wsDet[cell].z = '#,##0.00';
+  });
+  XLSX.utils.book_append_sheet(wb, wsDet, 'Comprobantes');
+
+  // Hoja resumen por mes
+  const hRes = ['Mes','Comprobantes','Total'];
+  const rRes = meses.map(m => [m.nombre, m.cobros.length, +m.total]);
+  rRes.push(['TOTAL', data.length, total]);
+  const wsRes = XLSX.utils.aoa_to_sheet([hRes, ...rRes]);
+  wsRes['!cols'] = [{wch:14},{wch:16},{wch:18}];
+  rRes.forEach((_,i) => {
+    const cell = XLSX.utils.encode_cell({r: i+1, c: 2});
+    if (wsRes[cell] && typeof wsRes[cell].v === 'number') wsRes[cell].z = '#,##0.00';
+  });
+  XLSX.utils.book_append_sheet(wb, wsRes, 'Resumen por Mes');
+
+  XLSX.writeFile(wb, `Edenred_Compensacion_${anio}.xlsx`);
+}
 
 </script>
 </body>
