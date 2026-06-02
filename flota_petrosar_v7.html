@@ -156,6 +156,23 @@
   @keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
   .fade{animation:fadeIn .3s ease}
   @media(max-width:640px){.main{padding:16px}.tabs{padding:0 12px;overflow-x:auto}.hdr{padding:0 16px}.kpi-grid{grid-template-columns:repeat(2,1fr)}.sectores-grid{grid-template-columns:1fr}}
+
+  /* ── Resumen Anual por Sector ── */
+  #resumenAnual { margin-bottom: 24px; }
+  .resumen-wrap { overflow-x: auto; border-radius: var(--r); box-shadow: 0 1px 4px #0001; }
+  .resumen-tbl { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; min-width: 600px; }
+  .resumen-tbl thead tr:first-child th { background: var(--dark); color: #fff; padding: 10px 14px; font-weight: 700; letter-spacing: .5px; font-size: 11px; text-transform: uppercase; }
+  .resumen-tbl thead tr:last-child th { background: #f0f4f8; color: var(--muted); padding: 6px 14px; font-size: 11px; font-weight: 600; border-bottom: 2px solid #e2e8f0; }
+  .resumen-tbl tbody tr:hover { background: #f8fafc; }
+  .resumen-tbl tbody td { padding: 9px 14px; border-bottom: 1px solid #f0f4f8; color: var(--txt); }
+  .resumen-tbl tbody td:first-child { font-weight: 700; white-space: nowrap; }
+  .resumen-tbl tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .resumen-tbl tbody td.num.zero { color: #ccc; }
+  .resumen-tbl tfoot td { padding: 10px 14px; font-weight: 700; background: #f8fafc; border-top: 2px solid #e2e8f0; text-align: right; font-size: 13px; }
+  .resumen-tbl tfoot td:first-child { text-align: left; color: var(--dark); letter-spacing: .5px; font-size: 11px; text-transform: uppercase; }
+  .resumen-total-col { background: #fff8f0 !important; font-weight: 700 !important; color: var(--orange) !important; border-left: 2px solid #fed7aa; }
+  .resumen-loading { font-size: 12px; color: var(--muted); padding: 18px 0; display: flex; align-items: center; gap: 8px; }
+  .resumen-spinner { width: 16px; height: 16px; border: 2px solid #e2e8f0; border-top-color: var(--orange); border-radius: 50%; animation: spin .7s linear infinite; }
 </style>
 </head>
 <body>
@@ -241,6 +258,7 @@
       </div>
     </div>
     <div class="mes-tabs" id="mesTabs"></div>
+    <div id="resumenAnual" style="display:none"></div>
     <div id="loadingTot" class="loading"><div class="spinner"></div>Cargando totales...</div>
     <div id="resTot"><div class="empty"><div class="empty-icon">📊</div><div class="empty-title">Seleccioná un período</div></div></div>
   </div>
@@ -734,6 +752,7 @@ async function switchTab(t){
   if(t==='veh') poblarLineas();
   if(t==='totales'&&!document.getElementById('mesTabs').children.length){
     await buildMesesDesplegable('mesTabs','totFrom','totTo',cargarTotales);
+    cargarResumenAnual();
     cargarTotales();
   }
   if(t==='valorizacion'&&!document.getElementById('mesTabsVal').children.length){
@@ -915,6 +934,7 @@ function selValCC(cc){
   });
   // Arrancar en Totales por Sector
   await buildMesesDesplegable('mesTabs','totFrom','totTo',cargarTotales);
+  cargarResumenAnual();
   cargarTotales();
 })();
 
@@ -1258,6 +1278,135 @@ function renderTotales(desp,errores,from,to){
       </table>
     </div>`;
 }
+
+// ═══════════════════════════════════
+// RESUMEN ANUAL POR SECTOR
+// ═══════════════════════════════════
+let _resumenCache = null;
+
+async function cargarResumenAnual() {
+  const el = document.getElementById('resumenAnual');
+  el.style.display = 'block';
+  el.innerHTML = `<div class="resumen-loading"><div class="resumen-spinner"></div>Cargando resumen anual...</div>`;
+
+  try {
+    const anio = new Date().getFullYear();
+    // Get all dispatches for the full year
+    const from = `${anio}-01-01`;
+    const to   = `${anio}-12-31`;
+
+    const {despachos} = await consultarTodo(from, to);
+    // Only PETROSAR (flota propia)
+    const filtrados = filtrarCC(despachos, 'PETROSAR');
+
+    // Detect months with data
+    const mesesSet = new Set();
+    filtrados.forEach(d => {
+      if(!d.fecha) return;
+      const dt = new Date(d.fecha);
+      if(isNaN(dt)) return;
+      mesesSet.add(`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`);
+    });
+    const meses = Array.from(mesesSet).sort();
+
+    // Build matrix: sector → month → litros
+    const matrix = {}; // sector → { mesKey: lts }
+    const totalesMes = {}; // mesKey → total lts
+
+    SECTOR_ORDER.forEach(s => { matrix[s] = {}; });
+    meses.forEach(m => { totalesMes[m] = 0; });
+
+    filtrados.forEach(d => {
+      if(!d.fecha) return;
+      const dt = new Date(d.fecha);
+      if(isNaN(dt)) return;
+      const mk = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
+      const sec = d.punto;
+      if(!matrix[sec]) matrix[sec] = {};
+      matrix[sec][mk] = (matrix[sec][mk] || 0) + d.litros;
+      totalesMes[mk] = (totalesMes[mk] || 0) + d.litros;
+    });
+
+    // Only sectors with at least some data
+    const sectoresActivos = SECTOR_ORDER.filter(s => meses.some(m => matrix[s][m] > 0));
+
+    if(!meses.length || !sectoresActivos.length) {
+      el.innerHTML = `<div class="empty"><div class="empty-icon">📅</div><div class="empty-title">Sin datos anuales disponibles</div></div>`;
+      return;
+    }
+
+    // Month labels
+    const mesLabel = m => {
+      const [y, mo] = m.split('-').map(Number);
+      const lbl = new Date(y, mo-1, 1).toLocaleString('es-AR', {month:'short'});
+      return lbl.charAt(0).toUpperCase() + lbl.slice(1);
+    };
+
+    // Grand total per sector
+    const totalSector = s => meses.reduce((acc, m) => acc + (matrix[s][m] || 0), 0);
+    const granTotal = meses.reduce((acc, m) => acc + (totalesMes[m] || 0), 0);
+
+    const thMeses = meses.map(m => `<th>${mesLabel(m)}</th>`).join('');
+    const thMesesSub = meses.map(m => `<th style="font-weight:500;color:#94a3b8">lts</th>`).join('');
+
+    const rows = sectoresActivos.map(s => {
+      const c = SECTOR_COLOR[s] || '#888';
+      const bg = SECTOR_BG[s] || '#f5f5f5';
+      const tot = totalSector(s);
+      const cells = meses.map(m => {
+        const v = matrix[s][m] || 0;
+        return `<td class="num${v===0?' zero':''}">${v === 0 ? '—' : fmtN(v)}</td>`;
+      }).join('');
+      const pctTot = granTotal ? ((tot/granTotal)*100).toFixed(1)+'%' : '—';
+      return `<tr>
+        <td><span class="sector-tag" style="background:${bg};color:${c}">${s}</span></td>
+        ${cells}
+        <td class="num resumen-total-col">${fmtN(tot)}</td>
+        <td class="num" style="color:var(--muted);font-size:11px">${pctTot}</td>
+      </tr>`;
+    }).join('');
+
+    const footCells = meses.map(m => `<td>${fmtN(totalesMes[m]||0)}</td>`).join('');
+
+    el.innerHTML = `
+      <div class="tbl-wrap fade">
+        <div class="tbl-hdr">
+          <span class="tbl-title">📅 Resumen ${anio} — Consumo por Sector (PETROSAR)</span>
+          <span class="tbl-count">${meses.length} meses · ${sectoresActivos.length} sectores</span>
+        </div>
+        <div class="resumen-wrap">
+          <table class="resumen-tbl">
+            <thead>
+              <tr>
+                <th rowspan="2" style="text-align:left">Sector</th>
+                ${thMeses}
+                <th colspan="2" style="background:#b45309">Total ${anio}</th>
+              </tr>
+              <tr>
+                ${thMesesSub}
+                <th style="background:#fff8f0;color:#b45309">lts</th>
+                <th style="background:#fff8f0;color:#b45309">%</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+            <tfoot>
+              <tr>
+                <td style="text-align:left">TOTAL MES</td>
+                ${footCells}
+                <td class="resumen-total-col">${fmtN(granTotal)}</td>
+                <td>100%</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>`;
+
+  } catch(e) {
+    console.error('resumenAnual error:', e);
+    document.getElementById('resumenAnual').innerHTML = `<div class="alert alert-warn">Error cargando resumen anual: ${e.message}</div>`;
+  }
+}
+
 function pct(a,b){return b?(a/b*100).toFixed(1)+'%':'—';}
 
 // ═══════════════════════════════════
