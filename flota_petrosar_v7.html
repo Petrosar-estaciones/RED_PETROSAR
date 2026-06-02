@@ -242,23 +242,25 @@
   <!-- TAB TOTALES -->
   <div id="tab-totales">
     <div class="card">
-      <div class="card-title">Filtrar período y centro de costo</div>
-      <div class="row" style="margin-bottom:14px">
+      <div class="card-title">Filtrar período</div>
+      <div class="row" style="margin-bottom:0">
         <div class="fg"><label class="lbl">Desde</label><input type="date" id="totFrom"></div>
         <div class="fg"><label class="lbl">Hasta</label><input type="date" id="totTo"></div>
         <div style="align-self:flex-end"><button class="btn btn-primary" onclick="cargarTotales()">Actualizar</button></div>
       </div>
-      <div>
-        <div class="lbl" style="margin-bottom:8px">Centro de costo</div>
-        <div class="seg" style="max-width:320px">
+    </div>
+    <div id="resumenAnual" style="display:none"></div>
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:4px">
+      <div class="mes-tabs" id="mesTabs" style="margin-bottom:0;flex:1;min-width:180px"></div>
+      <div style="display:flex;align-items:center;gap:8px;white-space:nowrap">
+        <span class="lbl" style="margin-bottom:0">Centro de costo</span>
+        <div class="seg" style="max-width:280px">
           <button class="seg-btn active" id="cc-petrosar" onclick="selCC('PETROSAR')">PETROSAR</button>
           <button class="seg-btn" id="cc-eess" onclick="selCC('EESS')">EESS CD</button>
           <button class="seg-btn" id="cc-todos" onclick="selCC('TODOS')">Todos</button>
         </div>
       </div>
     </div>
-    <div id="resumenAnual" style="display:none"></div>
-    <div class="mes-tabs" id="mesTabs"></div>
     <div id="loadingTot" class="loading"><div class="spinner"></div>Cargando totales...</div>
     <div id="resTot"><div class="empty"><div class="empty-icon">📊</div><div class="empty-title">Seleccioná un período</div></div></div>
   </div>
