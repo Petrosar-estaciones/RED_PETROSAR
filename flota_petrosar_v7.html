@@ -241,25 +241,25 @@
 
   <!-- TAB TOTALES -->
   <div id="tab-totales">
-    <div class="card">
-      <div class="card-title">Filtrar período</div>
-      <div class="row" style="margin-bottom:0">
+    <div id="resumenAnual" style="display:none"></div>
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:12px">
+        <div class="mes-tabs" id="mesTabs" style="margin-bottom:0;flex:1;min-width:180px"></div>
+        <div style="display:flex;align-items:center;gap:8px;white-space:nowrap">
+          <span class="lbl" style="margin-bottom:0">Centro de costo</span>
+          <div class="seg" style="max-width:280px">
+            <button class="seg-btn active" id="cc-petrosar" onclick="selCC('PETROSAR')">PETROSAR</button>
+            <button class="seg-btn" id="cc-eess" onclick="selCC('EESS')">EESS CD</button>
+            <button class="seg-btn" id="cc-todos" onclick="selCC('TODOS')">Todos</button>
+          </div>
+        </div>
+      </div>
+      <div class="row" style="margin-bottom:0;border-top:1px solid #f0f4f8;padding-top:12px">
         <div class="fg"><label class="lbl">Desde</label><input type="date" id="totFrom"></div>
         <div class="fg"><label class="lbl">Hasta</label><input type="date" id="totTo"></div>
         <div style="align-self:flex-end"><button class="btn btn-primary" onclick="cargarTotales()">Actualizar</button></div>
       </div>
-    </div>
-    <div id="resumenAnual" style="display:none"></div>
-    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:4px">
-      <div class="mes-tabs" id="mesTabs" style="margin-bottom:0;flex:1;min-width:180px"></div>
-      <div style="display:flex;align-items:center;gap:8px;white-space:nowrap">
-        <span class="lbl" style="margin-bottom:0">Centro de costo</span>
-        <div class="seg" style="max-width:280px">
-          <button class="seg-btn active" id="cc-petrosar" onclick="selCC('PETROSAR')">PETROSAR</button>
-          <button class="seg-btn" id="cc-eess" onclick="selCC('EESS')">EESS CD</button>
-          <button class="seg-btn" id="cc-todos" onclick="selCC('TODOS')">Todos</button>
-        </div>
-      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">o usá las fechas para un período personalizado</div>
     </div>
     <div id="loadingTot" class="loading"><div class="spinner"></div>Cargando totales...</div>
     <div id="resTot"><div class="empty"><div class="empty-icon">📊</div><div class="empty-title">Seleccioná un período</div></div></div>
@@ -367,6 +367,19 @@
     <div id="loadingEdenred" class="loading"><div class="spinner" style="border-top-color:#e84c3d"></div>Cargando cobros Edenred...</div>
     <div id="resEdenred"><div class="empty"><div class="empty-icon">💳</div><div class="empty-title">Seleccioná un año para ver los cobros</div></div></div>
   </div>
+
+  <!-- SECCION CONSUMO FLOTA EDENRED -->
+  <div class="card" style="border:2px solid #1565c0;background:#e3f2fd;margin-bottom:16px;margin-top:8px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="background:#1565c0;color:#fff;font-weight:700;font-size:12px;letter-spacing:1.5px;padding:4px 14px;border-radius:20px;text-transform:uppercase">🚛 Consumo Flota Externa</span>
+      <div style="flex:1"></div>
+      <select id="flotaEdenredMes" onchange="renderFlotaEdenred()" style="font-size:12px;font-weight:600;padding:6px 10px;border:1.5px solid #1565c0;border-radius:4px;background:#fff;color:#1565c0;cursor:pointer"><option value="TODOS">Todos los meses</option></select>
+      <button class="btn" onclick="flotaEdenredCargado=false;cargarFlotaEdenred()" style="background:#1565c0;color:#fff;font-size:12px;padding:6px 16px;height:auto">↺ Actualizar</button>
+      <button class="btn" onclick="exportFlotaEdenredExcel()" style="background:#0d47a1;color:#fff;font-size:12px;padding:6px 14px;height:auto">📥 Excel</button>
+    </div>
+  </div>
+  <div id="loadingFlotaEdenred" class="loading" style="display:none"><div class="spinner" style="border-top-color:#1565c0"></div>Cargando consumos flota externa...</div>
+  <div id="resFlotaEdenred"></div>
 
 </main>
 <script>
@@ -773,7 +786,7 @@ async function switchTab(t){
     cargarIngreso();
   }
   if(t==='autorizaciones') iniciarAutorizaciones();
-  if(t==='edenred') iniciarEdenred();
+  if(t==='edenred'){ iniciarEdenred(); cargarFlotaEdenred(); }
 }
 function setDates(f,t){const now=new Date();document.getElementById(f).value=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);document.getElementById(t).value=now.toISOString().slice(0,10);}
 async function buildMesesDesplegable(cid, fromId, toId, callback) {
@@ -1348,8 +1361,7 @@ async function cargarResumenAnual() {
     const totalSector = s => meses.reduce((acc, m) => acc + (matrix[s][m] || 0), 0);
     const granTotal = meses.reduce((acc, m) => acc + (totalesMes[m] || 0), 0);
 
-    const thMeses = meses.map(m => `<th>${mesLabel(m)}</th>`).join('');
-    const thMesesSub = meses.map(m => `<th style="font-weight:500;color:#94a3b8">lts</th>`).join('');
+    const thMeses = meses.map(m => `<th>${mesLabel(m)}<div style="font-weight:500;font-size:10px;color:#94a3b8;margin-top:1px">lts</div></th>`).join('');
 
     const rows = sectoresActivos.map(s => {
       const c = SECTOR_COLOR[s] || '#888';
@@ -1380,14 +1392,10 @@ async function cargarResumenAnual() {
           <table class="resumen-tbl">
             <thead>
               <tr>
-                <th rowspan="2" style="text-align:left">Sector</th>
+                <th style="text-align:left">Sector</th>
                 ${thMeses}
-                <th colspan="2" style="background:#b45309">Total ${anio}</th>
-              </tr>
-              <tr>
-                ${thMesesSub}
-                <th style="background:#fff8f0;color:#b45309">lts</th>
-                <th style="background:#fff8f0;color:#b45309">%</th>
+                <th style="background:#b45309">lts</th>
+                <th style="background:#b45309">%</th>
               </tr>
             </thead>
             <tbody>${rows}</tbody>
@@ -2985,6 +2993,149 @@ function exportEdenredExcel() {
   XLSX.utils.book_append_sheet(wb, wsRes, 'Resumen por Mes');
 
   XLSX.writeFile(wb, `Edenred_Compensacion_${anio}.xlsx`);
+}
+
+// ═══════════════════════════════════════════════
+// CONSUMO FLOTA EXTERNA — Edenred Apps Script
+// ═══════════════════════════════════════════════
+const FLOTA_EDEN_URL = 'https://script.google.com/macros/s/AKfycbyRTIJ6UJTT7Cw2gH-kDi3mbMUmYG_N6jhi8FgPrF1QN7IjREwY1QWGJBxt5BjWNt4/exec';
+let flotaEdenredDatos = [];
+let flotaEdenredCargado = false;
+
+async function cargarFlotaEdenred() {
+  if (flotaEdenredCargado) { renderFlotaEdenred(); return; }
+  document.getElementById('loadingFlotaEdenred').style.display = 'flex';
+  document.getElementById('resFlotaEdenred').innerHTML = '';
+  try {
+    const resp = await fetch(FLOTA_EDEN_URL, {redirect:'follow'});
+    flotaEdenredDatos = await resp.json();
+    flotaEdenredCargado = true;
+    const meses = [...new Set(flotaEdenredDatos.map(d=>d.mes).filter(Boolean))].sort();
+    const sel = document.getElementById('flotaEdenredMes');
+    sel.innerHTML = '<option value="TODOS">Todos los meses</option>';
+    meses.forEach(m => {
+      const [y,mo] = m.split('-');
+      const lbl = new Date(+y,+mo-1,1).toLocaleString('es-AR',{month:'long',year:'numeric'});
+      const o = document.createElement('option');
+      o.value = m; o.textContent = lbl.charAt(0).toUpperCase()+lbl.slice(1);
+      sel.appendChild(o);
+    });
+    if (meses.length) sel.value = meses[meses.length-1];
+    renderFlotaEdenred();
+  } catch(err) {
+    document.getElementById('loadingFlotaEdenred').style.display = 'none';
+    document.getElementById('resFlotaEdenred').innerHTML = '<div class="card" style="color:#c00;padding:20px">❌ Error al cargar: '+err.message+'</div>';
+  }
+}
+
+function renderFlotaEdenred() {
+  document.getElementById('loadingFlotaEdenred').style.display = 'none';
+  const filtro = document.getElementById('flotaEdenredMes').value;
+  const datos = filtro === 'TODOS' ? flotaEdenredDatos : flotaEdenredDatos.filter(d => d.mes === filtro);
+  if (!datos.length) {
+    document.getElementById('resFlotaEdenred').innerHTML = '<div class="card" style="text-align:center;color:var(--muted);padding:32px">Sin datos para el período seleccionado.</div>';
+    return;
+  }
+  const porProd = {};
+  datos.forEach(d => {
+    if (!porProd[d.producto]) porProd[d.producto] = {litros:0,netoSImp:0,impInt:0,iva:0,valorFinal:0};
+    porProd[d.producto].litros     += d.litros;
+    porProd[d.producto].netoSImp   += d.netoSImp;
+    porProd[d.producto].impInt     += d.impInt;
+    porProd[d.producto].iva        += d.iva;
+    porProd[d.producto].valorFinal += d.valorFinal;
+  });
+  const fmtL = v => (+v||0).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fmtP = v => '$'+(+v||0).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const colProd = {EURO:'#e65100',GASOIL:'#1565c0',NAFTA:'#2e7d32',OTRO:'#666'};
+  const totLts   = datos.reduce((s,d)=>s+d.litros,0);
+  const totNeto  = datos.reduce((s,d)=>s+d.netoSImp,0);
+  const totImp   = datos.reduce((s,d)=>s+d.impInt,0);
+  const totIva   = datos.reduce((s,d)=>s+d.iva,0);
+  const totFinal = datos.reduce((s,d)=>s+d.valorFinal,0);
+
+  const kpis = '<div class="kpi-grid" style="margin-bottom:16px">'
+    +'<div class="kpi"><div class="kpi-lbl">Total Litros</div><div class="kpi-val" style="color:#1565c0">'+fmtL(totLts)+' L</div></div>'
+    +'<div class="kpi"><div class="kpi-lbl">Neto s/imp</div><div class="kpi-val">'+fmtP(totNeto)+'</div></div>'
+    +'<div class="kpi"><div class="kpi-lbl">Imp. Internos</div><div class="kpi-val">'+fmtP(totImp)+'</div></div>'
+    +'<div class="kpi"><div class="kpi-lbl">IVA</div><div class="kpi-val">'+fmtP(totIva)+'</div></div>'
+    +'<div class="kpi"><div class="kpi-lbl">Total Final</div><div class="kpi-val" style="color:var(--orange)">'+fmtP(totFinal)+'</div></div>'
+    +'</div>';
+
+  let resumenProd = '<div class="card" style="padding:0;overflow:hidden;margin-bottom:16px"><table class="dt"><thead><tr>'
+    +'<th>Producto</th><th style="text-align:right">Litros</th><th style="text-align:right">Neto s/imp</th>'
+    +'<th style="text-align:right">Imp.Int</th><th style="text-align:right">IVA</th><th style="text-align:right">Total</th>'
+    +'</tr></thead><tbody>';
+  Object.entries(porProd).forEach(([prod,v])=>{
+    resumenProd += '<tr><td><span style="background:'+(colProd[prod]||'#666')+';color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:4px">'+prod+'</span></td>'
+      +'<td style="text-align:right;font-weight:600">'+fmtL(v.litros)+' L</td>'
+      +'<td style="text-align:right">'+fmtP(v.netoSImp)+'</td>'
+      +'<td style="text-align:right">'+fmtP(v.impInt)+'</td>'
+      +'<td style="text-align:right">'+fmtP(v.iva)+'</td>'
+      +'<td style="text-align:right;font-weight:700;color:var(--orange)">'+fmtP(v.valorFinal)+'</td></tr>';
+  });
+  resumenProd += '<tr style="background:#f5f5f5"><td style="font-weight:700">TOTAL</td>'
+    +'<td style="text-align:right;font-weight:700">'+fmtL(totLts)+' L</td>'
+    +'<td style="text-align:right;font-weight:700">'+fmtP(totNeto)+'</td>'
+    +'<td style="text-align:right;font-weight:700">'+fmtP(totImp)+'</td>'
+    +'<td style="text-align:right;font-weight:700">'+fmtP(totIva)+'</td>'
+    +'<td style="text-align:right;font-weight:700;color:var(--orange)">'+fmtP(totFinal)+'</td></tr>'
+    +'</tbody></table></div>';
+
+  const porVeh = {};
+  datos.forEach(d => {
+    if (!porVeh[d.interno]) porVeh[d.interno] = {interno:d.interno,patente:d.patente,litros:0,netoSImp:0,impInt:0,iva:0,valorFinal:0,cargas:[]};
+    porVeh[d.interno].litros+=d.litros; porVeh[d.interno].netoSImp+=d.netoSImp;
+    porVeh[d.interno].impInt+=d.impInt; porVeh[d.interno].iva+=d.iva;
+    porVeh[d.interno].valorFinal+=d.valorFinal; porVeh[d.interno].cargas.push(d);
+  });
+  const vehs = Object.values(porVeh).sort((a,b)=>b.litros-a.litros);
+  let tablaVeh = '<div class="card" style="padding:0;overflow:hidden">'
+    +'<div class="tbl-hdr"><span class="tbl-title" style="color:#1565c0">Detalle por Vehículo</span>'
+    +'<span class="tbl-count">'+vehs.length+' vehículos · '+datos.length+' cargas</span></div>'
+    +'<table class="dt"><thead><tr><th>Interno</th><th>Patente</th>'
+    +'<th style="text-align:right">Litros</th><th style="text-align:right">Neto s/imp</th>'
+    +'<th style="text-align:right">Imp.Int</th><th style="text-align:right">IVA</th>'
+    +'<th style="text-align:right">Total</th></tr></thead><tbody>';
+  vehs.forEach((v,i)=>{
+    tablaVeh += '<tr style="cursor:pointer;background:'+(i%2?'#f9f9f9':'#fff')+'" onclick="toggleFlotaVeh('+i+')">'
+      +'<td style="font-weight:700">'+v.interno+'</td><td style="font-size:12px;color:var(--muted)">'+v.patente+'</td>'
+      +'<td style="text-align:right;font-weight:600;color:#1565c0">'+fmtL(v.litros)+' L</td>'
+      +'<td style="text-align:right">'+fmtP(v.netoSImp)+'</td><td style="text-align:right">'+fmtP(v.impInt)+'</td>'
+      +'<td style="text-align:right">'+fmtP(v.iva)+'</td>'
+      +'<td style="text-align:right;font-weight:700;color:var(--orange)">'+fmtP(v.valorFinal)+'</td></tr>';
+    v.cargas.sort((a,b)=>a.fecha>b.fecha?1:-1).forEach(c=>{
+      tablaVeh += '<tr class="fv-det-'+i+'" style="display:none;background:#e8f0fe">'
+        +'<td style="padding:6px 18px 6px 36px;font-size:11px;color:var(--muted)">'+c.fecha+'</td>'
+        +'<td><span style="background:'+(colProd[c.producto]||'#666')+';color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px">'+c.producto+'</span></td>'
+        +'<td style="text-align:right;font-size:12px">'+fmtL(c.litros)+' L</td>'
+        +'<td style="text-align:right;font-size:12px">'+fmtP(c.netoSImp)+'</td>'
+        +'<td style="text-align:right;font-size:12px">'+fmtP(c.impInt)+'</td>'
+        +'<td style="text-align:right;font-size:12px">'+fmtP(c.iva)+'</td>'
+        +'<td style="text-align:right;font-size:12px;font-weight:600">'+fmtP(c.valorFinal)+'</td></tr>';
+    });
+  });
+  tablaVeh += '</tbody></table></div>';
+  window._flotaEdenredExport = datos;
+  document.getElementById('resFlotaEdenred').innerHTML = kpis + resumenProd + tablaVeh;
+}
+
+function toggleFlotaVeh(i) {
+  const rows = document.querySelectorAll('.fv-det-'+i);
+  const open = rows.length && rows[0].style.display !== 'none';
+  rows.forEach(r => r.style.display = open ? 'none' : 'table-row');
+}
+
+function exportFlotaEdenredExcel() {
+  const data = window._flotaEdenredExport;
+  if (!data || !data.length) { alert('Primero cargá los datos.'); return; }
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['Mes','Fecha','Interno','Patente','Producto','Litros','Neto s/imp','Imp.Int','IVA','Total'],
+    ...data.map(d=>[d.mes,d.fecha,d.interno,d.patente,d.producto,d.litros,d.netoSImp,d.impInt,d.iva,d.valorFinal])
+  ]);
+  XLSX.utils.book_append_sheet(wb, ws, 'Flota Edenred');
+  XLSX.writeFile(wb, 'Flota_Edenred_'+document.getElementById('flotaEdenredMes').value+'.xlsx');
 }
 
 </script>
