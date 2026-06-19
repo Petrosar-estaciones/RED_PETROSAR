@@ -1268,30 +1268,7 @@ function renderTotales(desp,errores,from,to){
           </div>
         </div>`;}).join('')}
     </div>
-    <div class="tbl-wrap fade">
-      <div class="tbl-hdr"><span class="tbl-title">Resumen global</span><span class="tbl-count">${desp.length} despachos</span></div>
-      <table class="dt">
-        <thead><tr><th>Sector</th><th>Euro Diesel</th><th>Gasoil</th><th>Total lts</th><th>Despachos</th><th>% total</th></tr></thead>
-        <tbody>
-          ${sectores.map(p=>`<tr>
-            <td><span class="badge b-${p.toLowerCase().replace(/\s/g,'')}">${p}</span></td>
-            <td>${map[p].euro?fmtN(map[p].euro):'—'}</td>
-            <td>${map[p].gasoil?fmtN(map[p].gasoil):'—'}</td>
-            <td><span class="lts-val">${fmtN(map[p].lts)}</span></td>
-            <td>${map[p].cargas}</td>
-            <td style="color:var(--muted)">${pct(map[p].lts,total)}</td>
-          </tr>`).join('')}
-        </tbody>
-        <tfoot><tr>
-          <td>TOTAL</td>
-          <td>${fmtN(totalEuro)}</td>
-          <td>${fmtN(totalGasoil)}</td>
-          <td>${fmtN(total)}</td>
-          <td>${desp.length}</td>
-          <td>100%</td>
-        </tr></tfoot>
-      </table>
-    </div>`;
+`;
 }
 
 // ═══════════════════════════════════
