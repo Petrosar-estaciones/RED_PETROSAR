@@ -366,9 +366,8 @@
     </div>
     <div id="loadingEdenred" class="loading"><div class="spinner" style="border-top-color:#e84c3d"></div>Cargando cobros Edenred...</div>
     <div id="resEdenred"><div class="empty"><div class="empty-icon">💳</div><div class="empty-title">Seleccioná un año para ver los cobros</div></div></div>
-  </div>
 
-  <!-- SECCION CONSUMO FLOTA EDENRED -->
+  <!-- CONSUMO FLOTA EXTERNA -->
   <div class="card" style="border:2px solid #1565c0;background:#e3f2fd;margin-bottom:16px;margin-top:8px">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <span style="background:#1565c0;color:#fff;font-weight:700;font-size:12px;letter-spacing:1.5px;padding:4px 14px;border-radius:20px;text-transform:uppercase">🚛 Consumo Flota Externa</span>
@@ -380,6 +379,7 @@
   </div>
   <div id="loadingFlotaEdenred" class="loading" style="display:none"><div class="spinner" style="border-top-color:#1565c0"></div>Cargando consumos flota externa...</div>
   <div id="resFlotaEdenred"></div>
+  </div>
 
 </main>
 <script>
@@ -3039,11 +3039,9 @@ function renderFlotaEdenred() {
   const porProd = {};
   datos.forEach(d => {
     if (!porProd[d.producto]) porProd[d.producto] = {litros:0,netoSImp:0,impInt:0,iva:0,valorFinal:0};
-    porProd[d.producto].litros     += d.litros;
-    porProd[d.producto].netoSImp   += d.netoSImp;
-    porProd[d.producto].impInt     += d.impInt;
-    porProd[d.producto].iva        += d.iva;
-    porProd[d.producto].valorFinal += d.valorFinal;
+    porProd[d.producto].litros+=d.litros; porProd[d.producto].netoSImp+=d.netoSImp;
+    porProd[d.producto].impInt+=d.impInt; porProd[d.producto].iva+=d.iva;
+    porProd[d.producto].valorFinal+=d.valorFinal;
   });
   const fmtL = v => (+v||0).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
   const fmtP = v => '$'+(+v||0).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -3116,8 +3114,88 @@ function renderFlotaEdenred() {
     });
   });
   tablaVeh += '</tbody></table></div>';
+  // ── Resumen anual por producto x mes ──
+  // Solo cuando se muestran TODOS los meses
+  let resumenAnual = '';
+  if (filtro === 'TODOS') {
+    const mesesDisp = [...new Set(flotaEdenredDatos.map(d=>d.mes).filter(Boolean))].sort();
+    const prods = [...new Set(flotaEdenredDatos.map(d=>d.producto).filter(Boolean))];
+    const PROD_ORDER = ['EURO','GASOIL','NAFTA','OTRO'];
+    const prodsOrden = PROD_ORDER.filter(p=>prods.includes(p)).concat(prods.filter(p=>!PROD_ORDER.includes(p)));
+    const colProdBg = {EURO:'#fff3e0',GASOIL:'#e3f2fd',NAFTA:'#e8f5e9',OTRO:'#f5f5f5'};
+
+    // Construir matriz: prod → mes → {litros, total}
+    const matrix = {};
+    prodsOrden.forEach(p => { matrix[p] = {}; mesesDisp.forEach(m => { matrix[p][m] = {litros:0,total:0}; }); });
+    flotaEdenredDatos.forEach(d => {
+      if(!matrix[d.producto]) return;
+      matrix[d.producto][d.mes].litros += d.litros;
+      matrix[d.producto][d.mes].total  += d.valorFinal;
+    });
+    const totMesLts = {};
+    const totMesTot = {};
+    mesesDisp.forEach(m => {
+      totMesLts[m] = prodsOrden.reduce((s,p)=>s+(matrix[p][m]?.litros||0),0);
+      totMesTot[m] = prodsOrden.reduce((s,p)=>s+(matrix[p][m]?.total||0),0);
+    });
+    const granTotLts = prodsOrden.reduce((s,p)=>s+mesesDisp.reduce((ss,m)=>ss+(matrix[p][m]?.litros||0),0),0);
+    const granTotTot = prodsOrden.reduce((s,p)=>s+mesesDisp.reduce((ss,m)=>ss+(matrix[p][m]?.total||0),0),0);
+
+    const mesLabel = m => {
+      const [y,mo] = m.split('-').map(Number);
+      const l = new Date(y,mo-1,1).toLocaleString('es-AR',{month:'short'});
+      return l.charAt(0).toUpperCase()+l.slice(1);
+    };
+
+    const thMeses = mesesDisp.map(m=>`<th style="text-align:right;min-width:90px">${mesLabel(m)}<div style="font-weight:500;font-size:10px;color:#94a3b8;margin-top:1px">lts</div></th>`).join('');
+
+    const filas = prodsOrden.map(p => {
+      const bg = colProdBg[p]||'#f9f9f9';
+      const col = (colProd[p]||'#666');
+      const totProdLts = mesesDisp.reduce((s,m)=>s+(matrix[p][m]?.litros||0),0);
+      const totProdTot = mesesDisp.reduce((s,m)=>s+(matrix[p][m]?.total||0),0);
+      const pct = granTotLts ? ((totProdLts/granTotLts)*100).toFixed(1)+'%' : '—';
+      const cells = mesesDisp.map(m => {
+        const lts = matrix[p][m]?.litros||0;
+        return `<td style="text-align:right;font-variant-numeric:tabular-nums">${lts===0?'<span style=\'color:#ccc\'>—</span>':fmtL(lts)}</td>`;
+      }).join('');
+      return `<tr>
+        <td><span style="background:${col};color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:4px">${p}</span></td>
+        ${cells}
+        <td style="text-align:right;font-weight:700;color:${col};background:${bg}">${fmtL(totProdLts)}</td>
+        <td style="text-align:right;font-size:11px;color:var(--muted)">${pct}</td>
+      </tr>`;
+    }).join('');
+
+    const footCells = mesesDisp.map(m=>`<td style="text-align:right">${fmtL(totMesLts[m]||0)}</td>`).join('');
+
+    resumenAnual = `<div class="tbl-wrap fade" style="margin-bottom:16px">
+      <div class="tbl-hdr" style="background:#e3f2fd;border-bottom:1px solid #90caf9">
+        <span class="tbl-title" style="color:#1565c0">📅 Resumen por Producto y Mes</span>
+        <span class="tbl-count" style="border-color:#90caf9;color:#1565c0">${mesesDisp.length} meses · ${prodsOrden.length} productos</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="dt" style="min-width:500px">
+          <thead><tr>
+            <th style="text-align:left">Producto</th>
+            ${thMeses}
+            <th style="text-align:right;background:#fff3e8;color:var(--orange)">Total lts</th>
+            <th style="text-align:right;color:var(--muted)">%</th>
+          </tr></thead>
+          <tbody>${filas}</tbody>
+          <tfoot><tr>
+            <td style="font-weight:700;text-align:left">TOTAL MES</td>
+            ${footCells}
+            <td style="font-weight:700;text-align:right;color:var(--orange)">${fmtL(granTotLts)}</td>
+            <td style="text-align:right">100%</td>
+          </tr></tfoot>
+        </table>
+      </div>
+    </div>`;
+  }
+
   window._flotaEdenredExport = datos;
-  document.getElementById('resFlotaEdenred').innerHTML = kpis + resumenProd + tablaVeh;
+  document.getElementById('resFlotaEdenred').innerHTML = kpis + resumenAnual + resumenProd + tablaVeh;
 }
 
 function toggleFlotaVeh(i) {
