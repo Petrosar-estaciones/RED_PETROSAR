@@ -3009,8 +3009,8 @@ function renderFlotaEdenred() {
   document.getElementById('loadingFlotaEdenred').style.display = 'none';
   const filtro = document.getElementById('flotaEdenredMes').value;
   const datos = filtro === 'TODOS' ? flotaEdenredDatos : flotaEdenredDatos.filter(d => d.mes === filtro);
-  if (!datos.length) {
-    document.getElementById('resFlotaEdenred').innerHTML = '<div class="card" style="text-align:center;color:var(--muted);padding:32px">Sin datos para el período seleccionado.</div>';
+  if (!flotaEdenredDatos.length) {
+    document.getElementById('resFlotaEdenred').innerHTML = '<div class="card" style="text-align:center;color:var(--muted);padding:32px">Sin datos disponibles.</div>';
     return;
   }
   const porProd = {};
@@ -3057,122 +3057,119 @@ function renderFlotaEdenred() {
     +'<td style="text-align:right;font-weight:700;color:var(--orange)">'+fmtP(totFinal)+'</td></tr>'
     +'</tbody></table></div>';
 
-  const porVeh = {};
-  datos.forEach(d => {
-    if (!porVeh[d.interno]) porVeh[d.interno] = {interno:d.interno,patente:d.patente,litros:0,netoSImp:0,impInt:0,iva:0,valorFinal:0,cargas:[]};
-    porVeh[d.interno].litros+=d.litros; porVeh[d.interno].netoSImp+=d.netoSImp;
-    porVeh[d.interno].impInt+=d.impInt; porVeh[d.interno].iva+=d.iva;
-    porVeh[d.interno].valorFinal+=d.valorFinal; porVeh[d.interno].cargas.push(d);
+  // ── Resumen por Mes y Producto: gráfico de barras apiladas + tabla ──
+  const mesesDisp = [...new Set(flotaEdenredDatos.map(d=>d.mes).filter(Boolean))].sort();
+  const prods = [...new Set(flotaEdenredDatos.map(d=>d.producto).filter(Boolean))];
+  const PROD_ORDER = ['EURO','GASOIL','NAFTA','OTRO'];
+  const prodsOrden = PROD_ORDER.filter(p=>prods.includes(p)).concat(prods.filter(p=>!PROD_ORDER.includes(p)));
+  const colProdBg = {EURO:'#fff3e0',GASOIL:'#e3f2fd',NAFTA:'#e8f5e9',OTRO:'#f5f5f5'};
+
+  const matrix = {};
+  prodsOrden.forEach(p => { matrix[p] = {}; mesesDisp.forEach(m => { matrix[p][m] = {litros:0,total:0}; }); });
+  flotaEdenredDatos.forEach(d => {
+    if(!matrix[d.producto]) return;
+    matrix[d.producto][d.mes].litros += d.litros;
+    matrix[d.producto][d.mes].total  += d.valorFinal;
   });
-  const vehs = Object.values(porVeh).sort((a,b)=>b.litros-a.litros);
-  let tablaVeh = '<div class="card" style="padding:0;overflow:hidden">'
-    +'<div class="tbl-hdr"><span class="tbl-title" style="color:#1565c0">Detalle por Vehículo</span>'
-    +'<span class="tbl-count">'+vehs.length+' vehículos · '+datos.length+' cargas</span></div>'
-    +'<table class="dt"><thead><tr><th>Interno</th><th>Patente</th>'
-    +'<th style="text-align:right">Litros</th><th style="text-align:right">Neto s/imp</th>'
-    +'<th style="text-align:right">Imp.Int</th><th style="text-align:right">IVA</th>'
-    +'<th style="text-align:right">Total</th></tr></thead><tbody>';
-  vehs.forEach((v,i)=>{
-    tablaVeh += '<tr style="cursor:pointer;background:'+(i%2?'#f9f9f9':'#fff')+'" onclick="toggleFlotaVeh('+i+')">'
-      +'<td style="font-weight:700">'+v.interno+'</td><td style="font-size:12px;color:var(--muted)">'+v.patente+'</td>'
-      +'<td style="text-align:right;font-weight:600;color:#1565c0">'+fmtL(v.litros)+' L</td>'
-      +'<td style="text-align:right">'+fmtP(v.netoSImp)+'</td><td style="text-align:right">'+fmtP(v.impInt)+'</td>'
-      +'<td style="text-align:right">'+fmtP(v.iva)+'</td>'
-      +'<td style="text-align:right;font-weight:700;color:var(--orange)">'+fmtP(v.valorFinal)+'</td></tr>';
-    v.cargas.sort((a,b)=>a.fecha>b.fecha?1:-1).forEach(c=>{
-      tablaVeh += '<tr class="fv-det-'+i+'" style="display:none;background:#e8f0fe">'
-        +'<td style="padding:6px 18px 6px 36px;font-size:11px;color:var(--muted)">'+c.fecha+'</td>'
-        +'<td><span style="background:'+(colProd[c.producto]||'#666')+';color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px">'+c.producto+'</span></td>'
-        +'<td style="text-align:right;font-size:12px">'+fmtL(c.litros)+' L</td>'
-        +'<td style="text-align:right;font-size:12px">'+fmtP(c.netoSImp)+'</td>'
-        +'<td style="text-align:right;font-size:12px">'+fmtP(c.impInt)+'</td>'
-        +'<td style="text-align:right;font-size:12px">'+fmtP(c.iva)+'</td>'
-        +'<td style="text-align:right;font-size:12px;font-weight:600">'+fmtP(c.valorFinal)+'</td></tr>';
-    });
-  });
-  tablaVeh += '</tbody></table></div>';
-  // ── Resumen anual por producto x mes ──
-  // Solo cuando se muestran TODOS los meses
-  let resumenAnual = '';
-  if (filtro === 'TODOS') {
-    const mesesDisp = [...new Set(flotaEdenredDatos.map(d=>d.mes).filter(Boolean))].sort();
-    const prods = [...new Set(flotaEdenredDatos.map(d=>d.producto).filter(Boolean))];
-    const PROD_ORDER = ['EURO','GASOIL','NAFTA','OTRO'];
-    const prodsOrden = PROD_ORDER.filter(p=>prods.includes(p)).concat(prods.filter(p=>!PROD_ORDER.includes(p)));
-    const colProdBg = {EURO:'#fff3e0',GASOIL:'#e3f2fd',NAFTA:'#e8f5e9',OTRO:'#f5f5f5'};
+  const totMesLts = {};
+  mesesDisp.forEach(m => { totMesLts[m] = prodsOrden.reduce((s,p)=>s+(matrix[p][m]?.litros||0),0); });
+  const granTotLts = prodsOrden.reduce((s,p)=>s+mesesDisp.reduce((ss,m)=>ss+(matrix[p][m]?.litros||0),0),0);
 
-    // Construir matriz: prod → mes → {litros, total}
-    const matrix = {};
-    prodsOrden.forEach(p => { matrix[p] = {}; mesesDisp.forEach(m => { matrix[p][m] = {litros:0,total:0}; }); });
-    flotaEdenredDatos.forEach(d => {
-      if(!matrix[d.producto]) return;
-      matrix[d.producto][d.mes].litros += d.litros;
-      matrix[d.producto][d.mes].total  += d.valorFinal;
-    });
-    const totMesLts = {};
-    const totMesTot = {};
-    mesesDisp.forEach(m => {
-      totMesLts[m] = prodsOrden.reduce((s,p)=>s+(matrix[p][m]?.litros||0),0);
-      totMesTot[m] = prodsOrden.reduce((s,p)=>s+(matrix[p][m]?.total||0),0);
-    });
-    const granTotLts = prodsOrden.reduce((s,p)=>s+mesesDisp.reduce((ss,m)=>ss+(matrix[p][m]?.litros||0),0),0);
-    const granTotTot = prodsOrden.reduce((s,p)=>s+mesesDisp.reduce((ss,m)=>ss+(matrix[p][m]?.total||0),0),0);
+  const mesLabel = m => {
+    const [y,mo] = m.split('-').map(Number);
+    const l = new Date(y,mo-1,1).toLocaleString('es-AR',{month:'short'});
+    return l.charAt(0).toUpperCase()+l.slice(1);
+  };
 
-    const mesLabel = m => {
-      const [y,mo] = m.split('-').map(Number);
-      const l = new Date(y,mo-1,1).toLocaleString('es-AR',{month:'short'});
-      return l.charAt(0).toUpperCase()+l.slice(1);
-    };
-
-    const thMeses = mesesDisp.map(m=>`<th style="text-align:right;min-width:90px">${mesLabel(m)}<div style="font-weight:500;font-size:10px;color:#94a3b8;margin-top:1px">lts</div></th>`).join('');
-
-    const filas = prodsOrden.map(p => {
-      const bg = colProdBg[p]||'#f9f9f9';
-      const col = (colProd[p]||'#666');
-      const totProdLts = mesesDisp.reduce((s,m)=>s+(matrix[p][m]?.litros||0),0);
-      const totProdTot = mesesDisp.reduce((s,m)=>s+(matrix[p][m]?.total||0),0);
-      const pct = granTotLts ? ((totProdLts/granTotLts)*100).toFixed(1)+'%' : '—';
-      const cells = mesesDisp.map(m => {
-        const lts = matrix[p][m]?.litros||0;
-        return `<td style="text-align:right;font-variant-numeric:tabular-nums">${lts===0?'<span style=\'color:#ccc\'>—</span>':fmtL(lts)}</td>`;
-      }).join('');
-      return `<tr>
-        <td><span style="background:${col};color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:4px">${p}</span></td>
-        ${cells}
-        <td style="text-align:right;font-weight:700;color:${col};background:${bg}">${fmtL(totProdLts)}</td>
-        <td style="text-align:right;font-size:11px;color:var(--muted)">${pct}</td>
-      </tr>`;
+  // Gráfico de barras apiladas por mes
+  const maxMesLts = Math.max(...mesesDisp.map(m=>totMesLts[m]||0), 1);
+  const BAR_H = 180;
+  const BAR_W = Math.max(70, Math.floor(560 / Math.max(mesesDisp.length,1)));
+  const bars = mesesDisp.map(m => {
+    const segmentos = prodsOrden.map(p => {
+      const lts = matrix[p][m]?.litros||0;
+      if(!lts) return '';
+      const pctSeg = totMesLts[m] ? (lts/totMesLts[m]) : 0;
+      const segH = Math.max(0, Math.round(pctSeg * (totMesLts[m]/maxMesLts) * BAR_H));
+      return `<div style="width:100%;height:${segH}px;background:${colProd[p]||'#999'}" title="${p}: ${fmtL(lts)} L"></div>`;
     }).join('');
+    const totalBarH = Math.max(4, Math.round((totMesLts[m]/maxMesLts) * BAR_H));
+    return `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:${BAR_W}px">
+        <div style="font-size:10px;font-weight:700;color:#1565c0">${fmtL(totMesLts[m]||0)} L</div>
+        <div style="width:${Math.max(BAR_W-14,34)}px;height:${BAR_H}px;display:flex;flex-direction:column-reverse;justify-content:flex-start;border-radius:4px 4px 0 0;overflow:hidden">
+          ${segmentos}
+        </div>
+        <div style="font-size:11px;font-weight:600;color:var(--muted)">${mesLabel(m)}</div>
+      </div>`;
+  }).join('');
 
-    const footCells = mesesDisp.map(m=>`<td style="text-align:right">${fmtL(totMesLts[m]||0)}</td>`).join('');
+  const leyenda = prodsOrden.map(p=>`
+    <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);margin-right:14px">
+      <span style="width:10px;height:10px;border-radius:2px;background:${colProd[p]||'#999'};display:inline-block"></span>${p}
+    </span>`).join('');
 
-    resumenAnual = `<div class="tbl-wrap fade" style="margin-bottom:16px">
+  const chart = `
+    <div class="tbl-wrap fade" style="margin-bottom:16px">
       <div class="tbl-hdr" style="background:#e3f2fd;border-bottom:1px solid #90caf9">
-        <span class="tbl-title" style="color:#1565c0">📅 Resumen por Producto y Mes</span>
-        <span class="tbl-count" style="border-color:#90caf9;color:#1565c0">${mesesDisp.length} meses · ${prodsOrden.length} productos</span>
+        <span class="tbl-title" style="color:#1565c0">📊 Litros por Mes y Producto</span>
+        <span class="tbl-count" style="border-color:#90caf9;color:#1565c0">${mesesDisp.length} meses · ${fmtL(granTotLts)} L total</span>
       </div>
-      <div style="overflow-x:auto">
-        <table class="dt" style="min-width:500px">
-          <thead><tr>
-            <th style="text-align:left">Producto</th>
-            ${thMeses}
-            <th style="text-align:right;background:#fff3e8;color:var(--orange)">Total lts</th>
-            <th style="text-align:right;color:var(--muted)">%</th>
-          </tr></thead>
-          <tbody>${filas}</tbody>
-          <tfoot><tr>
-            <td style="font-weight:700;text-align:left">TOTAL MES</td>
-            ${footCells}
-            <td style="font-weight:700;text-align:right;color:var(--orange)">${fmtL(granTotLts)}</td>
-            <td style="text-align:right">100%</td>
-          </tr></tfoot>
-        </table>
+      <div style="padding:20px 24px;overflow-x:auto">
+        <div style="display:flex;gap:10px;align-items:flex-end;min-width:${mesesDisp.length*BAR_W}px">
+          ${bars}
+        </div>
+        <div style="height:1px;background:var(--border);margin-top:4px"></div>
+        <div style="margin-top:14px">${leyenda}</div>
       </div>
     </div>`;
-  }
+
+  // Tabla resumen por producto x mes
+  const thMeses = mesesDisp.map(m=>`<th style="text-align:right;min-width:90px">${mesLabel(m)}<div style="font-weight:500;font-size:10px;color:#94a3b8;margin-top:1px">lts</div></th>`).join('');
+  const filas = prodsOrden.map(p => {
+    const bg = colProdBg[p]||'#f9f9f9';
+    const col = (colProd[p]||'#666');
+    const totProdLts = mesesDisp.reduce((s,m)=>s+(matrix[p][m]?.litros||0),0);
+    const pctP = granTotLts ? ((totProdLts/granTotLts)*100).toFixed(1)+'%' : '—';
+    const cells = mesesDisp.map(m => {
+      const lts = matrix[p][m]?.litros||0;
+      return `<td style="text-align:right;font-variant-numeric:tabular-nums">${lts===0?'<span style=\'color:#ccc\'>—</span>':fmtL(lts)}</td>`;
+    }).join('');
+    return `<tr>
+      <td><span style="background:${col};color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:4px">${p}</span></td>
+      ${cells}
+      <td style="text-align:right;font-weight:700;color:${col};background:${bg}">${fmtL(totProdLts)}</td>
+      <td style="text-align:right;font-size:11px;color:var(--muted)">${pctP}</td>
+    </tr>`;
+  }).join('');
+  const footCells = mesesDisp.map(m=>`<td style="text-align:right">${fmtL(totMesLts[m]||0)}</td>`).join('');
+
+  const tablaResumen = `<div class="tbl-wrap fade" style="margin-bottom:16px">
+    <div class="tbl-hdr" style="background:#e3f2fd;border-bottom:1px solid #90caf9">
+      <span class="tbl-title" style="color:#1565c0">📅 Resumen por Producto y Mes</span>
+      <span class="tbl-count" style="border-color:#90caf9;color:#1565c0">${mesesDisp.length} meses · ${prodsOrden.length} productos</span>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="dt" style="min-width:500px">
+        <thead><tr>
+          <th style="text-align:left">Producto</th>
+          ${thMeses}
+          <th style="text-align:right;background:#fff3e8;color:var(--orange)">Total lts</th>
+          <th style="text-align:right;color:var(--muted)">%</th>
+        </tr></thead>
+        <tbody>${filas}</tbody>
+        <tfoot><tr>
+          <td style="font-weight:700;text-align:left">TOTAL MES</td>
+          ${footCells}
+          <td style="font-weight:700;text-align:right;color:var(--orange)">${fmtL(granTotLts)}</td>
+          <td style="text-align:right">100%</td>
+        </tr></tfoot>
+      </table>
+    </div>
+  </div>`;
 
   window._flotaEdenredExport = datos;
-  document.getElementById('resFlotaEdenred').innerHTML = kpis + resumenAnual + resumenProd + tablaVeh;
+  document.getElementById('resFlotaEdenred').innerHTML = kpis + chart + tablaResumen + resumenProd;
 }
 
 function toggleFlotaVeh(i) {
