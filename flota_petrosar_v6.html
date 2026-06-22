@@ -118,9 +118,7 @@
   .precio-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
   .precio-inp{display:flex;flex-direction:column;gap:4px}
   .precio-inp label{font-size:11px;font-weight:600;color:var(--muted)}
-  .tab.tab-auth{color:#b8860b;font-weight:700;background:#fffde7;border-bottom:2.5px solid transparent;letter-spacing:.5px}
-  .tab.tab-auth:hover:not(.active){background:#fff9c4;color:#8a6500}
-  .tab.tab-auth.active{color:#6d4c00;border-bottom-color:#f5c400;background:#fff176}
+
   .tab.tab-edenred{color:#b03a2e;font-weight:700;background:#fdf2f0;border-bottom:2.5px solid transparent;letter-spacing:.5px}
   .tab.tab-edenred:hover:not(.active){background:#fce4e0;color:#922b21}
   .tab.tab-edenred.active{color:#7b241c;border-bottom-color:#e84c3d;background:#fde8e6}
@@ -193,7 +191,7 @@
   <div class="tab" onclick="switchTab('veh')">Por Vehículo</div>
   <div class="tab" onclick="switchTab('valorizacion')">Valorización</div>
   <div class="tab" onclick="switchTab('ingreso')">Ingreso ESCD x Vta</div>
-  <div class="tab tab-auth" onclick="switchTab('autorizaciones')">⭐ AUTORIZACIONES</div>
+  <div class="tab tab-auth" onclick="switchTab('autorizaciones')">Autorizaciones</div>
   <div class="tab tab-edenred" onclick="switchTab('edenred')">💳 EDENRED</div>
 </nav>
 <main class="main">
@@ -366,6 +364,19 @@
     </div>
     <div id="loadingEdenred" class="loading"><div class="spinner" style="border-top-color:#e84c3d"></div>Cargando cobros Edenred...</div>
     <div id="resEdenred"><div class="empty"><div class="empty-icon">💳</div><div class="empty-title">Seleccioná un año para ver los cobros</div></div></div>
+
+  <!-- CONSUMO FLOTA EXTERNA -->
+  <div class="card" style="border:2px solid #1565c0;background:#e3f2fd;margin-bottom:16px;margin-top:8px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="background:#1565c0;color:#fff;font-weight:700;font-size:12px;letter-spacing:1.5px;padding:4px 14px;border-radius:20px">🚛 Consumo Flota con Edenred</span>
+      <div style="flex:1"></div>
+      <select id="flotaEdenredMes" onchange="renderFlotaEdenred()" style="font-size:12px;font-weight:600;padding:6px 10px;border:1.5px solid #1565c0;border-radius:4px;background:#fff;color:#1565c0;cursor:pointer"><option value="TODOS">Todos los meses</option></select>
+      <button class="btn" onclick="flotaEdenredCargado=false;cargarFlotaEdenred()" style="background:#1565c0;color:#fff;font-size:12px;padding:6px 16px;height:auto">↺ Actualizar</button>
+      <button class="btn" onclick="exportFlotaEdenredExcel()" style="background:#0d47a1;color:#fff;font-size:12px;padding:6px 14px;height:auto">📥 Excel</button>
+    </div>
+  </div>
+  <div id="loadingFlotaEdenred" class="loading" style="display:none"><div class="spinner" style="border-top-color:#1565c0"></div>Cargando consumos flota externa...</div>
+  <div id="resFlotaEdenred"></div>
   </div>
 
 </main>
@@ -773,7 +784,7 @@ async function switchTab(t){
     cargarIngreso();
   }
   if(t==='autorizaciones') iniciarAutorizaciones();
-  if(t==='edenred') iniciarEdenred();
+  if(t==='edenred'){ iniciarEdenred(); cargarFlotaEdenred(); }
 }
 function setDates(f,t){const now=new Date();document.getElementById(f).value=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);document.getElementById(t).value=now.toISOString().slice(0,10);}
 async function buildMesesDesplegable(cid, fromId, toId, callback) {
@@ -1255,30 +1266,7 @@ function renderTotales(desp,errores,from,to){
           </div>
         </div>`;}).join('')}
     </div>
-    <div class="tbl-wrap fade">
-      <div class="tbl-hdr"><span class="tbl-title">Resumen global</span><span class="tbl-count">${desp.length} despachos</span></div>
-      <table class="dt">
-        <thead><tr><th>Sector</th><th>Euro Diesel</th><th>Gasoil</th><th>Total lts</th><th>Despachos</th><th>% total</th></tr></thead>
-        <tbody>
-          ${sectores.map(p=>`<tr>
-            <td><span class="badge b-${p.toLowerCase().replace(/\s/g,'')}">${p}</span></td>
-            <td>${map[p].euro?fmtN(map[p].euro):'—'}</td>
-            <td>${map[p].gasoil?fmtN(map[p].gasoil):'—'}</td>
-            <td><span class="lts-val">${fmtN(map[p].lts)}</span></td>
-            <td>${map[p].cargas}</td>
-            <td style="color:var(--muted)">${pct(map[p].lts,total)}</td>
-          </tr>`).join('')}
-        </tbody>
-        <tfoot><tr>
-          <td>TOTAL</td>
-          <td>${fmtN(totalEuro)}</td>
-          <td>${fmtN(totalGasoil)}</td>
-          <td>${fmtN(total)}</td>
-          <td>${desp.length}</td>
-          <td>100%</td>
-        </tr></tfoot>
-      </table>
-    </div>`;
+`;
 }
 
 // ═══════════════════════════════════
@@ -2613,7 +2601,6 @@ async function cargarEdenred() {
       <tr style="background:#fdf2f0;cursor:pointer" onclick="toggleEdenredMes('mes-${m.num}')">
         <td colspan="3" style="font-weight:700;color:#7b241c;padding:10px 18px">
           <span style="margin-right:8px">▸</span>${m.nombre} ${anio}
-          <span style="font-size:11px;font-weight:500;color:var(--muted);margin-left:10px">${m.cobros.length} comprobantes</span>
         </td>
         <td style="font-weight:700;color:#e84c3d;text-align:right;padding:10px 18px;font-size:15px">${fmtARSDec(m.total)}</td>
       </tr>`;
@@ -2879,7 +2866,6 @@ async function cargarEdenred() {
       <tr style="background:#fdf2f0;cursor:pointer" onclick="toggleEdenredMes('mes-${m.num}')">
         <td colspan="3" style="font-weight:700;color:#7b241c;padding:10px 18px">
           <span style="margin-right:8px">▸</span>${m.nombre} ${anio}
-          <span style="font-size:11px;font-weight:500;color:var(--muted);margin-left:10px">${m.cobros.length} comprobantes</span>
         </td>
         <td style="font-weight:700;color:#e84c3d;text-align:right;padding:10px 18px;font-size:15px">${fmtARSDec(m.total)}</td>
       </tr>`;
@@ -2980,6 +2966,224 @@ function exportEdenredExcel() {
   XLSX.utils.book_append_sheet(wb, wsRes, 'Resumen por Mes');
 
   XLSX.writeFile(wb, `Edenred_Compensacion_${anio}.xlsx`);
+}
+
+// ═══════════════════════════════════════════════
+// CONSUMO FLOTA EXTERNA — Edenred Apps Script
+// ═══════════════════════════════════════════════
+const FLOTA_EDEN_URL = 'https://script.google.com/macros/s/AKfycbyRTIJ6UJTT7Cw2gH-kDi3mbMUmYG_N6jhi8FgPrF1QN7IjREwY1QWGJBxt5BjWNt4/exec';
+let flotaEdenredDatos = [];
+let flotaEdenredCargado = false;
+
+async function cargarFlotaEdenred() {
+  if (flotaEdenredCargado) { renderFlotaEdenred(); return; }
+  document.getElementById('loadingFlotaEdenred').style.display = 'flex';
+  document.getElementById('resFlotaEdenred').innerHTML = '';
+  try {
+    const resp = await fetch(FLOTA_EDEN_URL, {redirect:'follow'});
+    flotaEdenredDatos = await resp.json();
+    flotaEdenredCargado = true;
+    const meses = [...new Set(flotaEdenredDatos.map(d=>d.mes).filter(Boolean))].sort();
+    const sel = document.getElementById('flotaEdenredMes');
+    sel.innerHTML = '<option value="TODOS">Todos los meses</option>';
+    meses.forEach(m => {
+      const [y,mo] = m.split('-');
+      const lbl = new Date(+y,+mo-1,1).toLocaleString('es-AR',{month:'long',year:'numeric'});
+      const o = document.createElement('option');
+      o.value = m; o.textContent = lbl.charAt(0).toUpperCase()+lbl.slice(1);
+      sel.appendChild(o);
+    });
+    if (meses.length) sel.value = meses[meses.length-1];
+    renderFlotaEdenred();
+  } catch(err) {
+    document.getElementById('loadingFlotaEdenred').style.display = 'none';
+    document.getElementById('resFlotaEdenred').innerHTML = '<div class="card" style="color:#c00;padding:20px">❌ Error al cargar: '+err.message+'</div>';
+  }
+}
+
+function renderFlotaEdenred() {
+  document.getElementById('loadingFlotaEdenred').style.display = 'none';
+  const filtro = document.getElementById('flotaEdenredMes').value;
+  const datos = filtro === 'TODOS' ? flotaEdenredDatos : flotaEdenredDatos.filter(d => d.mes === filtro);
+  if (!flotaEdenredDatos.length) {
+    document.getElementById('resFlotaEdenred').innerHTML = '<div class="card" style="text-align:center;color:var(--muted);padding:32px">Sin datos disponibles.</div>';
+    return;
+  }
+  const porProd = {};
+  datos.forEach(d => {
+    if (!porProd[d.producto]) porProd[d.producto] = {litros:0,netoSImp:0,impInt:0,iva:0,valorFinal:0};
+    porProd[d.producto].litros+=d.litros; porProd[d.producto].netoSImp+=d.netoSImp;
+    porProd[d.producto].impInt+=d.impInt; porProd[d.producto].iva+=d.iva;
+    porProd[d.producto].valorFinal+=d.valorFinal;
+  });
+  const fmtL = v => (+v||0).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fmtP = v => '$'+(+v||0).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const colProd = {EURO:'#e65100',GASOIL:'#1565c0',NAFTA:'#2e7d32',OTRO:'#666'};
+  const totLts   = datos.reduce((s,d)=>s+d.litros,0);
+  const totNeto  = datos.reduce((s,d)=>s+d.netoSImp,0);
+  const totImp   = datos.reduce((s,d)=>s+d.impInt,0);
+  const totIva   = datos.reduce((s,d)=>s+d.iva,0);
+  const totFinal = datos.reduce((s,d)=>s+d.valorFinal,0);
+
+  const kpis = '<div class="kpi-grid" style="margin-bottom:16px">'
+    +'<div class="kpi"><div class="kpi-lbl">Total Litros</div><div class="kpi-val" style="color:#1565c0">'+fmtL(totLts)+' L</div></div>'
+    +'<div class="kpi"><div class="kpi-lbl">Neto s/imp</div><div class="kpi-val">'+fmtP(totNeto)+'</div></div>'
+    +'<div class="kpi"><div class="kpi-lbl">Imp. Internos</div><div class="kpi-val">'+fmtP(totImp)+'</div></div>'
+    +'<div class="kpi"><div class="kpi-lbl">IVA</div><div class="kpi-val">'+fmtP(totIva)+'</div></div>'
+    +'<div class="kpi"><div class="kpi-lbl">Total Final</div><div class="kpi-val" style="color:var(--orange)">'+fmtP(totFinal)+'</div></div>'
+    +'</div>';
+
+  let resumenProd = '<div class="card" style="padding:0;overflow:hidden;margin-bottom:16px"><table class="dt"><thead><tr>'
+    +'<th>Producto</th><th style="text-align:right">Litros</th><th style="text-align:right">Neto s/imp</th>'
+    +'<th style="text-align:right">Imp.Int</th><th style="text-align:right">IVA</th><th style="text-align:right">Total</th>'
+    +'</tr></thead><tbody>';
+  Object.entries(porProd).forEach(([prod,v])=>{
+    resumenProd += '<tr><td><span style="background:'+(colProd[prod]||'#666')+';color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:4px">'+prod+'</span></td>'
+      +'<td style="text-align:right;font-weight:600">'+fmtL(v.litros)+' L</td>'
+      +'<td style="text-align:right">'+fmtP(v.netoSImp)+'</td>'
+      +'<td style="text-align:right">'+fmtP(v.impInt)+'</td>'
+      +'<td style="text-align:right">'+fmtP(v.iva)+'</td>'
+      +'<td style="text-align:right;font-weight:700;color:var(--orange)">'+fmtP(v.valorFinal)+'</td></tr>';
+  });
+  resumenProd += '<tr style="background:#f5f5f5"><td style="font-weight:700">TOTAL</td>'
+    +'<td style="text-align:right;font-weight:700">'+fmtL(totLts)+' L</td>'
+    +'<td style="text-align:right;font-weight:700">'+fmtP(totNeto)+'</td>'
+    +'<td style="text-align:right;font-weight:700">'+fmtP(totImp)+'</td>'
+    +'<td style="text-align:right;font-weight:700">'+fmtP(totIva)+'</td>'
+    +'<td style="text-align:right;font-weight:700;color:var(--orange)">'+fmtP(totFinal)+'</td></tr>'
+    +'</tbody></table></div>';
+
+  // ── Resumen por Mes y Producto: gráfico de barras apiladas + tabla ──
+  const mesesDisp = [...new Set(flotaEdenredDatos.map(d=>d.mes).filter(Boolean))].sort();
+  const prods = [...new Set(flotaEdenredDatos.map(d=>d.producto).filter(Boolean))];
+  const PROD_ORDER = ['EURO','GASOIL','NAFTA','OTRO'];
+  const prodsOrden = PROD_ORDER.filter(p=>prods.includes(p)).concat(prods.filter(p=>!PROD_ORDER.includes(p)));
+  const colProdBg = {EURO:'#fff3e0',GASOIL:'#e3f2fd',NAFTA:'#e8f5e9',OTRO:'#f5f5f5'};
+
+  const matrix = {};
+  prodsOrden.forEach(p => { matrix[p] = {}; mesesDisp.forEach(m => { matrix[p][m] = {litros:0,total:0}; }); });
+  flotaEdenredDatos.forEach(d => {
+    if(!matrix[d.producto]) return;
+    matrix[d.producto][d.mes].litros += d.litros;
+    matrix[d.producto][d.mes].total  += d.valorFinal;
+  });
+  const totMesLts = {};
+  mesesDisp.forEach(m => { totMesLts[m] = prodsOrden.reduce((s,p)=>s+(matrix[p][m]?.litros||0),0); });
+  const granTotLts = prodsOrden.reduce((s,p)=>s+mesesDisp.reduce((ss,m)=>ss+(matrix[p][m]?.litros||0),0),0);
+
+  const mesLabel = m => {
+    const [y,mo] = m.split('-').map(Number);
+    const l = new Date(y,mo-1,1).toLocaleString('es-AR',{month:'short'});
+    return l.charAt(0).toUpperCase()+l.slice(1);
+  };
+
+  // Gráfico de barras apiladas por mes
+  const maxMesLts = Math.max(...mesesDisp.map(m=>totMesLts[m]||0), 1);
+  const BAR_H = 180;
+  const BAR_W = Math.max(70, Math.floor(560 / Math.max(mesesDisp.length,1)));
+  const bars = mesesDisp.map(m => {
+    const segmentos = prodsOrden.map(p => {
+      const lts = matrix[p][m]?.litros||0;
+      if(!lts) return '';
+      const pctSeg = totMesLts[m] ? (lts/totMesLts[m]) : 0;
+      const segH = Math.max(0, Math.round(pctSeg * (totMesLts[m]/maxMesLts) * BAR_H));
+      return `<div style="width:100%;height:${segH}px;background:${colProd[p]||'#999'}" title="${p}: ${fmtL(lts)} L"></div>`;
+    }).join('');
+    const totalBarH = Math.max(4, Math.round((totMesLts[m]/maxMesLts) * BAR_H));
+    return `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:${BAR_W}px">
+        <div style="font-size:10px;font-weight:700;color:#1565c0">${fmtL(totMesLts[m]||0)} L</div>
+        <div style="width:${Math.max(BAR_W-14,34)}px;height:${BAR_H}px;display:flex;flex-direction:column-reverse;justify-content:flex-start;border-radius:4px 4px 0 0;overflow:hidden">
+          ${segmentos}
+        </div>
+        <div style="font-size:11px;font-weight:600;color:var(--muted)">${mesLabel(m)}</div>
+      </div>`;
+  }).join('');
+
+  const leyenda = prodsOrden.map(p=>`
+    <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);margin-right:14px">
+      <span style="width:10px;height:10px;border-radius:2px;background:${colProd[p]||'#999'};display:inline-block"></span>${p}
+    </span>`).join('');
+
+  const chart = `
+    <div class="tbl-wrap fade" style="margin-bottom:16px">
+      <div class="tbl-hdr" style="background:#e3f2fd;border-bottom:1px solid #90caf9">
+        <span class="tbl-title" style="color:#1565c0">📊 Litros por Mes y Producto</span>
+        <span class="tbl-count" style="border-color:#90caf9;color:#1565c0">${mesesDisp.length} meses · ${fmtL(granTotLts)} L total</span>
+      </div>
+      <div style="padding:20px 24px;overflow-x:auto">
+        <div style="display:flex;gap:10px;align-items:flex-end;min-width:${mesesDisp.length*BAR_W}px">
+          ${bars}
+        </div>
+        <div style="height:1px;background:var(--border);margin-top:4px"></div>
+        <div style="margin-top:14px">${leyenda}</div>
+      </div>
+    </div>`;
+
+  // Tabla resumen por producto x mes
+  const thMeses = mesesDisp.map(m=>`<th style="text-align:right;min-width:90px">${mesLabel(m)}<div style="font-weight:500;font-size:10px;color:#94a3b8;margin-top:1px">lts</div></th>`).join('');
+  const filas = prodsOrden.map(p => {
+    const bg = colProdBg[p]||'#f9f9f9';
+    const col = (colProd[p]||'#666');
+    const totProdLts = mesesDisp.reduce((s,m)=>s+(matrix[p][m]?.litros||0),0);
+    const pctP = granTotLts ? ((totProdLts/granTotLts)*100).toFixed(1)+'%' : '—';
+    const cells = mesesDisp.map(m => {
+      const lts = matrix[p][m]?.litros||0;
+      return `<td style="text-align:right;font-variant-numeric:tabular-nums">${lts===0?'<span style=\'color:#ccc\'>—</span>':fmtL(lts)}</td>`;
+    }).join('');
+    return `<tr>
+      <td><span style="background:${col};color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:4px">${p}</span></td>
+      ${cells}
+      <td style="text-align:right;font-weight:700;color:${col};background:${bg}">${fmtL(totProdLts)}</td>
+      <td style="text-align:right;font-size:11px;color:var(--muted)">${pctP}</td>
+    </tr>`;
+  }).join('');
+  const footCells = mesesDisp.map(m=>`<td style="text-align:right">${fmtL(totMesLts[m]||0)}</td>`).join('');
+
+  const tablaResumen = `<div class="tbl-wrap fade" style="margin-bottom:16px">
+    <div class="tbl-hdr" style="background:#e3f2fd;border-bottom:1px solid #90caf9">
+      <span class="tbl-title" style="color:#1565c0">📅 Resumen por Producto y Mes</span>
+      <span class="tbl-count" style="border-color:#90caf9;color:#1565c0">${mesesDisp.length} meses · ${prodsOrden.length} productos</span>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="dt" style="min-width:500px">
+        <thead><tr>
+          <th style="text-align:left">Producto</th>
+          ${thMeses}
+          <th style="text-align:right;background:#fff3e8;color:var(--orange)">Total lts</th>
+          <th style="text-align:right;color:var(--muted)">%</th>
+        </tr></thead>
+        <tbody>${filas}</tbody>
+        <tfoot><tr>
+          <td style="font-weight:700;text-align:left">TOTAL MES</td>
+          ${footCells}
+          <td style="font-weight:700;text-align:right;color:var(--orange)">${fmtL(granTotLts)}</td>
+          <td style="text-align:right">100%</td>
+        </tr></tfoot>
+      </table>
+    </div>
+  </div>`;
+
+  window._flotaEdenredExport = datos;
+  document.getElementById('resFlotaEdenred').innerHTML = kpis + tablaResumen + resumenProd + chart;
+}
+
+function toggleFlotaVeh(i) {
+  const rows = document.querySelectorAll('.fv-det-'+i);
+  const open = rows.length && rows[0].style.display !== 'none';
+  rows.forEach(r => r.style.display = open ? 'none' : 'table-row');
+}
+
+function exportFlotaEdenredExcel() {
+  const data = window._flotaEdenredExport;
+  if (!data || !data.length) { alert('Primero cargá los datos.'); return; }
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['Mes','Fecha','Interno','Patente','Producto','Litros','Neto s/imp','Imp.Int','IVA','Total'],
+    ...data.map(d=>[d.mes,d.fecha,d.interno,d.patente,d.producto,d.litros,d.netoSImp,d.impInt,d.iva,d.valorFinal])
+  ]);
+  XLSX.utils.book_append_sheet(wb, ws, 'Flota Edenred');
+  XLSX.writeFile(wb, 'Flota_Edenred_'+document.getElementById('flotaEdenredMes').value+'.xlsx');
 }
 
 </script>
