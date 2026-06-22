@@ -118,9 +118,7 @@
   .precio-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
   .precio-inp{display:flex;flex-direction:column;gap:4px}
   .precio-inp label{font-size:11px;font-weight:600;color:var(--muted)}
-  .tab.tab-auth{color:#b8860b;font-weight:700;background:#fffde7;border-bottom:2.5px solid transparent;letter-spacing:.5px}
-  .tab.tab-auth:hover:not(.active){background:#fff9c4;color:#8a6500}
-  .tab.tab-auth.active{color:#6d4c00;border-bottom-color:#f5c400;background:#fff176}
+
   .tab.tab-edenred{color:#b03a2e;font-weight:700;background:#fdf2f0;border-bottom:2.5px solid transparent;letter-spacing:.5px}
   .tab.tab-edenred:hover:not(.active){background:#fce4e0;color:#922b21}
   .tab.tab-edenred.active{color:#7b241c;border-bottom-color:#e84c3d;background:#fde8e6}
@@ -193,7 +191,7 @@
   <div class="tab" onclick="switchTab('veh')">Por Vehículo</div>
   <div class="tab" onclick="switchTab('valorizacion')">Valorización</div>
   <div class="tab" onclick="switchTab('ingreso')">Ingreso ESCD x Vta</div>
-  <div class="tab tab-auth" onclick="switchTab('autorizaciones')">⭐ AUTORIZACIONES</div>
+  <div class="tab tab-auth" onclick="switchTab('autorizaciones')">Autorizaciones</div>
   <div class="tab tab-edenred" onclick="switchTab('edenred')">💳 EDENRED</div>
 </nav>
 <main class="main">
@@ -367,7 +365,7 @@
     <div id="loadingEdenred" class="loading"><div class="spinner" style="border-top-color:#e84c3d"></div>Cargando cobros Edenred...</div>
     <div id="resEdenred"><div class="empty"><div class="empty-icon">💳</div><div class="empty-title">Seleccioná un año para ver los cobros</div></div></div>
 
-  <!-- CONSUMO FLOTA EDENRED -->
+  <!-- CONSUMO FLOTA EXTERNA -->
   <div class="card" style="border:2px solid #1565c0;background:#e3f2fd;margin-bottom:16px;margin-top:8px">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <span style="background:#1565c0;color:#fff;font-weight:700;font-size:12px;letter-spacing:1.5px;padding:4px 14px;border-radius:20px;text-transform:uppercase">🚛 Consumo Flota Externa</span>
@@ -2971,7 +2969,7 @@ function exportEdenredExcel() {
 }
 
 // ═══════════════════════════════════════════════
-// CONSUMO FLOTA EDENRED — Edenred Apps Script
+// CONSUMO FLOTA EXTERNA — Edenred Apps Script
 // ═══════════════════════════════════════════════
 const FLOTA_EDEN_URL = 'https://script.google.com/macros/s/AKfycbyRTIJ6UJTT7Cw2gH-kDi3mbMUmYG_N6jhi8FgPrF1QN7IjREwY1QWGJBxt5BjWNt4/exec';
 let flotaEdenredDatos = [];
