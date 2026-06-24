@@ -191,6 +191,7 @@
   <div class="tab" onclick="switchTab('veh')">Por Vehículo</div>
   <div class="tab" onclick="switchTab('valorizacion')">Valorización</div>
   <div class="tab" onclick="switchTab('ingreso')">Ingreso ESCD x Vta</div>
+  <div class="tab" onclick="switchTab('lineas')">Por Línea de Negocio</div>
   <div class="tab tab-auth" onclick="switchTab('autorizaciones')">Autorizaciones</div>
   <div class="tab tab-edenred" onclick="switchTab('edenred')">💳 EDENRED</div>
 </nav>
@@ -261,6 +262,17 @@
     </div>
     <div id="loadingTot" class="loading"><div class="spinner"></div>Cargando totales...</div>
     <div id="resTot"><div class="empty"><div class="empty-icon">📊</div><div class="empty-title">Seleccioná un período</div></div></div>
+  </div>
+
+  <!-- TAB POR LÍNEA DE NEGOCIO -->
+  <div id="tab-lineas" style="display:none">
+    <div class="card" style="margin-bottom:12px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <span style="font-size:13px;font-weight:600;color:var(--txt)">Año:</span>
+      <select id="lineasAnio" onchange="cargarLineas()" style="font-weight:700;font-size:14px;max-width:100px"></select>
+      <span style="font-size:12px;color:var(--muted);margin-left:4px">Resumen anual de consumo por línea de negocio</span>
+    </div>
+    <div id="loadingLineas" class="loading" style="display:none"><div class="spinner"></div>Cargando datos anuales...</div>
+    <div id="resLineas"><div class="empty"><div class="empty-icon">🚛</div><div class="empty-title">Cargando...</div></div></div>
   </div>
 
   <!-- TAB VALORIZACIÓN -->
@@ -760,8 +772,8 @@ async function cargarFlota(){
 // TABS
 // ═══════════════════════════════════
 async function switchTab(t){
-  ['veh','totales','valorizacion','ingreso','autorizaciones','edenred'].forEach(id=>document.getElementById('tab-'+id).style.display=id===t?'block':'none');
-  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['totales','veh','valorizacion','ingreso','autorizaciones','edenred'][i]===t));
+  ['veh','totales','lineas','valorizacion','ingreso','autorizaciones','edenred'].forEach(id=>document.getElementById('tab-'+id).style.display=id===t?'block':'none');
+  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['totales','veh','valorizacion','ingreso','lineas','autorizaciones','edenred'][i]===t));
   if(t==='veh') poblarLineas();
   if(t==='totales'&&!document.getElementById('mesTabs').children.length){
     await buildMesesDesplegable('mesTabs','totFrom','totTo',cargarTotales);
@@ -782,6 +794,19 @@ async function switchTab(t){
   if(t==='ingreso'&&!document.getElementById('mesTabsIng').children.length){
     await buildMesesDesplegable('mesTabsIng','ingFrom','ingTo',cargarIngreso);
     cargarIngreso();
+  }
+  if(t==='lineas'&&!document.getElementById('lineasAnio').children.length){
+    // Poblar selector de años (año actual + anteriores con datos)
+    const now=new Date();
+    const anioActual=now.getFullYear();
+    const sel=document.getElementById('lineasAnio');
+    sel.innerHTML='';
+    for(let y=anioActual;y>=anioActual-3;y--){
+      const opt=document.createElement('option');
+      opt.value=y; opt.textContent=y;
+      sel.appendChild(opt);
+    }
+    await cargarLineas();
   }
   if(t==='autorizaciones') iniciarAutorizaciones();
   if(t==='edenred'){ iniciarEdenred(); cargarFlotaEdenred(); }
@@ -926,7 +951,8 @@ function selValCC(cc){
   const now=new Date();
   document.getElementById('vehFrom').value=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
   document.getElementById('vehTo').value=now.toISOString().slice(0,10);
-  cargarFlota().then(()=>{
+  window._flotaPromise = cargarFlota();
+  window._flotaPromise.then(()=>{
     const inp=document.getElementById('vehSearch');
     inp.placeholder=FLOTA.length?`Buscar entre ${FLOTA.length} vehículos...`:'Ingresá patente o interno';
   });
@@ -1199,6 +1225,178 @@ function renderVeh(veh,desp,errores,from,to){
 // TAB 2: TOTALES POR SECTOR
 // ═══════════════════════════════════
 // cachedDespachos declarado arriba
+
+// ═══════════════════════════════════
+// TAB: POR LÍNEA DE NEGOCIO
+// ═══════════════════════════════════
+async function cargarLineas(){
+  if(window._flotaPromise) await window._flotaPromise;
+  const anio=parseInt(document.getElementById('lineasAnio').value)||new Date().getFullYear();
+  const from=`${anio}-01-01`, to=`${anio}-12-31`;
+
+  document.getElementById('resLineas').innerHTML='';
+  document.getElementById('loadingLineas').style.display='block';
+
+  let despachos,errores;
+  if(cachedDespachos&&cachedFrom===from&&cachedTo===to){
+    despachos=cachedDespachos; errores=[];
+  }else{
+    const res=await consultarTodo(from,to);
+    despachos=res.despachos; errores=res.errores;
+    cachedDespachos=despachos; cachedFrom=from; cachedTo=to;
+  }
+  document.getElementById('loadingLineas').style.display='none';
+  renderLineas(despachos,errores,anio);
+}
+
+function renderLineas(desp,errores,anio){
+  // Mapa interno → línea de negocio
+  const flotaMap={};
+  FLOTA.forEach(v=>{ if(v.Interno) flotaMap[v.Interno]=v.LineaNegocio||'Sin línea'; });
+
+  // Para PLANTA: el vehículo está en receptorN (col G), no en interno (col J)
+  // Reasignar interno usando receptorN cuando interno=0
+  desp=desp.map(d=>{
+    if(d.fuente==='PLANTA'&&!d.interno&&d.receptorN) return {...d,interno:d.receptorN};
+    return d;
+  });
+
+  // Matriz línea → mes → litros (todos los meses del año)
+  const TODOS_MESES=Array.from({length:12},(_,i)=>`${anio}-${String(i+1).padStart(2,'0')}`);
+  const matrix={};   // linea → { mesKey: lts }
+  const totalesMes={}; TODOS_MESES.forEach(m=>totalesMes[m]=0);
+  const lineaTotales={}; // linea → total anual
+
+  desp.forEach(d=>{
+    if(!d.fecha)return;
+    const dt=new Date(d.fecha);
+    if(isNaN(dt)||dt.getFullYear()!==anio)return;
+    const mk=`${anio}-${String(dt.getMonth()+1).padStart(2,'0')}`;
+    const linea=flotaMap[d.interno]||(d.interno?'Sin línea':'Sin vehículo');
+    if(!matrix[linea])matrix[linea]={};
+    matrix[linea][mk]=(matrix[linea][mk]||0)+d.litros;
+    totalesMes[mk]=(totalesMes[mk]||0)+d.litros;
+    lineaTotales[linea]=(lineaTotales[linea]||0)+d.litros;
+  });
+
+  // Solo meses con datos
+  const meses=TODOS_MESES.filter(m=>totalesMes[m]>0);
+  const lineas=Object.keys(lineaTotales).sort((a,b)=>lineaTotales[b]-lineaTotales[a]);
+  const granTotal=lineas.reduce((s,l)=>s+lineaTotales[l],0);
+
+  if(!lineas.length){
+    document.getElementById('resLineas').innerHTML='<div class="empty"><div class="empty-icon">🚛</div><div class="empty-title">Sin datos para el año seleccionado</div></div>';
+    return;
+  }
+
+  const LINEA_COLORS=['#1a5fa8','#1a7a4a','#5b21b6','#b45309','#b91c1c','#3a7d0a','#0891b2','#374151','#92400e'];
+  const LINEA_BG    =['#e0f0ff','#e8f7ee','#f0eafe','#fff3e0','#fdecea','#f0fde4','#e0f9ff','#f3f4f6','#fef3c7'];
+  const lineaColor=l=>LINEA_COLORS[lineas.indexOf(l)%LINEA_COLORS.length];
+  const lineaBg   =l=>LINEA_BG[lineas.indexOf(l)%LINEA_BG.length];
+  const mesLabel  =m=>{const[y,mo]=m.split('-').map(Number);const l=new Date(y,mo-1,1).toLocaleString('es-AR',{month:'short'});return l.charAt(0).toUpperCase()+l.slice(1);};
+
+  // ── Tabla resumen anual ──
+  const thMeses=meses.map(m=>`<th>${mesLabel(m)}<div style="font-weight:500;font-size:10px;color:#94a3b8;margin-top:1px">lts</div></th>`).join('');
+  const tableRows=lineas.map(l=>{
+    const c=lineaColor(l),bg=lineaBg(l);
+    const tot=lineaTotales[l];
+    const cells=meses.map(m=>{const v=matrix[l]?.[m]||0;return`<td class="num${v===0?' zero':''}">${v===0?'—':fmtN(v)}</td>`;}).join('');
+    const pct=granTotal?((tot/granTotal)*100).toFixed(1)+'%':'—';
+    return`<tr>
+      <td><span class="sector-tag" style="background:${bg};color:${c}">${l}</span></td>
+      ${cells}
+      <td class="num resumen-total-col">${fmtN(tot)}</td>
+      <td class="num" style="color:var(--muted);font-size:11px">${pct}</td>
+    </tr>`;
+  }).join('');
+  const footCells=meses.map(m=>`<td>${fmtN(totalesMes[m]||0)}</td>`).join('');
+
+  // ── Gráfico (id único) ──
+  const chartId='lineasChart_'+Date.now();
+
+  document.getElementById('resLineas').innerHTML=`
+    ${errores.length?`<div class="alert alert-warn fade">⚠ Sin datos de: ${errores.map(e=>e.split(':')[0]).join(', ')}</div>`:''}
+
+    <div class="tbl-wrap fade">
+      <div class="tbl-hdr">
+        <span class="tbl-title">📅 Resumen ${anio} — Consumo por Línea de Negocio</span>
+        <span class="tbl-count">${meses.length} ${meses.length===1?'mes':'meses'} · ${lineas.length} líneas</span>
+      </div>
+      <div class="resumen-wrap">
+        <table class="resumen-tbl">
+          <thead>
+            <tr>
+              <th style="text-align:left">Línea de Negocio</th>
+              ${thMeses}
+              <th style="background:#b45309">Total lts</th>
+              <th style="background:#b45309">%</th>
+            </tr>
+          </thead>
+          <tbody>${tableRows}</tbody>
+          <tfoot>
+            <tr>
+              <td style="text-align:left">TOTAL MES</td>
+              ${footCells}
+              <td class="resumen-total-col">${fmtN(granTotal)}</td>
+              <td>100%</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <div class="tbl-wrap fade" style="margin-top:16px;padding:24px 24px 20px">
+      <div class="tbl-hdr" style="padding:0 0 14px 0;border-bottom:1px solid var(--border);margin-bottom:20px">
+        <span class="tbl-title">📈 Evolución mensual por Línea de Negocio</span>
+        <span class="tbl-count">${anio}</span>
+      </div>
+      <div style="position:relative;height:320px">
+        <canvas id="${chartId}"></canvas>
+      </div>
+    </div>
+  `;
+
+  // ── Renderizar gráfico de líneas ──
+  const doChart=()=>{
+    const canvas=document.getElementById(chartId);
+    if(!canvas)return;
+    const datasets=lineas.map(l=>({
+      label:l,
+      data:meses.map(m=>+(matrix[l]?.[m]||0).toFixed(2)),
+      borderColor:lineaColor(l),
+      backgroundColor:lineaColor(l)+'22',
+      borderWidth:2.5,
+      pointRadius:4,
+      pointHoverRadius:6,
+      tension:0.3,
+      fill:false
+    }));
+    new Chart(canvas,{
+      type:'line',
+      data:{labels:meses.map(mesLabel),datasets},
+      options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        interaction:{mode:'index',intersect:false},
+        plugins:{
+          legend:{position:'bottom',labels:{font:{size:11},padding:14,usePointStyle:true,pointStyle:'circle'}},
+          tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmtN(ctx.raw)} lts`,footer:items=>`Total: ${fmtN(items.reduce((s,i)=>s+i.raw,0))} lts`}}
+        },
+        scales:{
+          x:{grid:{display:false},ticks:{font:{size:11}}},
+          y:{ticks:{font:{size:11},callback:v=>fmtN(v,0)},grid:{color:'#f0f4f8'},title:{display:true,text:'Litros',font:{size:11},color:'#94a3b8'}}
+        }
+      }
+    });
+  };
+  if(typeof Chart!=='undefined'){doChart();}
+  else{
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js';
+    s.onload=doChart;
+    document.head.appendChild(s);
+  }
+}
 
 async function cargarTotales(){
   const from=document.getElementById('totFrom').value,to=document.getElementById('totTo').value;
