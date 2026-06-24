@@ -1254,10 +1254,13 @@ function renderLineas(desp,errores,anio){
   const flotaMap={};
   FLOTA.forEach(v=>{ if(v.Interno) flotaMap[v.Interno]=v.LineaNegocio||'Sin línea'; });
 
-  // Para PLANTA: el vehículo está en receptorN (col G), no en interno (col J)
-  // Reasignar interno usando receptorN cuando interno=0
+  // Para PLANTA: el vehículo es receptorN (col G). Si no está en flotaMap, asignar línea fija.
+  const PLANTA_LINEA={742:'Estacion de SS',836:'Estacion de SS',794:'Estacion de SS'};
   desp=desp.map(d=>{
-    if(d.fuente==='PLANTA'&&!d.interno&&d.receptorN) return {...d,interno:d.receptorN};
+    if(d.fuente==='PLANTA'&&d.receptorN){
+      const int2=d.receptorN;
+      return {...d,interno:int2,_lineaForzada:flotaMap[int2]||PLANTA_LINEA[int2]||null};
+    }
     return d;
   });
 
@@ -1272,7 +1275,7 @@ function renderLineas(desp,errores,anio){
     const dt=new Date(d.fecha);
     if(isNaN(dt)||dt.getFullYear()!==anio)return;
     const mk=`${anio}-${String(dt.getMonth()+1).padStart(2,'0')}`;
-    const linea=flotaMap[d.interno]||(d.interno?'Sin línea':'Sin vehículo');
+    const linea=d._lineaForzada||flotaMap[d.interno]||(d.interno?'Sin línea':'Sin vehículo');
     if(!matrix[linea])matrix[linea]={};
     matrix[linea][mk]=(matrix[linea][mk]||0)+d.litros;
     totalesMes[mk]=(totalesMes[mk]||0)+d.litros;
