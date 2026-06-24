@@ -277,11 +277,11 @@
       </div>
       <div style="font-size:11px;color:var(--muted);margin-top:6px">o usá las fechas para un período personalizado</div>
     </div>
-    <div id="loadingLineas" class="loading"><div class="spinner"></div>Cargando datos por línea...</div>
+    <div id="loadingLineas" class="loading" style="display:none"><div class="spinner"></div>Cargando datos por línea...</div>
     <div id="resLineas"><div class="empty"><div class="empty-icon">🚛</div><div class="empty-title">Seleccioná un período</div></div></div>
   </div>
 
-    <!-- TAB VALORIZACIÓN -->
+  <!-- TAB VALORIZACIÓN -->
   <div id="tab-valorizacion" style="display:none">
     <div class="card">
       <div class="card-title">Precios de referencia por litro</div>
@@ -905,6 +905,7 @@ function selMesDrop(cid, fromId, toId) {
   document.getElementById(toId).value   = fmt(to);
   // Llamar al callback correcto
   if(cid==='mesTabs') cargarTotales();
+  else if(cid==='mesTabsLineas') cargarLineas();
   else if(cid==='mesTabsIng'){
     const from=document.getElementById(fromId).value;
     aplicarPreciosMes(from.slice(0,7));
@@ -948,7 +949,8 @@ function selValCC(cc){
   const now=new Date();
   document.getElementById('vehFrom').value=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
   document.getElementById('vehTo').value=now.toISOString().slice(0,10);
-  cargarFlota().then(()=>{
+  window._flotaPromise = cargarFlota();
+  window._flotaPromise.then(()=>{
     const inp=document.getElementById('vehSearch');
     inp.placeholder=FLOTA.length?`Buscar entre ${FLOTA.length} vehículos...`:'Ingresá patente o interno';
   });
@@ -1226,28 +1228,33 @@ function renderVeh(veh,desp,errores,from,to){
 // POR LÍNEA DE NEGOCIO
 // ═══════════════════════════════════
 async function cargarLineas(){
-  const from=document.getElementById('lineasFrom').value,to=document.getElementById('lineasTo').value;
+  if(window._flotaPromise) await window._flotaPromise;
+  const from=document.getElementById('lineasFrom').value;
+  const to=document.getElementById('lineasTo').value;
+  if(!from||!to){
+    document.getElementById('resLineas').innerHTML='<div class="empty"><div class="empty-icon">🚛</div><div class="empty-title">Seleccioná un período</div></div>';
+    return;
+  }
   let despachos,errores;
   if(cachedDespachos&&cachedFrom===from&&cachedTo===to){
-    despachos=cachedDespachos;errores=[];
+    despachos=cachedDespachos; errores=[];
   }else{
     document.getElementById('resLineas').innerHTML='';
     document.getElementById('loadingLineas').style.display='block';
     const res=await consultarTodo(from,to);
-    despachos=res.despachos;errores=res.errores;
-    cachedDespachos=despachos;cachedFrom=from;cachedTo=to;
+    despachos=res.despachos; errores=res.errores;
+    cachedDespachos=despachos; cachedFrom=from; cachedTo=to;
     document.getElementById('loadingLineas').style.display='none';
   }
-  document.getElementById('loadingLineas').style.display='none';
   renderLineas(despachos,errores,from,to);
 }
 
 function renderLineas(desp,errores,from,to){
-  // Mapa interno → linea de negocio
+  // Mapa interno → línea de negocio desde FLOTA
   const flotaMap={};
   FLOTA.forEach(v=>{ if(v.Interno) flotaMap[v.Interno]=v.LineaNegocio||'Sin línea'; });
 
-  // Agrupar por línea
+  // Agrupar despachos por línea
   const map={};
   desp.forEach(d=>{
     const linea=flotaMap[d.interno]||(d.interno?'Sin línea':'Sin vehículo');
@@ -1262,61 +1269,40 @@ function renderLineas(desp,errores,from,to){
   const total=desp.reduce((s,d)=>s+d.litros,0);
   const lineas=Object.keys(map).sort((a,b)=>map[b].lts-map[a].lts);
 
-  // Colores para líneas
+  if(!lineas.length){
+    document.getElementById('resLineas').innerHTML='<div class="empty"><div class="empty-icon">🚛</div><div class="empty-title">Sin datos para el período seleccionado</div></div>';
+    return;
+  }
+
   const LINEA_COLORS=['#1a5fa8','#1a7a4a','#5b21b6','#b45309','#b91c1c','#3a7d0a','#0891b2','#92400e','#374151'];
   const LINEA_BG    =['#e0f0ff','#e8f7ee','#f0eafe','#fff3e0','#fdecea','#f0fde4','#e0f9ff','#fef3c7','#f3f4f6'];
 
-  // Tabla resumen anual por línea
-  const anio=new Date().getFullYear();
+  // Detectar meses en el período
   const mesesSet=new Set();
   desp.forEach(d=>{
     if(!d.fecha)return;
     const dt=new Date(d.fecha);
     if(isNaN(dt))return;
-    mesesSet.add(\`\${dt.getFullYear()}-\${String(dt.getMonth()+1).padStart(2,'0')}\`);
+    mesesSet.add(`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`);
   });
   const meses=Array.from(mesesSet).sort();
   const mesLabel=m=>{const[y,mo]=m.split('-').map(Number);const l=new Date(y,mo-1,1).toLocaleString('es-AR',{month:'short'});return l.charAt(0).toUpperCase()+l.slice(1);};
 
-  // Matriz linea → mes → litros
+  // Matriz línea → mes → litros
   const matrix={};
   const totalesMes={};
   lineas.forEach(l=>{matrix[l]={};});
   meses.forEach(m=>{totalesMes[m]=0;});
-
   desp.forEach(d=>{
     if(!d.fecha)return;
     const dt=new Date(d.fecha);
     if(isNaN(dt))return;
-    const mk=\`\${dt.getFullYear()}-\${String(dt.getMonth()+1).padStart(2,'0')}\`;
+    const mk=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
     const linea=flotaMap[d.interno]||(d.interno?'Sin línea':'Sin vehículo');
     if(!matrix[linea])matrix[linea]={};
     matrix[linea][mk]=(matrix[linea][mk]||0)+d.litros;
     totalesMes[mk]=(totalesMes[mk]||0)+d.litros;
   });
-
-  if(!lineas.length){
-    document.getElementById('resLineas').innerHTML='<div class="empty"><div class="empty-icon">🚛</div><div class="empty-title">Sin datos para el período</div></div>';
-    return;
-  }
-
-  const thMeses=meses.map(m=>`<th>${mesLabel(m)}<div style="font-weight:500;font-size:10px;color:#94a3b8;margin-top:1px">lts</div></th>`).join('');
-
-  const tableRows=lineas.map((l,i)=>{
-    const c=LINEA_COLORS[i%LINEA_COLORS.length];
-    const bg=LINEA_BG[i%LINEA_BG.length];
-    const tot=meses.reduce((acc,m)=>acc+(matrix[l][m]||0),0);
-    const cells=meses.map(m=>{const v=matrix[l][m]||0;return`<td class="num${v===0?' zero':''}">${v===0?'—':fmtN(v)}</td>`;}).join('');
-    const pct=total?((tot/total)*100).toFixed(1)+'%':'—';
-    return`<tr>
-      <td><span class="sector-tag" style="background:${bg};color:${c}">${l}</span></td>
-      ${cells}
-      <td class="num resumen-total-col">${fmtN(tot)}</td>
-      <td class="num" style="color:var(--muted);font-size:11px">${pct}</td>
-    </tr>`;
-  }).join('');
-
-  const footCells=meses.map(m=>`<td>${fmtN(totalesMes[m]||0)}</td>`).join('');
 
   // Cards por línea
   const cards=lineas.map((l,i)=>{
@@ -1345,16 +1331,20 @@ function renderLineas(desp,errores,from,to){
     </div>`;
   }).join('');
 
-  document.getElementById('resLineas').innerHTML=`
-    ${errores.length?`<div class="alert alert-warn fade">⚠ Sin datos de: ${errores.map(e=>e.split(':')[0]).join(', ')}</div>`:''}
-    <div style="font-size:12px;color:var(--muted);margin-bottom:12px;font-weight:500">Período: <strong style="color:var(--txt)">${fmtDate(from)} → ${fmtDate(to)}</strong></div>
-    <div class="kpi-grid fade">
-      <div class="kpi accent"><div class="kpi-lbl">Total litros</div><div class="kpi-val">${fmtN(total)}</div><div class="kpi-unit">${desp.length} despachos</div></div>
-      <div class="kpi"><div class="kpi-lbl">Líneas activas</div><div class="kpi-val">${lineas.length}</div><div class="kpi-unit">con despachos</div></div>
-    </div>
-    <div class="sectores-grid fade">${cards}</div>
-    ${meses.length>1?`
-    <div class="tbl-wrap fade" style="margin-top:20px">
+  // Tabla mensual (solo si hay más de un mes)
+  let tablaHTML='';
+  if(meses.length>1){
+    const thMeses=meses.map(m=>`<th>${mesLabel(m)}<div style="font-weight:500;font-size:10px;color:#94a3b8;margin-top:1px">lts</div></th>`).join('');
+    const tableRows=lineas.map((l,i)=>{
+      const c=LINEA_COLORS[i%LINEA_COLORS.length];
+      const bg=LINEA_BG[i%LINEA_BG.length];
+      const tot=meses.reduce((acc,m)=>acc+(matrix[l][m]||0),0);
+      const cells=meses.map(m=>{const v=matrix[l][m]||0;return`<td class="num${v===0?' zero':''}">${v===0?'—':fmtN(v)}</td>`;}).join('');
+      const pct=total?((tot/total)*100).toFixed(1)+'%':'—';
+      return`<tr><td><span class="sector-tag" style="background:${bg};color:${c}">${l}</span></td>${cells}<td class="num resumen-total-col">${fmtN(tot)}</td><td class="num" style="color:var(--muted);font-size:11px">${pct}</td></tr>`;
+    }).join('');
+    const footCells=meses.map(m=>`<td>${fmtN(totalesMes[m]||0)}</td>`).join('');
+    tablaHTML=`<div class="tbl-wrap fade" style="margin-top:20px">
       <div class="tbl-hdr">
         <span class="tbl-title">📅 Consumo mensual por Línea de Negocio</span>
         <span class="tbl-count">${meses.length} meses · ${lineas.length} líneas</span>
@@ -1366,7 +1356,18 @@ function renderLineas(desp,errores,from,to){
           <tfoot><tr><td style="text-align:left">TOTAL MES</td>${footCells}<td colspan="2"></td></tr></tfoot>
         </table>
       </div>
-    </div>`:''}
+    </div>`;
+  }
+
+  document.getElementById('resLineas').innerHTML=`
+    ${errores.length?`<div class="alert alert-warn fade">⚠ Sin datos de: ${errores.map(e=>e.split(':')[0]).join(', ')}</div>`:''}
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px;font-weight:500">Período: <strong style="color:var(--txt)">${fmtDate(from)} → ${fmtDate(to)}</strong></div>
+    <div class="kpi-grid fade">
+      <div class="kpi accent"><div class="kpi-lbl">Total litros</div><div class="kpi-val">${fmtN(total)}</div><div class="kpi-unit">${desp.length} despachos</div></div>
+      <div class="kpi"><div class="kpi-lbl">Líneas activas</div><div class="kpi-val">${lineas.length}</div><div class="kpi-unit">con despachos</div></div>
+    </div>
+    <div class="sectores-grid fade">${cards}</div>
+    ${tablaHTML}
   `;
 }
 
