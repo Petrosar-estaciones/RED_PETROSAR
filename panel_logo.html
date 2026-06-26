@@ -322,7 +322,7 @@ body {
       <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
       <input class="search-input" type="text" id="buscar" placeholder="Buscar módulo o sección..." oninput="filtrar(this.value)" autocomplete="off">
     </div>
-    <div class="count-pill">Mostrando <strong id="count">3</strong> de 3</div>
+    <div class="count-pill">Mostrando <strong id="count">5</strong> de 5</div>
   </div>
 
   <div class="section-label">Módulos del sistema</div>
@@ -441,6 +441,8 @@ body {
   document.getElementById('footer-year').textContent = yr;
   document.getElementById('footer-date').textContent = dateStr;
   document.getElementById('topbar-date').textContent = dateStr;
+
+  const totalCards = document.querySelectorAll('.card').length;
 
   function filtrar(q) {
     const cards = document.querySelectorAll('.card');
