@@ -9,7 +9,7 @@
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.js"></script>
+<script src="https://unpkg.com/chart.js@4.4.4/dist/chart.umd.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{background:#f2f4f7;font-family:'DM Sans',sans-serif;color:#1e293b;min-height:100vh;overflow-x:hidden}
@@ -810,16 +810,22 @@ function App(){
     return ()=>clearInterval(interval);
   },[syncTodo]);
 
-  async function fetchClientes(mes){
+  async function fetchClientes(mes, esFallback){
     const m=mes||mesActual();
     setMesSeleccionado(m);
     setLoadingClientes(true);
+    let data=null;
     try{
       const res=await fetch(GAS_URL_ESTACIONES+"?action=getClientes&mes="+m+"&nocache="+Date.now());
-      const data=await res.json();
+      data=await res.json();
       setClientesData(data);
     }catch(e){console.error("Error clientes",e);}
     finally{setLoadingClientes(false);}
+    // Si el mes pedido no tiene datos reales, caer al último mes disponible (una sola vez)
+    if(!esFallback && data?.mesesDisponibles?.length && !data.mesesDisponibles.includes(m)){
+      const ultimo=data.mesesDisponibles[data.mesesDisponibles.length-1];
+      fetchClientes(ultimo, true);
+    }
   }
 
   useEffect(()=>{ if(tab==="despachos") fetchClientes(mesActual()); },[tab]);
