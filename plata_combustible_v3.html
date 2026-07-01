@@ -741,6 +741,9 @@ function App(){
   // ── Propio Petrosar vs Clientes ──
   const [pcTipo,setPcTipo]=useState("torta"); // torta | barra
   const [pcMes,setPcMes]=useState(mesActual);
+  const [pcCache,setPcCache]=useState({}); // mes("YYYY-MM") → respuesta cruda de action=getClientes
+  const [pcMesesDisponibles,setPcMesesDisponibles]=useState([]);
+  const [pcLoading,setPcLoading]=useState(false);
 
   // Ctrl+Shift+K activa/desactiva el panel Config
   useEffect(()=>{
@@ -822,46 +825,77 @@ function App(){
     return Object.entries(mapa).map(([cliente,litros])=>({cliente,litros:Math.round(litros)})).sort((a,b)=>b.litros-a.litros).slice(0,10);
   },[plantaData,mesSeleccionado]);
 
-  // ── Propio Petrosar vs Clientes: AG/TP/VH/CD, agrupado por mes ──
-  // Un despacho es "propio" si su campo cliente contiene "PETROSAR" (mismo criterio que flota_petrosar_v6)
-  const pcPorEstacion=useMemo(()=>{
-    const estMap=[
-      {key:"ANTICLINAL", nombre:"Anticlinal Grande"},
-      {key:"TRESPICOS",  nombre:"Tres Picos"},
-      {key:"VALLE",      nombre:"Valle Hermoso"},
-      {key:"ESTACIONCD", nombre:"Estación CD"},
-    ];
-    return estMap.map(e=>{
-      const cfg=ESTACIONES_CONFIG[e.key];
-      const despachos=dataPorEst[e.key]?.despachos||[];
-      const porMes={};
-      despachos.forEach(d=>{
-        const mes=fechaAMes(d.fecha);
-        if(!mes) return;
-        if(!porMes[mes]) porMes[mes]={propio:0,clientes:0};
-        const esPropio=String(d.cliente||"").toUpperCase().includes("PETROSAR");
-        if(esPropio) porMes[mes].propio+=(d.litros||0);
-        else porMes[mes].clientes+=(d.litros||0);
-      });
-      return {key:e.key, nombre:e.nombre, color:cfg.color, porMes};
-    });
-  },[dataPorEst]);
-
+  // ── Propio Petrosar vs Clientes: usa la misma acción getClientes que la solapa Despachos,
+  // porque getDespachos (dataPorEst) no trae el detalle de cliente por registro, solo totales por tanque.
+  // "PETROSAR" como nombre de cliente = consumo propio de flota (mismo criterio que flota_petrosar_v6).
+  const PC_KEYS=[
+    {key:"AG", nombre:"Anticlinal Grande", color:"#e87030"},
+    {key:"TP", nombre:"Tres Picos",        color:"#3a8fd4"},
+    {key:"VH", nombre:"Valle Hermoso",     color:"#8b5cf6"},
+    {key:"CD", nombre:"Estación CD",       color:"#20c0a0"},
+  ];
   const PC_COLOR_PROPIO="#1a5fa8", PC_COLOR_CLIENTES="#e8a020";
 
-  const pcMesesDisponibles=useMemo(()=>{
-    const set=new Set();
-    pcPorEstacion.forEach(e=>Object.keys(e.porMes).forEach(m=>set.add(m)));
-    return [...set].sort();
-  },[pcPorEstacion]);
+  const fetchPcMes=React.useCallback((mes)=>{
+    setPcCache(prev=>{
+      if(prev[mes]) return prev; // ya está en caché, no refetch
+      return prev;
+    });
+    return fetch(GAS_URL_ESTACIONES+"?action=getClientes&mes="+mes+"&nocache="+Date.now())
+      .then(r=>r.json())
+      .then(d=>{
+        setPcCache(prev=>({...prev,[mes]:d}));
+        if(d.mesesDisponibles) setPcMesesDisponibles(d.mesesDisponibles);
+        return d;
+      })
+      .catch(()=>null);
+  },[]);
 
-  const pcUltimosMeses=useMemo(()=>pcMesesDisponibles.slice(-6),[pcMesesDisponibles]);
+  // Cargar mes actual al entrar a la solapa (además de traer mesesDisponibles)
+  useEffect(()=>{
+    if(tab!=="propioclientes") return;
+    if(!pcCache[mesActual()]){
+      setPcLoading(true);
+      fetchPcMes(mesActual()).finally(()=>setPcLoading(false));
+    }
+  },[tab]);
 
+  // En modo barra, traer los últimos 6 meses disponibles que falten en caché
+  useEffect(()=>{
+    if(tab!=="propioclientes"||pcTipo!=="barra"||pcMesesDisponibles.length===0) return;
+    const faltantes=pcMesesDisponibles.slice(-6).filter(m=>!pcCache[m]);
+    if(faltantes.length===0) return;
+    setPcLoading(true);
+    Promise.all(faltantes.map(fetchPcMes)).finally(()=>setPcLoading(false));
+  },[tab,pcTipo,pcMesesDisponibles]);
+
+  // En modo torta, traer el mes seleccionado si falta
+  useEffect(()=>{
+    if(tab!=="propioclientes"||pcTipo!=="torta"||!pcMes||pcCache[pcMes]) return;
+    setPcLoading(true);
+    fetchPcMes(pcMes).finally(()=>setPcLoading(false));
+  },[tab,pcTipo,pcMes]);
+
+  // Ajustar pcMes a un mes con datos reales apenas conocemos mesesDisponibles
   useEffect(()=>{
     if(pcMesesDisponibles.length&&!pcMesesDisponibles.includes(pcMes)){
       setPcMes(pcMesesDisponibles[pcMesesDisponibles.length-1]);
     }
   },[pcMesesDisponibles]);
+
+  const pcUltimosMeses=useMemo(()=>pcMesesDisponibles.slice(-6),[pcMesesDisponibles]);
+
+  /* Dado el mes y el código de punto (AG/TP/VH/CD), separa propio vs clientes
+     buscando dentro de la lista de clientes de ese mes la fila "PETROSAR" */
+  function pcEstado(mes,key){
+    const d=pcCache[mes];
+    if(!d) return {propio:0,clientes:0,total:0,cargado:false};
+    const lista=d[key]||[];
+    const total=d[key+"_total"]||0;
+    const propioItem=lista.find(it=>String(it.cliente||"").toUpperCase().includes("PETROSAR"));
+    const propio=propioItem?propioItem.litros:0;
+    return {propio, clientes:Math.max(0,total-propio), total, cargado:true};
+  }
 
   // Cargar config de estaciones desde Sheets al inicio
   useEffect(()=>{
@@ -1239,12 +1273,6 @@ function App(){
                 <div style={{fontFamily:"'Bebas Neue'",fontSize:26,letterSpacing:3,color:"#1e293b",lineHeight:1}}>
                   Despachos por Estación
                 </div>
-                <div style={{fontFamily:"'DM Mono'",fontSize:11,color:"#16a34a",marginTop:4,display:"flex",alignItems:"center",gap:8}}>
-                  <span>📅 {mesLabel(mesSeleccionado)}</span>
-                  {mesSeleccionado===mesActual()
-                    ?<span style={{background:"#dcfce7",color:"#16a34a",padding:"2px 8px",borderRadius:4,fontSize:10}}>mes en curso</span>
-                    :<span style={{background:"#fef3c7",color:"#d97706",padding:"2px 8px",borderRadius:4,fontSize:10}}>mes anterior</span>}
-                </div>
               </div>
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
                 <select
@@ -1412,7 +1440,7 @@ function App(){
             </div>
 
             {/* leyenda compartida */}
-            <div style={{display:"flex",gap:18,marginBottom:16}}>
+            <div style={{display:"flex",gap:18,marginBottom:16,alignItems:"center"}}>
               <div style={{display:"flex",alignItems:"center",gap:6}}>
                 <span style={{width:10,height:10,borderRadius:"50%",background:PC_COLOR_PROPIO}}/>
                 <span style={{fontFamily:"'DM Mono'",fontSize:11,color:"#64748b"}}>Propio Petrosar (flota)</span>
@@ -1421,25 +1449,21 @@ function App(){
                 <span style={{width:10,height:10,borderRadius:"50%",background:PC_COLOR_CLIENTES}}/>
                 <span style={{fontFamily:"'DM Mono'",fontSize:11,color:"#64748b"}}>Clientes</span>
               </div>
+              {pcLoading&&<span className="spin" style={{fontSize:13,color:"#94a3b8"}}>⟳</span>}
             </div>
 
-            {pcMesesDisponibles.length===0&&(
-              <div style={{textAlign:"center",padding:60,color:"#94a3b8",fontFamily:"'DM Mono'",fontSize:12}}>
-                Todavía no hay despachos sincronizados para AG/TP/VH/CD.
-              </div>
-            )}
-
-            {pcMesesDisponibles.length>0&&pcTipo==="torta"&&(
+            {pcTipo==="torta"&&(
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:16}}>
-                {pcPorEstacion.map(e=>{
-                  const d=e.porMes[pcMes]||{propio:0,clientes:0};
-                  const total=d.propio+d.clientes;
-                  const pctPropio=total>0?(d.propio/total*100):0;
-                  const pctClientes=total>0?(d.clientes/total*100):0;
+                {PC_KEYS.map(e=>{
+                  const d=pcEstado(pcMes,e.key);
                   return(
                     <div key={e.key} style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:14,padding:"16px 16px 4px",boxShadow:"0 1px 6px rgba(0,0,0,.05)"}}>
                       <div style={{fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:1.5,color:e.color,marginBottom:8,textAlign:"center"}}>{e.nombre}</div>
-                      {total>0?(
+                      {!d.cargado?(
+                        <div style={{height:160,display:"flex",alignItems:"center",justifyContent:"center",color:"#cbd5e1",fontFamily:"'DM Mono'",fontSize:11}}>
+                          <span className="spin" style={{fontSize:18}}>⟳</span>
+                        </div>
+                      ):d.total>0?(
                         <ChartJS type="doughnut" height={160}
                           data={{
                             labels:["Propio Petrosar","Clientes"],
@@ -1449,7 +1473,7 @@ function App(){
                             cutout:"62%",
                             plugins:{
                               legend:{display:false},
-                              tooltip:{callbacks:{label:c=>` ${c.label}: ${fmt(c.parsed)} L (${(c.parsed/total*100).toFixed(1)}%)`}},
+                              tooltip:{callbacks:{label:c=>` ${c.label}: ${fmt(c.parsed)} L (${(c.parsed/d.total*100).toFixed(1)}%)`}},
                             },
                           }}/>
                       ):(
@@ -1457,11 +1481,11 @@ function App(){
                       )}
                       <div style={{display:"flex",justifyContent:"space-around",padding:"10px 0",borderTop:"1px solid #f1f5f9",marginTop:8}}>
                         <div style={{textAlign:"center"}}>
-                          <div style={{fontFamily:"'Bebas Neue'",fontSize:18,color:PC_COLOR_PROPIO}}>{pctPropio.toFixed(1)}%</div>
+                          <div style={{fontFamily:"'Bebas Neue'",fontSize:18,color:PC_COLOR_PROPIO}}>{d.total>0?(d.propio/d.total*100).toFixed(1):"0.0"}%</div>
                           <div style={{fontFamily:"'DM Mono'",fontSize:9,color:"#94a3b8"}}>{fmt(d.propio)} L</div>
                         </div>
                         <div style={{textAlign:"center"}}>
-                          <div style={{fontFamily:"'Bebas Neue'",fontSize:18,color:PC_COLOR_CLIENTES}}>{pctClientes.toFixed(1)}%</div>
+                          <div style={{fontFamily:"'Bebas Neue'",fontSize:18,color:PC_COLOR_CLIENTES}}>{d.total>0?(d.clientes/d.total*100).toFixed(1):"0.0"}%</div>
                           <div style={{fontFamily:"'DM Mono'",fontSize:9,color:"#94a3b8"}}>{fmt(d.clientes)} L</div>
                         </div>
                       </div>
@@ -1471,50 +1495,52 @@ function App(){
               </div>
             )}
 
-            {pcMesesDisponibles.length>0&&pcTipo==="barra"&&(
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:16}}>
-                {pcPorEstacion.map(e=>{
-                  const pctPropioArr=pcUltimosMeses.map(m=>{
-                    const d=e.porMes[m]; const t=d?d.propio+d.clientes:0;
-                    return t>0?+(d.propio/t*100).toFixed(1):0;
-                  });
-                  const pctClientesArr=pcUltimosMeses.map(m=>{
-                    const d=e.porMes[m]; const t=d?d.propio+d.clientes:0;
-                    return t>0?+(d.clientes/t*100).toFixed(1):0;
-                  });
-                  const litrosArr=pcUltimosMeses.map(m=>e.porMes[m]||{propio:0,clientes:0});
-                  return(
-                    <div key={e.key} style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:14,padding:"16px"}}>
-                      <div style={{fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:1.5,color:e.color,marginBottom:8}}>{e.nombre}</div>
-                      <ChartJS type="bar" height={220}
-                        data={{
-                          labels:pcUltimosMeses.map(mesLabelCorto),
-                          datasets:[
-                            {label:"Propio Petrosar", data:pctPropioArr, backgroundColor:PC_COLOR_PROPIO, stack:"s"},
-                            {label:"Clientes", data:pctClientesArr, backgroundColor:PC_COLOR_CLIENTES, stack:"s"},
-                          ],
-                        }}
-                        options={{
-                          plugins:{
-                            legend:{display:false},
-                            tooltip:{callbacks:{label:c=>{
-                              const idx=c.dataIndex, l=litrosArr[idx];
-                              const lts=c.dataset.label==="Propio Petrosar"?l.propio:l.clientes;
-                              return ` ${c.dataset.label}: ${c.parsed.y}% (${fmt(lts)} L)`;
-                            }}},
-                          },
-                          scales:{
-                            x:{stacked:true,grid:{display:false},ticks:{font:{family:"'DM Mono'",size:9}}},
-                            y:{stacked:true,min:0,max:100,grid:{color:"#f1f5f9"},ticks:{font:{family:"'DM Mono'",size:9},callback:v=>v+"%"}},
-                          },
-                        }}/>
-                    </div>
-                  );
-                })}
-              </div>
+            {pcTipo==="barra"&&(
+              pcUltimosMeses.length===0?(
+                <div style={{textAlign:"center",padding:60,color:"#94a3b8",fontFamily:"'DM Mono'",fontSize:12}}>
+                  <span className="spin" style={{fontSize:20,display:"block",marginBottom:12}}>⟳</span>
+                  Cargando meses disponibles...
+                </div>
+              ):(
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:16}}>
+                  {PC_KEYS.map(e=>{
+                    const estados=pcUltimosMeses.map(m=>pcEstado(m,e.key));
+                    const pctPropioArr=estados.map(d=>d.total>0?+(d.propio/d.total*100).toFixed(1):0);
+                    const pctClientesArr=estados.map(d=>d.total>0?+(d.clientes/d.total*100).toFixed(1):0);
+                    return(
+                      <div key={e.key} style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:14,padding:"16px"}}>
+                        <div style={{fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:1.5,color:e.color,marginBottom:8}}>{e.nombre}</div>
+                        <ChartJS type="bar" height={220}
+                          data={{
+                            labels:pcUltimosMeses.map(mesLabelCorto),
+                            datasets:[
+                              {label:"Propio Petrosar", data:pctPropioArr, backgroundColor:PC_COLOR_PROPIO, stack:"s"},
+                              {label:"Clientes", data:pctClientesArr, backgroundColor:PC_COLOR_CLIENTES, stack:"s"},
+                            ],
+                          }}
+                          options={{
+                            plugins:{
+                              legend:{display:false},
+                              tooltip:{callbacks:{label:c=>{
+                                const idx=c.dataIndex, d=estados[idx];
+                                const lts=c.dataset.label==="Propio Petrosar"?d.propio:d.clientes;
+                                return ` ${c.dataset.label}: ${c.parsed.y}% (${fmt(lts)} L)`;
+                              }}},
+                            },
+                            scales:{
+                              x:{stacked:true,grid:{display:false},ticks:{font:{family:"'DM Mono'",size:9}}},
+                              y:{stacked:true,min:0,max:100,grid:{color:"#f1f5f9"},ticks:{font:{family:"'DM Mono'",size:9},callback:v=>v+"%"}},
+                            },
+                          }}/>
+                      </div>
+                    );
+                  })}
+                </div>
+              )
             )}
           </div>
         )}
+
 
         {/* ── INGRESOS ── */}
         {tab==="ingresos"&&(
