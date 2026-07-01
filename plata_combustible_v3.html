@@ -1152,8 +1152,8 @@ function App(){
 
           {/* tabs */}
           <div className="header-tabs" style={{display:"flex",marginLeft:12,borderLeft:"1px solid #e2e8f0",paddingLeft:12,gap:2,flexShrink:0}}>
-            {[["dashboard","Dashboard"],["despachos","Despachos"],["propioclientes","Propio vs Clientes"],["ingresos","Ingresos"],...(configVisible?[["config","Config"]]:[])].map(([k,label])=>(
-              <button key={k} onClick={()=>setTab(k)} style={{background:tab===k?"#f1f5f9":"transparent",border:"none",borderRadius:6,color:tab===k?"#1e293b":"#94a3b8",fontFamily:"'DM Mono'",fontSize:10,letterSpacing:.5,padding:"6px 8px",cursor:"pointer",textTransform:"uppercase",transition:"all .15s",fontWeight:tab===k?600:400,whiteSpace:"nowrap"}}>
+            {[["dashboard","Dashboard"],["despachos","Despachos"],["propioclientes","Petrosar vs Clientes"],["ingresos","Ingresos"],...(configVisible?[["config","Config"]]:[])].map(([k,label])=>(
+              <button key={k} onClick={()=>setTab(k)} style={k==="propioclientes"?{background:"#fbbf24",border:"none",borderRadius:6,color:"#dc2626",fontFamily:"'DM Mono'",fontSize:10,letterSpacing:.5,padding:"6px 10px",cursor:"pointer",textTransform:"uppercase",transition:"all .15s",fontWeight:700,whiteSpace:"nowrap",boxShadow:tab===k?"inset 0 0 0 2px #dc2626":"none"}:{background:tab===k?"#f1f5f9":"transparent",border:"none",borderRadius:6,color:tab===k?"#1e293b":"#94a3b8",fontFamily:"'DM Mono'",fontSize:10,letterSpacing:.5,padding:"6px 8px",cursor:"pointer",textTransform:"uppercase",transition:"all .15s",fontWeight:tab===k?600:400,whiteSpace:"nowrap"}}>
                 {label}
               </button>
             ))}
@@ -1164,8 +1164,13 @@ function App(){
       {/* TABS MÓVIL — segunda fila, solo visible en celular */}
       <div className="header-tabs-mobile" style={{display:"none",borderBottom:"1px solid #e2e8f0",background:"#fff",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
         <div style={{display:"flex",minWidth:"max-content",padding:"0 8px"}}>
-          {[["dashboard","📊 Dashboard"],["despachos","📦 Despachos"],["propioclientes","⚖️ Propio/Clientes"],["ingresos","📥 Ingresos"],...(configVisible?[["config","⚙️ Config"]]:[])].map(([k,label])=>(
-            <button key={k} onClick={()=>setTab(k)} style={{
+          {[["dashboard","📊 Dashboard"],["despachos","📦 Despachos"],["propioclientes","💰 Petrosar vs Clientes"],["ingresos","📥 Ingresos"],...(configVisible?[["config","⚙️ Config"]]:[])].map(([k,label])=>(
+            <button key={k} onClick={()=>setTab(k)} style={k==="propioclientes"?{
+              background:"#fbbf24",border:"none",borderRadius:6,margin:"6px 4px",
+              color:"#dc2626",fontFamily:"'DM Mono'",fontSize:11,fontWeight:700,
+              letterSpacing:.5,padding:"10px 14px",cursor:"pointer",textTransform:"uppercase",
+              whiteSpace:"nowrap",transition:"all .15s",boxShadow:tab===k?"inset 0 0 0 2px #dc2626":"none"
+            }:{
               background:"transparent",border:"none",borderBottom:`2.5px solid ${tab===k?"#e87030":"transparent"}`,
               color:tab===k?"#e87030":"#94a3b8",fontFamily:"'DM Mono'",fontSize:11,
               letterSpacing:.5,padding:"10px 14px",cursor:"pointer",textTransform:"uppercase",
@@ -1218,46 +1223,10 @@ function App(){
 
             {/* Cards de estaciones */}
             <div className="est-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:16}}>
-              {Object.keys(ESTACIONES_CONFIG).map((estId,i)=>(
+              {["PLANTAGRANEL","ESTACIONCD","VALLE","TRESPICOS","ANTICLINAL","BASECR","RESERO"].map((estId,i)=>(
                 <EstacionCard key={estId} est={estId} data={estId==="PLANTAGRANEL"?plantaData:dataPorEst[estId]} ingresos={ingresos} stockInicial={stockInicial} onUpload={handleUpload} uploading={uploading[estId]} idx={i} plantaData={plantaData} onSyncPlanta={handleSyncPlanta} plantaLoading={plantaLoading} alarmas={alarmas} baseCRData={baseCRData} onSyncBaseCR={handleSyncBaseCR} baseCRLoading={baseCRLoading} onSyncEst={handleSyncEst} estLoading={estLoading} clientesData={clientesData} reseroMes={reseroMes} baseCRMes={baseCRMes}/>
               ))}
             </div>
-
-            {/* Gráfico de barras — despachos mes actual por estación */}
-            {clientesData&&(
-              <div style={{marginTop:24,background:"#fff",border:"1px solid #e2e8f0",borderRadius:14,padding:"20px 24px",boxShadow:"0 1px 6px rgba(0,0,0,.05)"}}>
-                <div style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",marginBottom:20}}>
-                  <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2,color:"#1e293b"}}>Despachos {mesLabel(mesActual())} por estación</div>
-                  <div style={{fontFamily:"'DM Mono'",fontSize:10,color:"#94a3b8"}}>mes en curso</div>
-                </div>
-                {(()=>{
-                  const barras=[
-                    {nombre:"Anticlinal",  color:"#e87030", val:clientesData.AG_total||0},
-                    {nombre:"Tres Picos",  color:"#3a8fd4", val:clientesData.TP_total||0},
-                    {nombre:"Resero",      color:"#2aaa6a", val:reseroMes||0},
-                    {nombre:"Valle Herm.", color:"#a060e0", val:clientesData.VH_total||0},
-                    {nombre:"Base CR",     color:"#0a9888", val:baseCRMes||0},
-                    {nombre:"Planta",      color:"#e8a020", val:plantaData?.despachoExternoMes??plantaData?.despachoExterno??0},
-                    {nombre:"Est. CD",     color:"#20c0a0", val:clientesData.CD_total||0},
-                  ].sort((a,b)=>b.val-a.val);
-                  const maxVal=Math.max(...barras.map(b=>b.val),1);
-                  return(
-                    <div style={{display:"flex",gap:10,alignItems:"flex-end",height:120}}>
-                      {barras.map((b,i)=>{
-                        const h=Math.max((b.val/maxVal)*100,2);
-                        return(
-                          <div key={b.nombre} className="fu" style={{animationDelay:`${i*0.08}s`,flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:5}}>
-                            <div style={{fontFamily:"'DM Mono'",fontSize:10,color:b.color,fontWeight:700,textAlign:"center"}}>{fmt(b.val)}</div>
-                            <div style={{width:"100%",height:`${h}%`,background:`linear-gradient(180deg,${b.color},${b.color}55)`,borderRadius:"6px 6px 0 0",minHeight:4,transition:"height .8s cubic-bezier(.4,0,.2,1)",boxShadow:`0 -2px 8px ${b.color}33`}}/>
-                            <div style={{fontFamily:"'DM Mono'",fontSize:9,color:"#64748b",letterSpacing:.5,textAlign:"center",lineHeight:1.3}}>{b.nombre}</div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
-              </div>
-            )}
           </div>
         )}
 
@@ -1280,9 +1249,7 @@ function App(){
                     <option key={m} value={m}>{mesLabel(m)}{m===mesActual()?" (actual)":""}</option>
                   ))}
                 </select>
-                <button onClick={()=>fetchClientes(mesSeleccionado)} style={{background:"#3a8fd4",border:"none",borderRadius:8,color:"#fff",fontFamily:"'DM Mono'",fontSize:11,letterSpacing:1,padding:"9px 14px",cursor:"pointer",textTransform:"uppercase",display:"flex",alignItems:"center",gap:6}}>
-                  {loadingClientes?<span className="spin">⟳</span>:"↻"} {loadingClientes?"Cargando...":"Actualizar"}
-                </button>
+                {loadingClientes&&<span className="spin" style={{fontSize:16,color:"#3a8fd4"}}>⟳</span>}
               </div>
             </div>
 
