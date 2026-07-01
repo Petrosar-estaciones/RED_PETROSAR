@@ -9,7 +9,6 @@
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
-<script src="https://unpkg.com/chart.js@4.4.4/dist/chart.umd.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{background:#f2f4f7;font-family:'DM Sans',sans-serif;color:#1e293b;min-height:100vh;overflow-x:hidden}
@@ -674,38 +673,23 @@ function EstacionCard({est,data,ingresos,stockInicial,onUpload,uploading,idx,pla
   );
 }
 
-/* Wrapper genérico para gráficos Chart.js (torta, doughnut, barra apilada, etc.) */
-function ChartJS({type,data,options,height=200}){
-  const canvasRef=useRef();
-  const chartRef=useRef(null);
-  const [libError,setLibError]=useState(false);
-  const dataKey=JSON.stringify(data);
-  const optKey=JSON.stringify(options);
-  useEffect(()=>{
-    let intentos=0;
-    let cancelado=false;
-    const intentar=()=>{
-      if(cancelado) return;
-      if(!canvasRef.current) return;
-      if(!window.Chart){
-        intentos++;
-        if(intentos>20){ setLibError(true); return; } // ~5s sin cargar
-        setTimeout(intentar,250);
-        return;
-      }
-      setLibError(false);
-      if(chartRef.current) chartRef.current.destroy();
-      chartRef.current=new window.Chart(canvasRef.current,{type,data,options});
-    };
-    intentar();
-    return ()=>{ cancelado=true; if(chartRef.current){ chartRef.current.destroy(); chartRef.current=null; } };
-  },[type,dataKey,optKey]);
-  if(libError){
-    return <div style={{height,display:"flex",alignItems:"center",justifyContent:"center",color:"#cbd5e1",fontFamily:"'DM Mono'",fontSize:10,textAlign:"center",padding:8}}>
-      No se pudo cargar la librería de gráficos (Chart.js). Revisá tu conexión o si el CDN está bloqueado.
-    </div>;
-  }
-  return <div style={{height,position:"relative"}}><canvas ref={canvasRef}/></div>;
+/* Donut de 2 segmentos en SVG puro (sin dependencias externas) */
+function DonutDosSegmentos({pct,colorA,colorB,size=150,strokeWidth=24}){
+  const r=(size-strokeWidth)/2;
+  const circ=2*Math.PI*r;
+  const cx=size/2, cy=size/2;
+  const largoA=circ*(Math.max(0,Math.min(100,pct))/100);
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke={colorB} strokeWidth={strokeWidth}/>
+      {largoA>0&&(
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke={colorA} strokeWidth={strokeWidth}
+          strokeDasharray={`${largoA} ${circ-largoA}`}
+          transform={`rotate(-90 ${cx} ${cy})`}
+          style={{transition:"stroke-dasharray .6s ease"}}/>
+      )}
+    </svg>
+  );
 }
 
 function DonutGauge({value,max,color,size=120}){
@@ -758,7 +742,6 @@ function App(){
   const [mesSeleccionado,setMesSeleccionado]=useState(mesActual);
   const [configVisible,setConfigVisible]=useState(false);
   // ── Propio Petrosar vs Clientes ──
-  const [pcTipo,setPcTipo]=useState("torta"); // torta | barra
   const [pcMes,setPcMes]=useState(mesActual);
   const [pcCache,setPcCache]=useState({}); // mes("YYYY-MM") → respuesta cruda de action=getClientes
   const [pcMesesDisponibles,setPcMesesDisponibles]=useState([]);
@@ -885,21 +868,12 @@ function App(){
     }
   },[tab]);
 
-  // En modo barra, traer los últimos 6 meses disponibles que falten en caché
-  useEffect(()=>{
-    if(tab!=="propioclientes"||pcTipo!=="barra"||pcMesesDisponibles.length===0) return;
-    const faltantes=pcMesesDisponibles.slice(-6).filter(m=>!pcCache[m]);
-    if(faltantes.length===0) return;
-    setPcLoading(true);
-    Promise.all(faltantes.map(fetchPcMes)).finally(()=>setPcLoading(false));
-  },[tab,pcTipo,pcMesesDisponibles]);
-
   // En modo torta, traer el mes seleccionado si falta
   useEffect(()=>{
-    if(tab!=="propioclientes"||pcTipo!=="torta"||!pcMes||pcCache[pcMes]) return;
+    if(tab!=="propioclientes"||!pcMes||pcCache[pcMes]) return;
     setPcLoading(true);
     fetchPcMes(pcMes).finally(()=>setPcLoading(false));
-  },[tab,pcTipo,pcMes]);
+  },[tab,pcMes]);
 
   // Ajustar pcMes a un mes con datos reales apenas conocemos mesesDisponibles
   useEffect(()=>{
@@ -907,8 +881,6 @@ function App(){
       setPcMes(pcMesesDisponibles[pcMesesDisponibles.length-1]);
     }
   },[pcMesesDisponibles]);
-
-  const pcUltimosMeses=useMemo(()=>pcMesesDisponibles.slice(-6),[pcMesesDisponibles]);
 
   /* Dado el mes y el código de punto (AG/TP/VH/CD), separa propio vs clientes
      buscando dentro de la lista de clientes de ese mes la fila "PETROSAR" */
@@ -1442,26 +1414,15 @@ function App(){
                   Anticlinal · Tres Picos · Valle Hermoso · Estación CD
                 </div>
               </div>
-              <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-                {pcTipo==="torta"&&(
-                  <select
-                    value={pcMes}
-                    onChange={e=>setPcMes(e.target.value)}
-                    style={{fontFamily:"'DM Mono'",fontSize:12,fontWeight:600,padding:"8px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",background:"#fff",color:"#1e293b",cursor:"pointer"}}>
-                    {pcMesesDisponibles.length===0&&<option value={pcMes}>{mesLabel(pcMes)}</option>}
-                    {pcMesesDisponibles.map(m=>(
-                      <option key={m} value={m}>{mesLabel(m)}{m===mesActual()?" (actual)":""}</option>
-                    ))}
-                  </select>
-                )}
-                <div style={{display:"flex",border:"1.5px solid #e2e8f0",borderRadius:8,overflow:"hidden"}}>
-                  {[["torta","◐ Torta"],["barra","▮ Barra %"]].map(([k,label])=>(
-                    <button key={k} onClick={()=>setPcTipo(k)} style={{background:pcTipo===k?"#e87030":"#fff",border:"none",color:pcTipo===k?"#fff":"#64748b",fontFamily:"'DM Mono'",fontSize:11,fontWeight:600,padding:"8px 12px",cursor:"pointer"}}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <select
+                value={pcMes}
+                onChange={e=>setPcMes(e.target.value)}
+                style={{fontFamily:"'DM Mono'",fontSize:12,fontWeight:600,padding:"8px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",background:"#fff",color:"#1e293b",cursor:"pointer"}}>
+                {pcMesesDisponibles.length===0&&<option value={pcMes}>{mesLabel(pcMes)}</option>}
+                {pcMesesDisponibles.map(m=>(
+                  <option key={m} value={m}>{mesLabel(m)}{m===mesActual()?" (actual)":""}</option>
+                ))}
+              </select>
             </div>
 
             {/* leyenda compartida */}
@@ -1477,94 +1438,42 @@ function App(){
               {pcLoading&&<span className="spin" style={{fontSize:13,color:"#94a3b8"}}>⟳</span>}
             </div>
 
-            {pcTipo==="torta"&&(
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:16}}>
-                {PC_KEYS.map(e=>{
-                  const d=pcEstado(pcMes,e.key);
-                  return(
-                    <div key={e.key} style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:14,padding:"16px 16px 4px",boxShadow:"0 1px 6px rgba(0,0,0,.05)"}}>
-                      <div style={{fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:1.5,color:e.color,marginBottom:8,textAlign:"center"}}>{e.nombre}</div>
-                      {!d.cargado?(
-                        <div style={{height:160,display:"flex",alignItems:"center",justifyContent:"center",color:"#cbd5e1",fontFamily:"'DM Mono'",fontSize:11}}>
-                          <span className="spin" style={{fontSize:18}}>⟳</span>
-                        </div>
-                      ):d.total>0?(
-                        <ChartJS type="doughnut" height={160}
-                          data={{
-                            labels:["Propio Petrosar","Clientes"],
-                            datasets:[{data:[d.propio,d.clientes],backgroundColor:[PC_COLOR_PROPIO,PC_COLOR_CLIENTES],borderWidth:0}],
-                          }}
-                          options={{
-                            cutout:"62%",
-                            plugins:{
-                              legend:{display:false},
-                              tooltip:{callbacks:{label:c=>` ${c.label}: ${fmt(c.parsed)} L (${(c.parsed/d.total*100).toFixed(1)}%)`}},
-                            },
-                          }}/>
-                      ):(
-                        <div style={{height:160,display:"flex",alignItems:"center",justifyContent:"center",color:"#cbd5e1",fontFamily:"'DM Mono'",fontSize:11}}>Sin datos este mes</div>
-                      )}
-                      <div style={{display:"flex",justifyContent:"space-around",padding:"10px 0",borderTop:"1px solid #f1f5f9",marginTop:8}}>
-                        <div style={{textAlign:"center"}}>
-                          <div style={{fontFamily:"'Bebas Neue'",fontSize:18,color:PC_COLOR_PROPIO}}>{d.total>0?(d.propio/d.total*100).toFixed(1):"0.0"}%</div>
-                          <div style={{fontFamily:"'DM Mono'",fontSize:9,color:"#94a3b8"}}>{fmt(d.propio)} L</div>
-                        </div>
-                        <div style={{textAlign:"center"}}>
-                          <div style={{fontFamily:"'Bebas Neue'",fontSize:18,color:PC_COLOR_CLIENTES}}>{d.total>0?(d.clientes/d.total*100).toFixed(1):"0.0"}%</div>
-                          <div style={{fontFamily:"'DM Mono'",fontSize:9,color:"#94a3b8"}}>{fmt(d.clientes)} L</div>
-                        </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:16}}>
+              {PC_KEYS.map(e=>{
+                const d=pcEstado(pcMes,e.key);
+                const pctPropio=d.total>0?(d.propio/d.total*100):0;
+                const pctClientes=d.total>0?(d.clientes/d.total*100):0;
+                return(
+                  <div key={e.key} style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:14,padding:"16px 16px 4px",boxShadow:"0 1px 6px rgba(0,0,0,.05)"}}>
+                    <div style={{fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:1.5,color:e.color,marginBottom:8,textAlign:"center"}}>{e.nombre}</div>
+                    {!d.cargado?(
+                      <div style={{height:160,display:"flex",alignItems:"center",justifyContent:"center",color:"#cbd5e1",fontFamily:"'DM Mono'",fontSize:11}}>
+                        <span className="spin" style={{fontSize:18}}>⟳</span>
+                      </div>
+                    ):d.total>0?(
+                      <div style={{display:"flex",justifyContent:"center",padding:"4px 0"}}>
+                        <DonutDosSegmentos pct={pctPropio} colorA={PC_COLOR_PROPIO} colorB={PC_COLOR_CLIENTES} size={150}/>
+                      </div>
+                    ):(
+                      <div style={{height:160,display:"flex",alignItems:"center",justifyContent:"center",color:"#cbd5e1",fontFamily:"'DM Mono'",fontSize:11}}>Sin datos este mes</div>
+                    )}
+                    <div style={{display:"flex",justifyContent:"space-around",padding:"10px 0",borderTop:"1px solid #f1f5f9",marginTop:8}}>
+                      <div style={{textAlign:"center"}}>
+                        <div style={{fontFamily:"'Bebas Neue'",fontSize:18,color:PC_COLOR_PROPIO}}>{pctPropio.toFixed(1)}%</div>
+                        <div style={{fontFamily:"'DM Mono'",fontSize:9,color:"#94a3b8"}}>{fmt(d.propio)} L</div>
+                      </div>
+                      <div style={{textAlign:"center"}}>
+                        <div style={{fontFamily:"'Bebas Neue'",fontSize:18,color:PC_COLOR_CLIENTES}}>{pctClientes.toFixed(1)}%</div>
+                        <div style={{fontFamily:"'DM Mono'",fontSize:9,color:"#94a3b8"}}>{fmt(d.clientes)} L</div>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {pcTipo==="barra"&&(
-              pcUltimosMeses.length===0?(
-                <div style={{textAlign:"center",padding:60,color:"#94a3b8",fontFamily:"'DM Mono'",fontSize:12}}>
-                  <span className="spin" style={{fontSize:20,display:"block",marginBottom:12}}>⟳</span>
-                  Cargando meses disponibles...
-                </div>
-              ):(
-                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:16}}>
-                  {PC_KEYS.map(e=>{
-                    const estados=pcUltimosMeses.map(m=>pcEstado(m,e.key));
-                    const pctPropioArr=estados.map(d=>d.total>0?+(d.propio/d.total*100).toFixed(1):0);
-                    const pctClientesArr=estados.map(d=>d.total>0?+(d.clientes/d.total*100).toFixed(1):0);
-                    return(
-                      <div key={e.key} style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:14,padding:"16px"}}>
-                        <div style={{fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:1.5,color:e.color,marginBottom:8}}>{e.nombre}</div>
-                        <ChartJS type="bar" height={220}
-                          data={{
-                            labels:pcUltimosMeses.map(mesLabelCorto),
-                            datasets:[
-                              {label:"Propio Petrosar", data:pctPropioArr, backgroundColor:PC_COLOR_PROPIO, stack:"s"},
-                              {label:"Clientes", data:pctClientesArr, backgroundColor:PC_COLOR_CLIENTES, stack:"s"},
-                            ],
-                          }}
-                          options={{
-                            plugins:{
-                              legend:{display:false},
-                              tooltip:{callbacks:{label:c=>{
-                                const idx=c.dataIndex, d=estados[idx];
-                                const lts=c.dataset.label==="Propio Petrosar"?d.propio:d.clientes;
-                                return ` ${c.dataset.label}: ${c.parsed.y}% (${fmt(lts)} L)`;
-                              }}},
-                            },
-                            scales:{
-                              x:{stacked:true,grid:{display:false},ticks:{font:{family:"'DM Mono'",size:9}}},
-                              y:{stacked:true,min:0,max:100,grid:{color:"#f1f5f9"},ticks:{font:{family:"'DM Mono'",size:9},callback:v=>v+"%"}},
-                            },
-                          }}/>
-                      </div>
-                    );
-                  })}
-                </div>
-              )
-            )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
+
 
 
         {/* ── INGRESOS ── */}
