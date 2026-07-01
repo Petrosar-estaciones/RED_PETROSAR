@@ -9,7 +9,7 @@
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{background:#f2f4f7;font-family:'DM Sans',sans-serif;color:#1e293b;min-height:100vh;overflow-x:hidden}
@@ -678,14 +678,33 @@ function EstacionCard({est,data,ingresos,stockInicial,onUpload,uploading,idx,pla
 function ChartJS({type,data,options,height=200}){
   const canvasRef=useRef();
   const chartRef=useRef(null);
+  const [libError,setLibError]=useState(false);
   const dataKey=JSON.stringify(data);
   const optKey=JSON.stringify(options);
   useEffect(()=>{
-    if(!canvasRef.current||!window.Chart) return;
-    if(chartRef.current) chartRef.current.destroy();
-    chartRef.current=new window.Chart(canvasRef.current,{type,data,options});
-    return ()=>{ if(chartRef.current){ chartRef.current.destroy(); chartRef.current=null; } };
+    let intentos=0;
+    let cancelado=false;
+    const intentar=()=>{
+      if(cancelado) return;
+      if(!canvasRef.current) return;
+      if(!window.Chart){
+        intentos++;
+        if(intentos>20){ setLibError(true); return; } // ~5s sin cargar
+        setTimeout(intentar,250);
+        return;
+      }
+      setLibError(false);
+      if(chartRef.current) chartRef.current.destroy();
+      chartRef.current=new window.Chart(canvasRef.current,{type,data,options});
+    };
+    intentar();
+    return ()=>{ cancelado=true; if(chartRef.current){ chartRef.current.destroy(); chartRef.current=null; } };
   },[type,dataKey,optKey]);
+  if(libError){
+    return <div style={{height,display:"flex",alignItems:"center",justifyContent:"center",color:"#cbd5e1",fontFamily:"'DM Mono'",fontSize:10,textAlign:"center",padding:8}}>
+      No se pudo cargar la librería de gráficos (Chart.js). Revisá tu conexión o si el CDN está bloqueado.
+    </div>;
+  }
   return <div style={{height,position:"relative"}}><canvas ref={canvasRef}/></div>;
 }
 
