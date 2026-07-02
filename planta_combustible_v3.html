@@ -352,26 +352,31 @@ async function fetchPlantaGranel(stockInicial){
             if(!diagIngresos[estId]) diagIngresos[estId]={matches:0,litros:0,inconsistencias:[]};
             diagIngresos[estId].matches++;
             diagIngresos[estId].litros+=total;
-            let distribucionValida=distribucion;
-            if(distribucion){
-              const sumaDist=Object.values(distribucion).reduce((a,b)=>a+(parseFloat(b)||0),0);
+            const sumaDist=distribucion?Object.values(distribucion).reduce((a,b)=>a+(parseFloat(b)||0),0):0;
+            let distribucionFinal=null;
+            if(distribucion&&sumaDist>0){
               if(Math.abs(sumaDist-total)>0.5){
-                // La distribución cargada no coincide con el total real despachado: se descarta
-                // y se usa el total real (verificado contra el tanque de Planta) en el primer tanque.
+                // La distribución cargada no coincide con el total real despachado: se reescala
+                // proporcionalmente para conservar el reparto entre tanques, pero ajustada al total real
+                // (verificado contra el tanque de Planta) — no se descarta ni se vuelca todo a un tanque.
                 diagIngresos[estId].inconsistencias.push({fecha,comp:String(row[3]||""),total:Math.round(total*100)/100,sumaDistribucion:Math.round(sumaDist*100)/100});
-                distribucionValida=null;
+                const factor=total/sumaDist;
+                distribucionFinal={};
+                Object.entries(distribucion).forEach(([tkId,lts])=>{ distribucionFinal[tkId]=(parseFloat(lts)||0)*factor; });
+              } else {
+                distribucionFinal=distribucion;
               }
             }
-            if(distribucionValida){
-              // Distribuir por tanque según JSON guardado (ya validado contra el total real)
-              Object.entries(distribucionValida).forEach(([tkId,lts])=>{
+            if(distribucionFinal){
+              // Distribuir por tanque según JSON guardado (ya validado/ajustado contra el total real)
+              Object.entries(distribucionFinal).forEach(([tkId,lts])=>{
                 const tkValido=cfg.tanques.find(t=>t.id===tkId);
                 if(tkValido&&lts>0){
                   ingresosAutoEst[estId][tkId]=(ingresosAutoEst[estId][tkId]||0)+(parseFloat(lts)||0);
                 }
               });
             } else {
-              // Sin distribución (o inválida): todo al primer tanque, usando el total real
+              // Sin distribución cargada: todo al primer tanque, usando el total real
               const tkDest=cfg.tanques[0].id;
               ingresosAutoEst[estId][tkDest]=(ingresosAutoEst[estId][tkDest]||0)+total;
             }
@@ -1731,7 +1736,7 @@ function App(){
                         {d.inconsistencias.length>0&&(
                           <div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #fecaca"}}>
                             <div style={{fontFamily:"'DM Mono'",fontSize:10,color:"#dc2626",fontWeight:700,marginBottom:6}}>
-                              ⚠ {d.inconsistencias.length} fila(s) con distribución cargada que NO coincide con el total real (se usó el total real, no la distribución):
+                              ⚠ {d.inconsistencias.length} fila(s) con distribución cargada que NO coincide con el total real (se reescaló proporcionalmente al total real, conservando el reparto entre tanques):
                             </div>
                             {d.inconsistencias.map((inc,i)=>(
                               <div key={i} style={{fontFamily:"'DM Mono'",fontSize:10,color:"#991b1b",padding:"3px 0"}}>
