@@ -119,9 +119,7 @@
   .precio-inp{display:flex;flex-direction:column;gap:4px}
   .precio-inp label{font-size:11px;font-weight:600;color:var(--muted)}
 
-  .tab.tab-edenred{color:#b03a2e;font-weight:700;background:#fdf2f0;border-bottom:2.5px solid transparent;letter-spacing:.5px}
-  .tab.tab-edenred:hover:not(.active){background:#fce4e0;color:#922b21}
-  .tab.tab-edenred.active{color:#7b241c;border-bottom-color:#e84c3d;background:#fde8e6}
+  .tab.tab-edenred{font-weight:700;letter-spacing:.5px}
   /* AUTH TAB */
   .auth-header{display:flex;align-items:center;gap:12px;margin-bottom:20px}
   .auth-badge{background:#f5c400;color:#6d4c00;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:12px;letter-spacing:1.5px;padding:4px 14px;border-radius:20px;text-transform:uppercase}
@@ -364,20 +362,21 @@
 
   <!-- TAB EDENRED -->
   <div id="tab-edenred" style="display:none">
-    <div class="card" style="border:2px solid #e84c3d;background:#fdf2f0;margin-bottom:16px">
+    <div class="card" style="margin-bottom:16px">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <span style="background:#e84c3d;color:#fff;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:12px;letter-spacing:1.5px;padding:4px 14px;border-radius:20px;text-transform:uppercase;white-space:nowrap">💳 Compensación Edenred</span>
+        <span style="background:#475569;color:#fff;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:12px;letter-spacing:1.5px;padding:4px 14px;border-radius:20px;text-transform:uppercase;white-space:nowrap">💳 Compensación Edenred</span>
         <div style="flex:1"></div>
-        <select id="edenredAnio" onchange="cargarEdenred()" style="font-size:12px;font-weight:600;padding:6px 10px;border:1.5px solid #e84c3d;border-radius:var(--r-sm);background:#fff;color:#7b241c;cursor:pointer">
+        <select id="edenredAnio" onchange="cargarEdenred()" style="font-size:12px;font-weight:600;padding:6px 10px;border:1.5px solid var(--border);border-radius:var(--r-sm);background:#fff;color:#334155;cursor:pointer">
           <option value="2026">2026</option>
         </select>
         <button class="btn" onclick="exportEdenredExcel()" style="background:#1a7a4a;color:#fff;font-size:12px;padding:6px 14px;height:auto">📥 Exportar Excel</button>
       </div>
     </div>
-    <div id="loadingEdenred" class="loading"><div class="spinner" style="border-top-color:#e84c3d"></div>Cargando cobros Edenred...</div>
+    <div id="loadingEdenred" class="loading"><div class="spinner" style="border-top-color:#64748b"></div>Cargando cobros Edenred...</div>
     <div id="resEdenred"><div class="empty"><div class="empty-icon">💳</div><div class="empty-title">Seleccioná un año para ver los cobros</div></div></div>
 
   <!-- CONSUMO FLOTA EXTERNA -->
+  <div id="resFlotaEdenredMensual"></div>
   <div class="card" style="border:2px solid #1565c0;background:#e3f2fd;margin-bottom:16px;margin-top:8px">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <span style="background:#1565c0;color:#fff;font-weight:700;font-size:12px;letter-spacing:1.5px;padding:4px 14px;border-radius:20px">🚛 Consumo Flota con Edenred</span>
@@ -1254,13 +1253,10 @@ function renderLineas(desp,errores,anio){
   const flotaMap={};
   FLOTA.forEach(v=>{ if(v.Interno) flotaMap[v.Interno]=v.LineaNegocio||'Sin línea'; });
 
-  // Para PLANTA: el vehículo es receptorN (col G). Si no está en flotaMap, asignar línea fija.
-  const PLANTA_LINEA={742:'Estacion de SS',836:'Estacion de SS',794:'Estacion de SS'};
+  // Para PLANTA: el vehículo está en receptorN (col G), no en interno (col J)
+  // Reasignar interno usando receptorN cuando interno=0
   desp=desp.map(d=>{
-    if(d.fuente==='PLANTA'&&d.receptorN){
-      const int2=d.receptorN;
-      return {...d,interno:int2,_lineaForzada:flotaMap[int2]||PLANTA_LINEA[int2]||null};
-    }
+    if(d.fuente==='PLANTA'&&!d.interno&&d.receptorN) return {...d,interno:d.receptorN};
     return d;
   });
 
@@ -1275,7 +1271,7 @@ function renderLineas(desp,errores,anio){
     const dt=new Date(d.fecha);
     if(isNaN(dt)||dt.getFullYear()!==anio)return;
     const mk=`${anio}-${String(dt.getMonth()+1).padStart(2,'0')}`;
-    const linea=d._lineaForzada||flotaMap[d.interno]||(d.interno?'Sin línea':'Sin vehículo');
+    const linea=flotaMap[d.interno]||(d.interno?'Sin línea':'Sin vehículo');
     if(!matrix[linea])matrix[linea]={};
     matrix[linea][mk]=(matrix[linea][mk]||0)+d.litros;
     totalesMes[mk]=(totalesMes[mk]||0)+d.litros;
@@ -3180,6 +3176,7 @@ async function cargarFlotaEdenred() {
   if (flotaEdenredCargado) { renderFlotaEdenred(); return; }
   document.getElementById('loadingFlotaEdenred').style.display = 'flex';
   document.getElementById('resFlotaEdenred').innerHTML = '';
+  document.getElementById('resFlotaEdenredMensual').innerHTML = '';
   try {
     const resp = await fetch(FLOTA_EDEN_URL, {redirect:'follow'});
     flotaEdenredDatos = await resp.json();
@@ -3198,6 +3195,7 @@ async function cargarFlotaEdenred() {
     renderFlotaEdenred();
   } catch(err) {
     document.getElementById('loadingFlotaEdenred').style.display = 'none';
+    document.getElementById('resFlotaEdenredMensual').innerHTML = '';
     document.getElementById('resFlotaEdenred').innerHTML = '<div class="card" style="color:#c00;padding:20px">❌ Error al cargar: '+err.message+'</div>';
   }
 }
@@ -3207,6 +3205,7 @@ function renderFlotaEdenred() {
   const filtro = document.getElementById('flotaEdenredMes').value;
   const datos = filtro === 'TODOS' ? flotaEdenredDatos : flotaEdenredDatos.filter(d => d.mes === filtro);
   if (!flotaEdenredDatos.length) {
+    document.getElementById('resFlotaEdenredMensual').innerHTML = '';
     document.getElementById('resFlotaEdenred').innerHTML = '<div class="card" style="text-align:center;color:var(--muted);padding:32px">Sin datos disponibles.</div>';
     return;
   }
@@ -3253,6 +3252,47 @@ function renderFlotaEdenred() {
     +'<td style="text-align:right;font-weight:700">'+fmtP(totIva)+'</td>'
     +'<td style="text-align:right;font-weight:700;color:var(--orange)">'+fmtP(totFinal)+'</td></tr>'
     +'</tbody></table></div>';
+
+  // ── Por Línea de Negocio (matcheado por patente contra la hoja de rodados) ──
+  const normPat = p => String(p||'').trim().toUpperCase().replace(/[\s\-]/g,'');
+  const flotaPorPatente = {};
+  FLOTA.forEach(v=>{ if(v.Dominio) flotaPorPatente[normPat(v.Dominio)] = v.LineaNegocio || 'Sin línea'; });
+
+  const porLinea = {};
+  let sinMatch = 0;
+  datos.forEach(d=>{
+    const linea = flotaPorPatente[normPat(d.patente)] || 'Sin línea / no encontrado';
+    if(linea==='Sin línea / no encontrado') sinMatch++;
+    if(!porLinea[linea]) porLinea[linea] = {litros:0,valorFinal:0};
+    porLinea[linea].litros += d.litros;
+    porLinea[linea].valorFinal += d.valorFinal;
+  });
+  const LINEA_COLORS = ['#1565c0','#2e7d32','#e65100','#6a1b9a','#00838f','#ad1457','#5d4037','#455a64'];
+  const lineasOrden = Object.entries(porLinea).sort((a,b)=>b[1].litros-a[1].litros);
+  let resumenLinea = '<div class="tbl-wrap fade" style="margin-bottom:16px">'
+    +'<div class="tbl-hdr" style="background:#f3e8ff;border-bottom:1px solid #d8b4fe">'
+    +'<span class="tbl-title" style="color:#6a1b9a">🏢 Consumo Edenred por Línea de Negocio</span>'
+    +'<span class="tbl-count" style="border-color:#d8b4fe;color:#6a1b9a">'+lineasOrden.length+' líneas'+(sinMatch?' · '+sinMatch+' sin patente matcheada':'')+'</span>'
+    +'</div><table class="dt"><thead><tr>'
+    +'<th>Línea de Negocio</th><th style="text-align:right">Litros</th><th style="text-align:right">%</th><th style="text-align:right">Total $</th>'
+    +'</tr></thead><tbody>';
+  lineasOrden.forEach(([linea,v],i)=>{
+    const pct = totLts ? ((v.litros/totLts)*100).toFixed(1)+'%' : '—';
+    const col = LINEA_COLORS[i%LINEA_COLORS.length];
+    resumenLinea += '<tr><td><span style="background:'+col+';color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:4px">'+linea+'</span></td>'
+      +'<td style="text-align:right;font-weight:600">'+fmtL(v.litros)+' L</td>'
+      +'<td style="text-align:right;color:var(--muted)">'+pct+'</td>'
+      +'<td style="text-align:right;font-weight:700;color:var(--orange)">'+fmtP(v.valorFinal)+'</td></tr>';
+  });
+  resumenLinea += '<tr style="background:#f5f5f5"><td style="font-weight:700">TOTAL</td>'
+    +'<td style="text-align:right;font-weight:700">'+fmtL(totLts)+' L</td>'
+    +'<td style="text-align:right;font-weight:700">100%</td>'
+    +'<td style="text-align:right;font-weight:700;color:var(--orange)">'+fmtP(totFinal)+'</td></tr>'
+    +'</tbody></table></div>';
+  if(sinMatch>0){
+    resumenLinea += '<div style="font-size:11px;color:var(--muted);margin:-10px 0 16px;padding:0 4px">'
+      +'⚠ '+sinMatch+' registro(s) no encontraron la patente en la hoja de rodados — revisá que el dominio esté cargado ahí, o que coincida el formato (mayúsculas, sin espacios/guiones).</div>';
+  }
 
   // ── Resumen por Mes y Producto: gráfico de barras apiladas + tabla ──
   const mesesDisp = [...new Set(flotaEdenredDatos.map(d=>d.mes).filter(Boolean))].sort();
@@ -3366,7 +3406,8 @@ function renderFlotaEdenred() {
   </div>`;
 
   window._flotaEdenredExport = datos;
-  document.getElementById('resFlotaEdenred').innerHTML = kpis + tablaResumen + resumenProd + chart;
+  document.getElementById('resFlotaEdenredMensual').innerHTML = tablaResumen + chart;
+  document.getElementById('resFlotaEdenred').innerHTML = kpis + resumenProd + resumenLinea;
 }
 
 function toggleFlotaVeh(i) {
