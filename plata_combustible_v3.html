@@ -386,7 +386,7 @@ async function fetchPlantaGranel(stockInicial){
     }
 
     if(total>0){
-      despachos.push({fecha,litros:total,cara:1,operacion:String(row[3]||""),receptor:String(row[6]||""),destino:String(row[7]||""),ref});
+      despachos.push({fecha,litros:total,cara:1,operacion:String(row[3]||""),receptor:String(row[6]||""),destino:String(row[7]||""),ref,v1,v2,v3});
     }
   });
 
@@ -866,6 +866,24 @@ function App(){
     return {topClientesPlantaMes:entradas.slice(0,10), totalPlantaMes:total};
   },[plantaData,mesSeleccionado]);
 
+  // ── Compras del mes en curso a Planta (Remito tipo RTO/FAC), desde el 1° hasta hoy ──
+  const comprasMes=useMemo(()=>{
+    if(!plantaData?.despachos) return {gasoil:0,euro:0,total:0};
+    const hoy=new Date();
+    const yy=hoy.getFullYear(), mm=hoy.getMonth()+1;
+    let gasoil=0, euro=0;
+    plantaData.despachos
+      .filter(d=>["RTO","FAC"].includes(d.ref))
+      .forEach(d=>{
+        const s=String(d.fecha||"").trim();
+        const mx=s.match(/^(\d{4})-(\d{2})/);
+        if(!mx||+mx[1]!==yy||+mx[2]!==mm) return;
+        gasoil+=(d.v1||0);
+        euro+=(d.v2||0)+(d.v3||0);
+      });
+    return {gasoil, euro, total:gasoil+euro};
+  },[plantaData]);
+
   // ── Propio Petrosar vs Clientes: usa la misma acción getClientes que la solapa Despachos,
   // porque getDespachos (dataPorEst) no trae el detalle de cliente por registro, solo totales por tanque.
   // "PETROSAR" como nombre de cliente = consumo propio de flota (mismo criterio que flota_petrosar_v6).
@@ -943,11 +961,17 @@ function App(){
   useEffect(()=>{
     syncTodo(true);
     fetchClientes(mesActual());
-    fetchBaseCRMes(mesActual()).then(v=>setBaseCRMes(v)).catch(()=>{});
-    // RESERO filtrado por mes (separado del histórico usado para stock)
-    fetch(GAS_URL_ESTACIONES+"?action=getDespachos&estacion=RESERO&mes="+mesActual()+"&nocache="+Date.now())
-      .then(r=>r.json()).then(d=>setReseroMes(d.total||0)).catch(()=>{});
   },[]);
+
+  // Cuando clientesData resuelve el mes real (con fallback al último con datos),
+  // re-sincronizamos Resero y Base CR al MISMO mes, para que la tarjeta del Dashboard
+  // no mezcle meses distintos (ej. AG/TP/VH/CD de junio con Resero de julio vacío).
+  useEffect(()=>{
+    if(!mesSeleccionado) return;
+    fetch(GAS_URL_ESTACIONES+"?action=getDespachos&estacion=RESERO&mes="+mesSeleccionado+"&nocache="+Date.now())
+      .then(r=>r.json()).then(d=>setReseroMes(d.total||0)).catch(()=>{});
+    fetchBaseCRMes(mesSeleccionado).then(v=>setBaseCRMes(v)).catch(()=>{});
+  },[mesSeleccionado]);
 
   // Guardar config automáticamente cuando cambia stockInicial o alarmas
   const saveEstConfigTimer=React.useRef(null);
@@ -1227,7 +1251,7 @@ function App(){
                 {label:"Stock total red",val:fmt(totales.totalStock)+" L",sub:`${totales.pct.toFixed(0)}% capacidad`,color:"#e87030"},
                 {label:"Capacidad total",val:fmt(totales.totalCap)+" L",sub:"todas las estaciones",color:"#3a8fd4"},
                 {
-                  label: mesLabel(mesActual()),
+                  label: clientesData ? mesLabel(mesSeleccionado) : mesLabel(mesActual()),
                   val: clientesData
                     ? fmt(
                         // Estaciones: usar X_total (todos los clientes del mes)
@@ -1241,8 +1265,14 @@ function App(){
                         +(plantaData?.despachoExternoMes??plantaData?.despachoExterno??0)
                       )+" L"
                     : "Cargando...",
-                  sub: clientesData ? "despachos mes en curso" : "cargando...",
+                  sub: clientesData ? (mesSeleccionado===mesActual() ? "despachos mes en curso" : "último mes con datos") : "cargando...",
                   color:"#16a34a"
+                },
+                {
+                  label: "Compras "+mesLabel(mesActual()),
+                  val: fmt(comprasMes.total)+" L",
+                  sub: `Gasoil ${fmt(comprasMes.gasoil)} L · Euro ${fmt(comprasMes.euro)} L`,
+                  color:"#e8a020"
                 },
                 {label:"Estaciones activas",val:(Object.keys(dataPorEst).length+(plantaData?1:0)+(baseCRData?1:0))+"/"+Object.keys(ESTACIONES_CONFIG).length,sub:"con datos",color:"#a060e0"},
               ].map((item,i)=>(
