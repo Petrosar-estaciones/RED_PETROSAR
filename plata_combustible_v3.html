@@ -321,6 +321,7 @@ async function fetchPlantaGranel(stockInicial){
   // Ingresos automáticos a cada estación detectados desde los despachos de Planta
   // estacion → tanque → litros acumulados
   const ingresosAutoEst={};
+  const diagIngresos={}; // estacion → {matches, litros, inconsistencias:[{fecha,comp,total,sumaDistribucion}]}
 
   rows.forEach(row=>{
     if(!row||!row[0]) return;
@@ -348,16 +349,34 @@ async function fetchPlantaGranel(stockInicial){
           const match=cfg.destinos.some(d=>destino.trim()===d.toUpperCase().trim());
           if(match){
             if(!ingresosAutoEst[estId]) ingresosAutoEst[estId]={};
-            if(distribucion){
-              // Distribuir por tanque según JSON guardado
-              Object.entries(distribucion).forEach(([tkId,lts])=>{
+            if(!diagIngresos[estId]) diagIngresos[estId]={matches:0,litros:0,inconsistencias:[]};
+            diagIngresos[estId].matches++;
+            diagIngresos[estId].litros+=total;
+            const sumaDist=distribucion?Object.values(distribucion).reduce((a,b)=>a+(parseFloat(b)||0),0):0;
+            let distribucionFinal=null;
+            if(distribucion&&sumaDist>0){
+              if(Math.abs(sumaDist-total)>0.5){
+                // La distribución cargada no coincide con el total real despachado: se reescala
+                // proporcionalmente para conservar el reparto entre tanques, pero ajustada al total real
+                // (verificado contra el tanque de Planta) — no se descarta ni se vuelca todo a un tanque.
+                diagIngresos[estId].inconsistencias.push({fecha,comp:String(row[3]||""),total:Math.round(total*100)/100,sumaDistribucion:Math.round(sumaDist*100)/100});
+                const factor=total/sumaDist;
+                distribucionFinal={};
+                Object.entries(distribucion).forEach(([tkId,lts])=>{ distribucionFinal[tkId]=(parseFloat(lts)||0)*factor; });
+              } else {
+                distribucionFinal=distribucion;
+              }
+            }
+            if(distribucionFinal){
+              // Distribuir por tanque según JSON guardado (ya validado/ajustado contra el total real)
+              Object.entries(distribucionFinal).forEach(([tkId,lts])=>{
                 const tkValido=cfg.tanques.find(t=>t.id===tkId);
                 if(tkValido&&lts>0){
                   ingresosAutoEst[estId][tkId]=(ingresosAutoEst[estId][tkId]||0)+(parseFloat(lts)||0);
                 }
               });
             } else {
-              // Sin distribución: todo al primer tanque
+              // Sin distribución cargada: todo al primer tanque, usando el total real
               const tkDest=cfg.tanques[0].id;
               ingresosAutoEst[estId][tkDest]=(ingresosAutoEst[estId][tkDest]||0)+total;
             }
@@ -432,6 +451,7 @@ async function fetchPlantaGranel(stockInicial){
     despachoExternoMes,
     topClientesPlanta,
     ingresosAuto,
+    diagIngresos,
   };
 }
 
@@ -1684,6 +1704,52 @@ function App(){
                   );
                 })}
               </div>
+            </div>
+
+            {/* Diagnóstico de ingresos automáticos desde Planta */}
+            <div style={{marginTop:20,background:"#fff",border:"1px solid #e2e8f0",borderRadius:12,padding:"16px 20px",boxShadow:"0 1px 4px rgba(0,0,0,.05)"}}>
+              <div style={{fontFamily:"'DM Mono'",fontSize:10,color:"#94a3b8",letterSpacing:1.5,textTransform:"uppercase",marginBottom:4}}>Diagnóstico — Ingresos automáticos detectados desde Planta</div>
+              <div style={{fontSize:11,color:"#94a3b8",marginBottom:14,fontFamily:"'DM Mono'"}}>
+                Litros y filas que la app matcheó como ingreso para cada estación, según el destino exacto en la hoja de Planta. Comparalo contra tu conteo manual del sheet.
+              </div>
+              {!plantaData?.diagIngresos?(
+                <div style={{color:"#cbd5e1",fontFamily:"'DM Mono'",fontSize:11}}>Sin datos — sincronizá Planta primero.</div>
+              ):(
+                <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                  {Object.entries(ESTACIONES_CONFIG).filter(([id])=>id!=="PLANTAGRANEL").map(([estId,cfg])=>{
+                    const d=plantaData.diagIngresos[estId];
+                    if(!d) return(
+                      <div key={estId} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",background:"#f8fafc",borderRadius:8}}>
+                        <span style={{fontFamily:"'DM Mono'",fontSize:12,color:"#94a3b8"}}>{cfg.nombre}</span>
+                        <span style={{fontFamily:"'DM Mono'",fontSize:11,color:"#cbd5e1"}}>Sin ingresos detectados</span>
+                      </div>
+                    );
+                    return(
+                      <div key={estId} style={{border:`1px solid ${d.inconsistencias.length>0?"#fca5a5":"#e2e8f0"}`,borderRadius:8,padding:"10px 14px",background:d.inconsistencias.length>0?"#fef2f2":"#f8fafc"}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                          <span style={{fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:1,color:cfg.color}}>{cfg.nombre}</span>
+                          <div style={{textAlign:"right"}}>
+                            <span style={{fontFamily:"'DM Mono'",fontSize:14,fontWeight:700,color:"#1e293b"}}>{fmt(d.litros)} L</span>
+                            <span style={{fontFamily:"'DM Mono'",fontSize:10,color:"#94a3b8",marginLeft:8}}>{d.matches} filas</span>
+                          </div>
+                        </div>
+                        {d.inconsistencias.length>0&&(
+                          <div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #fecaca"}}>
+                            <div style={{fontFamily:"'DM Mono'",fontSize:10,color:"#dc2626",fontWeight:700,marginBottom:6}}>
+                              ⚠ {d.inconsistencias.length} fila(s) con distribución cargada que NO coincide con el total real (se reescaló proporcionalmente al total real, conservando el reparto entre tanques):
+                            </div>
+                            {d.inconsistencias.map((inc,i)=>(
+                              <div key={i} style={{fontFamily:"'DM Mono'",fontSize:10,color:"#991b1b",padding:"3px 0"}}>
+                                {inc.fecha} · comp {inc.comp} · total real: {fmt(inc.total)} L · distribución cargada sumaba: {fmt(inc.sumaDistribucion)} L · diferencia: {fmt(inc.sumaDistribucion-inc.total)} L
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}
