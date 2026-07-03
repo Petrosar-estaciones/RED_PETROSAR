@@ -757,8 +757,14 @@ function BarrasEvolucion({datos,colorA,colorB,width=280,height=170}){
       {hoverIdx!==null&&(
         <div style={{position:"absolute",top:0,left:0,background:"#1e293b",color:"#fff",fontFamily:"'DM Mono'",fontSize:10,padding:"6px 10px",borderRadius:6,pointerEvents:"none",whiteSpace:"nowrap",boxShadow:"0 4px 12px rgba(0,0,0,.2)"}}>
           <div style={{fontWeight:700,marginBottom:3}}>{datos[hoverIdx].label}</div>
-          <div style={{color:colorA}}>Propio: {datos[hoverIdx].pctA.toFixed(1)}% ({fmt(datos[hoverIdx].rawA)} L)</div>
-          <div style={{color:colorB}}>Clientes: {datos[hoverIdx].pctB.toFixed(1)}% ({fmt(datos[hoverIdx].rawB)} L)</div>
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+            <span style={{width:8,height:8,borderRadius:"50%",background:colorA,flexShrink:0}}/>
+            <span>Propio: {datos[hoverIdx].pctA.toFixed(1)}% ({fmt(datos[hoverIdx].rawA)} L)</span>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+            <span style={{width:8,height:8,borderRadius:"50%",background:colorB,flexShrink:0}}/>
+            <span>Clientes: {datos[hoverIdx].pctB.toFixed(1)}% ({fmt(datos[hoverIdx].rawB)} L)</span>
+          </div>
         </div>
       )}
     </div>
