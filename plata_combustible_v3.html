@@ -723,6 +723,48 @@ function DonutDosSegmentos({pct,colorA,colorB,size=150,strokeWidth=24}){
   );
 }
 
+/* Barras apiladas al 100% en SVG puro (sin dependencias externas) — evolución mensual Propio/Clientes */
+function BarrasEvolucion({datos,colorA,colorB,width=280,height=170}){
+  // datos: [{label, pctA, pctB, rawA, rawB}]
+  const padTop=6, padBottom=22, padLeft=4, padRight=4;
+  const chartH=height-padTop-padBottom;
+  const n=datos.length||1;
+  const gap=10;
+  const barW=(width-padLeft-padRight-gap*(n-1))/n;
+  const [hoverIdx,setHoverIdx]=useState(null);
+  return (
+    <div style={{position:"relative"}}>
+      <svg width="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet">
+        {datos.map((d,i)=>{
+          const x=padLeft+i*(barW+gap);
+          const hA=chartH*(d.pctA/100);
+          const hB=chartH*(d.pctB/100);
+          const yA=padTop+(chartH-hA);
+          const yB=yA-hB;
+          return (
+            <g key={i}
+              onMouseEnter={()=>setHoverIdx(i)}
+              onMouseLeave={()=>setHoverIdx(null)}
+              style={{cursor:"pointer"}}>
+              <rect x={x} y={padTop} width={barW} height={chartH} fill="transparent"/>
+              <rect x={x} y={yA} width={barW} height={hA} fill={colorA} opacity={hoverIdx===null||hoverIdx===i?1:.35} rx={2}/>
+              <rect x={x} y={yB} width={barW} height={hB} fill={colorB} opacity={hoverIdx===null||hoverIdx===i?1:.35} rx={2}/>
+              <text x={x+barW/2} y={height-6} textAnchor="middle" fontSize="9" fontFamily="'DM Mono'" fill="#94a3b8">{d.label}</text>
+            </g>
+          );
+        })}
+      </svg>
+      {hoverIdx!==null&&(
+        <div style={{position:"absolute",top:0,left:0,background:"#1e293b",color:"#fff",fontFamily:"'DM Mono'",fontSize:10,padding:"6px 10px",borderRadius:6,pointerEvents:"none",whiteSpace:"nowrap",boxShadow:"0 4px 12px rgba(0,0,0,.2)"}}>
+          <div style={{fontWeight:700,marginBottom:3}}>{datos[hoverIdx].label}</div>
+          <div style={{color:colorA}}>Propio: {datos[hoverIdx].pctA.toFixed(1)}% ({fmt(datos[hoverIdx].rawA)} L)</div>
+          <div style={{color:colorB}}>Clientes: {datos[hoverIdx].pctB.toFixed(1)}% ({fmt(datos[hoverIdx].rawB)} L)</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DonutGauge({value,max,color,size=120}){
   const r=48,circ=2*Math.PI*r;
   const pct=max>0?Math.min(1,value/max):0;
@@ -837,7 +879,9 @@ function App(){
     finally{setLoadingClientes(false);}
     // Si el mes pedido no tiene datos reales, caer al último mes disponible (una sola vez)
     if(!esFallback && data?.mesesDisponibles?.length && !data.mesesDisponibles.includes(m)){
-      const ultimo=data.mesesDisponibles[data.mesesDisponibles.length-1];
+      // No asumimos el orden del array (puede venir ascendente o descendente según el backend):
+      // el mes más reciente es el mayor en formato "YYYY-MM", que ordena bien como string.
+      const ultimo=data.mesesDisponibles.reduce((a,b)=>b>a?b:a);
       fetchClientes(ultimo, true);
     }
   }
@@ -929,9 +973,19 @@ function App(){
   // Ajustar pcMes a un mes con datos reales apenas conocemos mesesDisponibles
   useEffect(()=>{
     if(pcMesesDisponibles.length&&!pcMesesDisponibles.includes(pcMes)){
-      setPcMes(pcMesesDisponibles[pcMesesDisponibles.length-1]);
+      setPcMes(pcMesesDisponibles.reduce((a,b)=>b>a?b:a));
     }
   },[pcMesesDisponibles]);
+
+  // Últimos 6 meses disponibles, ordenados cronológicamente (más viejo → más nuevo)
+  const pcUltimos6Meses=useMemo(()=>[...pcMesesDisponibles].sort().slice(-6),[pcMesesDisponibles]);
+
+  // Traer en segundo plano los meses de la evolución que falten en caché
+  useEffect(()=>{
+    if(tab!=="propioclientes"||pcUltimos6Meses.length===0) return;
+    const faltantes=pcUltimos6Meses.filter(m=>!pcCache[m]);
+    faltantes.forEach(m=>fetchPcMes(m));
+  },[tab,pcUltimos6Meses]);
 
   /* Dado el mes y el código de punto (AG/TP/VH/CD), separa propio vs clientes
      buscando dentro de la lista de clientes de ese mes la fila "PETROSAR" */
@@ -1209,7 +1263,7 @@ function App(){
 
           {/* tabs */}
           <div className="header-tabs" style={{display:"flex",marginLeft:12,borderLeft:"1px solid #e2e8f0",paddingLeft:12,gap:2,flexShrink:0}}>
-            {[["dashboard","Dashboard"],["despachos","Despachos"],["propioclientes","Petrosar vs Clientes"],["ingresos","Ingresos"],...(configVisible?[["config","Config"]]:[])].map(([k,label])=>(
+            {[["dashboard","Dashboard"],["despachos","Despachos"],["propioclientes","Petrosar - Clientes"],["ingresos","Ingresos"],...(configVisible?[["config","Config"]]:[])].map(([k,label])=>(
               <button key={k} onClick={()=>setTab(k)} style={k==="propioclientes"?{background:"#fbbf24",border:"none",borderRadius:6,color:"#dc2626",fontFamily:"'DM Mono'",fontSize:10,letterSpacing:.5,padding:"6px 10px",cursor:"pointer",textTransform:"uppercase",transition:"all .15s",fontWeight:700,whiteSpace:"nowrap",boxShadow:tab===k?"inset 0 0 0 2px #dc2626":"none"}:{background:tab===k?"#f1f5f9":"transparent",border:"none",borderRadius:6,color:tab===k?"#1e293b":"#94a3b8",fontFamily:"'DM Mono'",fontSize:10,letterSpacing:.5,padding:"6px 8px",cursor:"pointer",textTransform:"uppercase",transition:"all .15s",fontWeight:tab===k?600:400,whiteSpace:"nowrap"}}>
                 {label}
               </button>
@@ -1221,7 +1275,7 @@ function App(){
       {/* TABS MÓVIL — segunda fila, solo visible en celular */}
       <div className="header-tabs-mobile" style={{display:"none",borderBottom:"1px solid #e2e8f0",background:"#fff",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
         <div style={{display:"flex",minWidth:"max-content",padding:"0 8px"}}>
-          {[["dashboard","📊 Dashboard"],["despachos","📦 Despachos"],["propioclientes","💰 Petrosar vs Clientes"],["ingresos","📥 Ingresos"],...(configVisible?[["config","⚙️ Config"]]:[])].map(([k,label])=>(
+          {[["dashboard","📊 Dashboard"],["despachos","📦 Despachos"],["propioclientes","💰 Petrosar - Clientes"],["ingresos","📥 Ingresos"],...(configVisible?[["config","⚙️ Config"]]:[])].map(([k,label])=>(
             <button key={k} onClick={()=>setTab(k)} style={k==="propioclientes"?{
               background:"#fbbf24",border:"none",borderRadius:6,margin:"6px 4px",
               color:"#dc2626",fontFamily:"'DM Mono'",fontSize:11,fontWeight:700,
@@ -1500,6 +1554,46 @@ function App(){
                   </div>
                 );
               })}
+            </div>
+
+            {/* Evolución mensual — barras apiladas 100% por estación */}
+            <div style={{marginTop:28}}>
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:1.5,color:"#1e293b",marginBottom:2}}>
+                Evolución — Propio vs Clientes por mes
+              </div>
+              <div style={{fontFamily:"'DM Mono'",fontSize:10,color:"#94a3b8",marginBottom:14}}>
+                Últimos {pcUltimos6Meses.length} mes{pcUltimos6Meses.length===1?"":"es"} con datos · pasá el mouse por una barra para ver el detalle
+              </div>
+              {pcUltimos6Meses.length===0?(
+                <div style={{textAlign:"center",padding:40,color:"#cbd5e1",fontFamily:"'DM Mono'",fontSize:11}}>
+                  <span className="spin" style={{fontSize:18,display:"block",marginBottom:8}}>⟳</span>
+                  Cargando evolución...
+                </div>
+              ):(
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:16}}>
+                  {PC_KEYS.map(e=>{
+                    const datosBarras=pcUltimos6Meses.map(m=>{
+                      const d=pcEstado(m,e.key);
+                      const pctA=d.total>0?(d.propio/d.total*100):0;
+                      const pctB=d.total>0?(d.clientes/d.total*100):0;
+                      return {label:mesLabelCorto(m), pctA, pctB, rawA:d.propio, rawB:d.clientes};
+                    });
+                    const todosCargados=pcUltimos6Meses.every(m=>pcCache[m]);
+                    return(
+                      <div key={e.key} style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:14,padding:16}}>
+                        <div style={{fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:1.5,color:e.color,marginBottom:10}}>{e.nombre}</div>
+                        {!todosCargados?(
+                          <div style={{height:170,display:"flex",alignItems:"center",justifyContent:"center",color:"#cbd5e1"}}>
+                            <span className="spin" style={{fontSize:16}}>⟳</span>
+                          </div>
+                        ):(
+                          <BarrasEvolucion datos={datosBarras} colorA={PC_COLOR_PROPIO} colorB={PC_COLOR_CLIENTES}/>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}
