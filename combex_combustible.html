@@ -141,43 +141,33 @@
 
     <div class="panel">
       <div class="panel-head">
-        <h2>1 · Conexión con el Sheet</h2>
-        <span class="hint" id="conn-status"><span class="status-dot status-off"></span>sin configurar</span>
+        <h2>Compras de combustible · junio</h2>
+        <span class="hint" id="conn-status"><span class="status-dot status-ok"></span>conectado al Sheet</span>
       </div>
       <div class="panel-body">
-        <div class="sync-row">
-          <div class="sync-field">
-            <label class="sync-label">URL publicada del Sheet (CSV) — ya cargada</label>
-            <input type="url" id="csv-url" value="https://docs.google.com/spreadsheets/d/e/2PACX-1vRfIt_qRJxGQSlX9O1WL12ObaExER1kzH7eDQLg8Auu3YHf2ljO3-id6b85G_Pm-rmgnudUgMzIaqGp/pub?output=csv">
-          </div>
-          <div class="sync-field">
-            <label class="sync-label">URL del Web App de Apps Script (para guardar cambios en el Sheet)</label>
-            <input type="url" id="script-url" placeholder="Pegá acá la URL que termina en /exec — ver instrucciones abajo">
-          </div>
-          <button class="btn btn-save" id="btn-save-config">Guardar</button>
-        </div>
-        <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap;">
-          <button class="btn btn-primary" id="btn-load-sheet">Cargar / actualizar desde el Sheet</button>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+          <button class="btn btn-primary" id="btn-load-sheet">Actualizar desde el Sheet</button>
+          <span class="hint">Trae las últimas facturas cargadas en la planilla</span>
         </div>
 
-        <details class="manual-upload">
-          <summary>¿Preferís subir el archivo CSV manualmente en vez de conectar el Sheet?</summary>
-          <label class="upload-zone" id="dropzone">
-            <div class="u-title">Subí el CSV exportado del Sheet</div>
+        <details class="manual-upload" style="margin-top:14px;">
+          <summary>Opciones avanzadas</summary>
+          <div class="sync-row" style="margin-top:10px;">
+            <div class="sync-field">
+              <label class="sync-label">URL publicada del Sheet (CSV)</label>
+              <input type="url" id="csv-url" value="https://docs.google.com/spreadsheets/d/e/2PACX-1vRfIt_qRJxGQSlX9O1WL12ObaExER1kzH7eDQLg8Auu3YHf2ljO3-id6b85G_Pm-rmgnudUgMzIaqGp/pub?output=csv">
+            </div>
+            <div class="sync-field">
+              <label class="sync-label">URL del Web App de Apps Script</label>
+              <input type="url" id="script-url" value="https://script.google.com/macros/s/AKfycbzpAZZ61cyP2mOI4bsLM5RpUIBnYzkH_zzqz-lbL1GGtdIdDX0_BlYFJant4LRek6qpaA/exec">
+            </div>
+            <button class="btn btn-save" id="btn-save-config">Guardar</button>
+          </div>
+          <label class="upload-zone" id="dropzone" style="margin-top:14px;">
+            <div class="u-title">O subí el CSV manualmente</div>
             <div class="u-sub">Fecha · Cantidad · N. Comprobante · Producto · Proveedor · CUIT · Neto · IVA... · Total</div>
             <input type="file" id="file-input" accept=".csv">
           </label>
-        </details>
-
-        <details class="manual-upload" style="margin-top:14px;">
-          <summary>¿Cómo consigo la URL del Web App? (una sola vez)</summary>
-          <div class="hint" style="line-height:1.7; margin-top:8px; white-space:pre-line;">1. Abrí tu Google Sheet real (no el link publicado) → menú Extensiones → Apps Script.
-2. Borrá el código de ejemplo y pegá el script que te pasé por chat.
-3. Guardá (ícono de disquete).
-4. Arriba a la derecha: Implementar → Nueva implementación → tipo "Aplicación web".
-5. "Ejecutar como": tu cuenta. "Quién tiene acceso": Cualquier usuario.
-6. Autorizá los permisos cuando te los pida (es tu propio Sheet).
-7. Copiá la URL que termina en /exec y pegala arriba, en "URL del Web App".</div>
         </details>
       </div>
     </div>
@@ -263,7 +253,12 @@
     setTimeout(()=> t.classList.remove('show'), 2400);
   }
 
+  const DEFAULT_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRfIt_qRJxGQSlX9O1WL12ObaExER1kzH7eDQLg8Auu3YHf2ljO3-id6b85G_Pm-rmgnudUgMzIaqGp/pub?output=csv";
+  const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzpAZZ61cyP2mOI4bsLM5RpUIBnYzkH_zzqz-lbL1GGtdIdDX0_BlYFJant4LRek6qpaA/exec";
+
   async function loadConfig(){
+    state.csvUrl = DEFAULT_CSV_URL;
+    state.scriptUrl = DEFAULT_SCRIPT_URL;
     try{
       const res = await window.storage.get(CFG_KEY, false);
       if (res && res.value){
@@ -271,8 +266,9 @@
         if (cfg.scriptUrl){ state.scriptUrl = cfg.scriptUrl; document.getElementById('script-url').value = cfg.scriptUrl; }
         if (cfg.csvUrl){ state.csvUrl = cfg.csvUrl; document.getElementById('csv-url').value = cfg.csvUrl; }
       }
-    }catch(e){ /* sin config guardada */ }
+    }catch(e){ /* sin config guardada, usamos los valores por defecto */ }
     updateConnStatus();
+    loadFromSheet();
   }
 
   async function saveConfig(){
