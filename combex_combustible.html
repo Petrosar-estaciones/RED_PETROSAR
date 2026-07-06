@@ -191,13 +191,32 @@
       </div>
     </div>
 
+    <div class="panel" id="panel-mensual" style="display:none;">
+      <div class="panel-head">
+        <h2>3 · Resumen mensual</h2>
+        <div class="sync-field" style="min-width:200px; max-width:240px;">
+          <label class="sync-label">Ver resumen del mes</label>
+          <select class="prod-select" id="mes-filter" style="padding:7px 8px; font-size:13px;"></select>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="hint" style="margin-bottom:10px; font-weight:600; color:var(--ink);">Litros comprados por mes y producto</div>
+        <div style="overflow-x:auto;">
+          <table class="prov-table" id="tabla-mensual">
+            <thead><tr><th>Mes</th><th>Euro Diesel (L)</th><th>Gasoil (L)</th><th>Total (L)</th></tr></thead>
+            <tbody id="tbody-mensual"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <div class="panel" id="panel-resumen" style="display:none;">
-      <div class="panel-head"><h2>3 · Resumen por producto</h2></div>
+      <div class="panel-head"><h2 id="resumen-titulo">4 · Resumen por producto</h2></div>
       <div class="panel-body"><div class="summary-grid" id="summary-cards"></div></div>
     </div>
 
     <div class="panel" id="panel-proveedor" style="display:none;">
-      <div class="panel-head"><h2>Resumen por proveedor</h2></div>
+      <div class="panel-head"><h2 id="proveedor-titulo">Resumen por proveedor</h2></div>
       <div class="panel-body" style="overflow-x:auto;">
         <table class="prov-table" id="tabla-proveedor">
           <thead><tr><th>Proveedor</th><th>Euro Diesel (L)</th><th>Gasoil (L)</th><th>Litros totales</th><th>Neto total</th></tr></thead>
@@ -207,7 +226,7 @@
     </div>
 
     <div class="panel" id="panel-export" style="display:none;">
-      <div class="panel-head"><h2>4 · Exportar</h2></div>
+      <div class="panel-head"><h2>5 · Exportar</h2></div>
       <div class="panel-body" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
         <button class="btn btn-export" id="btn-export">Exportar a Excel</button>
         <span class="hint" id="export-status"></span>
@@ -221,7 +240,47 @@
 
 <script>
 (function(){
-  const state = { rows: [], scriptUrl: '', csvUrl: '' };
+  const state = { rows: [], scriptUrl: '', csvUrl: '', mesFiltro: 'todos' };
+  const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  function mesLabel(key){
+    const [y,m] = key.split('-');
+    return MESES[parseInt(m,10)-1] + ' ' + y;
+  }
+  function filteredRows(){
+    if (!state.mesFiltro || state.mesFiltro === 'todos') return state.rows;
+    return state.rows.filter(r => parseFechaKey(r.fecha).slice(0,7) === state.mesFiltro);
+  }
+  function populateMesFilter(){
+    const sel = document.getElementById('mes-filter');
+    const keys = Array.from(new Set(state.rows.map(r => parseFechaKey(r.fecha).slice(0,7)))).sort();
+    sel.innerHTML = '<option value="todos">Todos los meses</option>' + keys.map(k => `<option value="${k}">${mesLabel(k)}</option>`).join('');
+    if (keys.includes(state.mesFiltro)) {
+      sel.value = state.mesFiltro;
+    } else {
+      state.mesFiltro = keys.length ? keys[keys.length - 1] : 'todos';
+      sel.value = state.mesFiltro;
+    }
+  }
+  function renderMensual(){
+    const map = new Map();
+    state.rows.forEach(r => {
+      const key = parseFechaKey(r.fecha).slice(0,7);
+      if (!map.has(key)) map.set(key, { diesel:0, gasoil:0 });
+      const e = map.get(key);
+      if (r.producto === 'Euro Diesel') e.diesel += (r.cantidad||0);
+      else if (r.producto === 'Gasoil') e.gasoil += (r.cantidad||0);
+    });
+    const keys = Array.from(map.keys()).sort();
+    document.getElementById('tbody-mensual').innerHTML = keys.map(k => {
+      const e = map.get(k);
+      return `<tr>
+        <td class="prov-cell">${mesLabel(k)}</td>
+        <td class="num-cell">${fmtLitros(e.diesel)}</td>
+        <td class="num-cell">${fmtLitros(e.gasoil)}</td>
+        <td class="num-cell">${fmtLitros(e.diesel + e.gasoil)}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="4" class="hint" style="padding:10px;">Sin datos todavía</td></tr>';
+  }
   const CFG_KEY = 'combex-config';
 
   function parseNum(str){
@@ -438,9 +497,10 @@
     document.getElementById('g-costo').textContent = costoProm ? fmtMoney(costoProm) : '—';
   }
 
-  function groupByProducto(){
+  function groupByProducto(rowsIn){
+    const base = rowsIn || state.rows;
     return ['Euro Diesel', 'Gasoil'].map(p => {
-      const rs = state.rows.filter(r => r.producto === p);
+      const rs = base.filter(r => r.producto === p);
       const litros = rs.reduce((s,r)=> s + (r.cantidad||0), 0);
       const neto = rs.reduce((s,r)=> s + (r.neto||0), 0);
       const total = rs.reduce((s,r)=> s + (r.total||0), 0);
@@ -450,8 +510,11 @@
 
   function renderResumen(){
     const grid = document.getElementById('summary-cards');
-    const groups = groupByProducto();
-    const sinAsignar = state.rows.filter(r => !r.producto).length;
+    const rows = filteredRows();
+    const groups = groupByProducto(rows);
+    const sinAsignar = rows.filter(r => !r.producto).length;
+    const titulo = document.getElementById('resumen-titulo');
+    if (titulo) titulo.textContent = '4 · Resumen por producto — ' + (state.mesFiltro && state.mesFiltro !== 'todos' ? mesLabel(state.mesFiltro) : 'todos los meses');
     grid.innerHTML = groups.map(g => `
       <div class="sum-card ${g.producto === 'Euro Diesel' ? 'diesel' : 'gasoil'}">
         <div class="sc-title">${g.producto}</div>
@@ -468,14 +531,17 @@
   }
 
   function renderProveedor(){
+    const rows = filteredRows();
     const map = new Map();
-    state.rows.forEach(r => {
+    rows.forEach(r => {
       if (!map.has(r.proveedor)) map.set(r.proveedor, { diesel:0, gasoil:0, neto:0 });
       const e = map.get(r.proveedor);
       if (r.producto === 'Euro Diesel') e.diesel += (r.cantidad||0);
       else if (r.producto === 'Gasoil') e.gasoil += (r.cantidad||0);
       e.neto += (r.neto||0);
     });
+    const titulo = document.getElementById('proveedor-titulo');
+    if (titulo) titulo.textContent = 'Resumen por proveedor — ' + (state.mesFiltro && state.mesFiltro !== 'todos' ? mesLabel(state.mesFiltro) : 'todos los meses');
     document.getElementById('tbody-proveedor').innerHTML = Array.from(map.entries()).map(([prov, e]) => `
       <tr>
         <td class="prov-cell">${prov}</td>
@@ -487,13 +553,14 @@
   }
 
   function showPanels(){
-    ['panel-tabla','panel-resumen','panel-proveedor','panel-export'].forEach(id => document.getElementById(id).style.display = '');
+    ['panel-tabla','panel-mensual','panel-resumen','panel-proveedor','panel-export'].forEach(id => document.getElementById(id).style.display = '');
   }
 
   function renderAll(){
     if (!state.rows.length) return;
     showPanels();
-    renderTabla(); renderGauge(); renderResumen(); renderProveedor();
+    populateMesFilter();
+    renderTabla(); renderGauge(); renderResumen(); renderProveedor(); renderMensual();
   }
 
   function ingestRows(newRows, sourceLabel){
@@ -543,6 +610,11 @@
     };
     reader.readAsText(file, 'UTF-8');
   }
+
+  document.getElementById('mes-filter').addEventListener('change', (e) => {
+    state.mesFiltro = e.target.value;
+    renderResumen(); renderProveedor();
+  });
 
   document.getElementById('btn-save-config').addEventListener('click', saveConfig);
   document.getElementById('btn-load-sheet').addEventListener('click', loadFromSheet);
