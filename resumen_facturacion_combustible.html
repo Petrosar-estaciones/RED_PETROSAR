@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resumen de facturación · PSGRUPO</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --paper:#F1F3F2; --card:#ffffff; --ink:#132226; --ink-soft:#5C6B6E;
+    --line:#DCE2E1; --line-strong:#C3CBC9;
+    --petrol:#0E3F45; --amber:#DE9A2C; --amber-soft:#FBF0DC; --amber-line:#EFC885;
+    --green:#2F8F5B; --red:#C0392B;
+    --sans:'Inter', system-ui, -apple-system, sans-serif;
+    --display:'Space Grotesk', var(--sans);
+    --mono:'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{ background:var(--paper); font-family:var(--sans); color:var(--ink); }
+  .app{ min-height:100%; padding-bottom:60px; }
+
+  .topbar{ background:var(--petrol); color:#fff; padding:22px 30px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; }
+  .brand{ display:flex; align-items:baseline; gap:12px; }
+  .brand .mark{ font-family:var(--display); font-weight:700; font-size:19px; letter-spacing:-0.01em; }
+  .brand .mark .dot{ color:var(--amber); }
+  .brand a{ color:#9FC1C3; font-size:11px; text-decoration:underline; cursor:pointer; }
+  .gauge{ display:flex; flex-wrap:wrap; }
+  .gauge-item{ text-align:right; padding:0 18px; border-left:1px solid rgba(255,255,255,.18); }
+  .gauge-item:first-child{ border-left:none; }
+  .gauge-item .num{ font-family:var(--mono); font-size:17px; font-weight:600; display:block; line-height:1.15; }
+  .gauge-item .lbl{ font-size:9.5px; text-transform:uppercase; letter-spacing:.08em; color:#9FC1C3; }
+
+  .body{ padding:26px 30px 0; max-width:1140px; margin:0 auto; }
+
+  .panel{ background:var(--card); border:1px solid var(--line); border-radius:10px; margin-bottom:22px; overflow:hidden; }
+  .panel-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px 18px; border-bottom:1px solid var(--line); background:#FAFBFA; flex-wrap:wrap; }
+  .panel-head h2{ font-family:var(--display); font-weight:600; font-size:14px; margin:0; }
+  .panel-body{ padding:18px; }
+
+  .sync-row{ display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+  .sync-field{ display:flex; flex-direction:column; flex:1; min-width:220px; }
+  .sync-label{ font-size:11px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.06em; margin-bottom:5px; }
+  .sync-field input, .sync-field select{ font-family:var(--mono); font-size:12.5px; padding:9px 10px; border:1px solid var(--line-strong); border-radius:6px; background:#fff; color:var(--ink); }
+  .sync-field select{ font-family:var(--sans); }
+  .sync-field input:focus, .sync-field select:focus{ outline:2px solid var(--amber); outline-offset:1px; border-color:var(--amber); }
+
+  .status-line{ display:flex; align-items:center; gap:8px; font-size:12px; color:var(--ink-soft); margin-top:12px; }
+  .status-dot{ width:8px; height:8px; border-radius:50%; flex:none; }
+  .status-off{ background:var(--line-strong); } .status-ok{ background:var(--green); }
+  .status-err{ background:var(--red); } .status-saving{ background:var(--amber); animation:pulse 1s infinite; }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+
+  table{ width:100%; border-collapse:collapse; font-size:12.8px; }
+  thead th{ text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); border-bottom:1px solid var(--line-strong); padding:9px 8px; white-space:nowrap; font-weight:600; background:#FAFBFA; }
+  tbody td{ padding:8px; border-bottom:1px solid var(--line); vertical-align:middle; font-family:var(--mono); white-space:nowrap; }
+  tbody tr:hover{ background:#FAFBFA; }
+  .num-cell{ text-align:right; }
+  .neg{ color:var(--red); }
+  .est-cell{ font-family:var(--sans); font-weight:600; }
+  .prod-cell{ font-family:var(--sans); color:var(--ink-soft); font-size:12.3px; }
+  .foot-row td{ border-top:1.5px solid var(--ink); border-bottom:none; font-weight:700; background:#FAFBFA; }
+  .group-sep td{ border-top:1px solid var(--line-strong); }
+
+  .btn{ font-family:var(--sans); font-weight:600; font-size:13px; padding:9px 18px; border-radius:6px; border:none; cursor:pointer; white-space:nowrap; }
+  .btn-primary{ background:var(--amber); color:#fff; }
+  .btn-primary:hover{ background:#c6851f; }
+  .btn-dark{ background:var(--petrol); color:#fff; }
+  .btn-dark:hover{ background:#0a2c30; }
+
+  .toast{ position:fixed; bottom:22px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 20px; border-radius:7px; font-size:13px; font-weight:600; box-shadow:0 4px 16px rgba(0,0,0,.18); opacity:0; pointer-events:none; transition:opacity .25s; z-index:999; }
+  .toast.show{ opacity:1; }
+  .hint{ font-size:11.5px; color:var(--ink-soft); }
+  .empty-state{ padding:30px 18px; text-align:center; color:var(--ink-soft); font-size:13px; }
+
+  @media (max-width:720px){ .topbar{ flex-direction:column; align-items:flex-start; } .body{ padding:18px 12px 0; } table{ font-size:12px; } }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="mark">FACTURACIÓN <span class="dot">·</span> resumen por estación</div>
+      <a href="#" id="link-conexion">cambiar conexión</a>
+    </div>
+    <div class="gauge">
+      <div class="gauge-item"><span class="num" id="g-litros">— L</span><span class="lbl">Litros</span></div>
+      <div class="gauge-item"><span class="num" id="g-facturado">—</span><span class="lbl">Facturado</span></div>
+      <div class="gauge-item"><span class="num" id="g-mes">—</span><span class="lbl">Mostrando</span></div>
+    </div>
+  </div>
+
+  <div class="body">
+
+    <div class="panel" id="panel-config">
+      <div class="panel-head"><h2>Conexión con el Sheet</h2></div>
+      <div class="panel-body">
+        <div class="sync-row">
+          <div class="sync-field">
+            <label class="sync-label">URL del Web App de Apps Script</label>
+            <input type="url" id="input-script-url" placeholder="https://script.google.com/macros/s/.../exec">
+          </div>
+          <button class="btn btn-primary" id="btn-conectar">Conectar y cargar</button>
+        </div>
+        <div class="status-line">
+          <span class="status-dot status-off" id="status-dot"></span>
+          <span id="status-text">Sin conectar todavía.</span>
+        </div>
+        <div class="hint" style="margin-top:10px;">Pegá acá la URL que te da Apps Script al implementar el script de tu Sheet "facturacion combustible" como aplicación web. Se guarda en este navegador.</div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-resumen" style="display:none;">
+      <div class="panel-head">
+        <h2 id="resumen-titulo">Resumen por estación y producto</h2>
+        <div class="sync-field" style="min-width:180px; max-width:210px;">
+          <label class="sync-label">Mes</label>
+          <select id="mes-filter"></select>
+        </div>
+      </div>
+      <div class="panel-body" style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr><th>Estación</th><th>Producto</th><th>Litros</th><th>Neto</th><th>IVA</th><th>ITC</th><th>IDC</th><th>Subtotal</th></tr>
+          </thead>
+          <tbody id="tbody-resumen"></tbody>
+          <tfoot><tr class="foot-row" id="foot-row"></tr></tfoot>
+        </table>
+        <div class="empty-state" id="empty-resumen" style="display:none;">No hay datos cargados todavía para este mes.</div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-sinclasificar" style="display:none;">
+      <div class="panel-head"><h2>Filas sin clasificar</h2></div>
+      <div class="panel-body" style="overflow-x:auto;">
+        <div class="hint" style="margin-bottom:10px;">Estas filas tienen un código de producto que no coincide con ninguna de las reglas configuradas. Revisalas para que no falten del resumen de arriba.</div>
+        <table>
+          <thead><tr><th>Fecha</th><th>Comprobante</th><th>Cliente</th><th>Código</th><th>Producto</th><th>Cantidad</th></tr></thead>
+          <tbody id="tbody-sinclasificar"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  const state = { scriptUrl: '', rows: [], mesFiltro: 'todos' };
+  const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const STORAGE_KEY = 'facturacion_combustible_config';
+
+  // Reglas de clasificación: cada código de producto (columna F) se mapea a una estación y categoría.
+  // El código 0011 (Gasoil, Estación CD) quedó asumido por eliminación; revisar en "Filas sin clasificar" si no coincide.
+  const REGLAS = [
+    { codigo: '0005', match: /./,      estacion: 'Remota VH',    categoria: 'Euro Diesel' },
+    { codigo: '0006', match: /./,      estacion: 'Remota TP',    categoria: 'Euro Diesel' },
+    { codigo: '0007', match: /./,      estacion: 'Remota AG',    categoria: 'Gasoil' },
+    { codigo: '0008', match: /./,      estacion: 'Planta CD',    categoria: 'Gasoil' },
+    { codigo: '0009', match: /./,      estacion: 'Planta CD',    categoria: 'Euro Diesel' },
+    { codigo: '0010', match: /./,      estacion: 'Estación CD',  categoria: 'Euro Diesel' },
+    { codigo: '0011', match: /./,      estacion: 'Estación CD',  categoria: 'Gasoil' },
+  ];
+
+  function clasificar(codigo, producto){
+    const cod = String(codigo == null ? '' : codigo).trim();
+    const prod = String(producto == null ? '' : producto);
+    const regla = REGLAS.find(r => r.codigo === cod && r.match.test(prod));
+    if (regla) return { estacion: regla.estacion, categoria: regla.categoria, clasificada: true };
+    return { estacion: 'Sin clasificar', categoria: (prod || ('Código ' + (cod || '?'))), clasificada: false };
+  }
+
+  function toast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2600);
+  }
+  function fmtLitros(n){ if (n===null||n===undefined||isNaN(n)) return '—'; return Math.round(n).toLocaleString('es-AR') + ' L'; }
+  function fmtMoney(n){ if (n===null||n===undefined||isNaN(n)) return '—'; return '$' + n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function numCls(n){ return (n||0) < 0 ? 'num-cell neg' : 'num-cell'; }
+  function parseNumLoose(v){
+    if (v===null||v===undefined||v==='') return 0;
+    if (typeof v === 'number') return v;
+    let s = String(v).trim().replace(/\$/g,'').replace(/\s/g,'');
+    if (!s) return 0;
+    if (s.includes(',') && s.includes('.')) s = s.replace(/\./g,'').replace(',', '.');
+    else if (s.includes(',')) s = s.replace(',', '.');
+    const n = parseFloat(s);
+    return isNaN(n) ? 0 : n;
+  }
+  function normKey(s){ return String(s).trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+  function getVal(obj, name){
+    const target = normKey(name);
+    const key = Object.keys(obj).find(k => normKey(k) === target);
+    return key ? obj[key] : undefined;
+  }
+  function parseFechaUTC(v){ if (!v) return null; const d = new Date(v); return isNaN(d.getTime()) ? null : d; }
+  function fechaLabel(d){ if (!d) return '—'; return String(d.getUTCDate()).padStart(2,'0')+'/'+String(d.getUTCMonth()+1).padStart(2,'0')+'/'+d.getUTCFullYear(); }
+  function monthKeyOf(d){ if (!d) return ''; return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0'); }
+  function mesLabel(key){ const [y,m]=key.split('-'); return MESES[parseInt(m,10)-1]+' '+y; }
+
+  function setConnStatus(kind, text){
+    document.getElementById('status-dot').className = 'status-dot status-' + kind;
+    document.getElementById('status-text').textContent = text;
+    if (kind === 'err') document.getElementById('panel-config').style.display = '';
+  }
+  function loadConfig(){
+    try{ const raw = localStorage.getItem(STORAGE_KEY); if (raw){ const cfg = JSON.parse(raw); if (cfg.scriptUrl) document.getElementById('input-script-url').value = cfg.scriptUrl; } }catch(e){}
+  }
+  function saveConfig(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({ scriptUrl: state.scriptUrl })); }catch(e){} }
+
+  document.getElementById('link-conexion').addEventListener('click', (e) => {
+    e.preventDefault();
+    const p = document.getElementById('panel-config');
+    p.style.display = (p.style.display === 'none') ? '' : 'none';
+  });
+
+  async function conectarYCargar(){
+    const url = document.getElementById('input-script-url').value.trim();
+    if (!url){ toast('Pegá primero la URL del Web App'); return; }
+    state.scriptUrl = url;
+    saveConfig();
+    await cargarDesdeSheet();
+  }
+
+  async function cargarDesdeSheet(){
+    if (!state.scriptUrl){ toast('Conectá primero el Web App'); return; }
+    setConnStatus('saving', 'Cargando datos del Sheet…');
+    try{
+      const sep = state.scriptUrl.includes('?') ? '&' : '?';
+      const resp = await fetch(state.scriptUrl + sep + '_=' + Date.now());
+      const data = await resp.json();
+      if (!data || data.ok === false){
+        setConnStatus('err', 'Error del Web App: ' + (data && data.error ? data.error : 'respuesta inválida'));
+        return;
+      }
+      const rawRows = data.rows || [];
+      state.rows = rawRows.map(r => {
+        const fecha = parseFechaUTC(getVal(r,'Fecha'));
+        const codigo = String(getVal(r,'Código') || getVal(r,'Codigo') || '').trim();
+        const producto = (getVal(r,'Producto') || '').toString().trim();
+        const clasif = clasificar(codigo, producto);
+        return {
+          fila: r._fila,
+          fecha, fechaTxt: fechaLabel(fecha), mesKey: monthKeyOf(fecha),
+          comprobante: (getVal(r,'Comprobante') || '').toString().trim(),
+          cliente: (getVal(r,'Cliente') || '').toString().trim(),
+          codigo, producto,
+          estacion: clasif.estacion, categoria: clasif.categoria, clasificada: clasif.clasificada,
+          cantidad: parseNumLoose(getVal(r,'Cantidad')),
+          neto: parseNumLoose(getVal(r,'Neto')),
+          iva: parseNumLoose(getVal(r,'I.V.A.') !== undefined ? getVal(r,'I.V.A.') : getVal(r,'IVA')),
+          itc: parseNumLoose(getVal(r,'Imp.Int.') !== undefined ? getVal(r,'Imp.Int.') : getVal(r,'ITC')),
+          idc: parseNumLoose(getVal(r,'Imp.Int. 2') !== undefined ? getVal(r,'Imp.Int. 2') : getVal(r,'IDC')),
+          subtotal: parseNumLoose(getVal(r,'Sub-Total') !== undefined ? getVal(r,'Sub-Total') : getVal(r,'Subtotal')),
+        };
+      }).filter(r => r.fila && (r.comprobante || r.fecha));
+
+      document.getElementById('panel-resumen').style.display = '';
+      populateMesFilter();
+      renderAll();
+      setConnStatus('ok', 'Conectado. ' + state.rows.length + ' filas cargadas.');
+    }catch(e){
+      console.error(e);
+      setConnStatus('err', 'No se pudo conectar. Revisá la URL o que el Web App esté implementado como "Cualquiera con el link".');
+    }
+  }
+
+  function filteredRows(){
+    if (!state.mesFiltro || state.mesFiltro === 'todos') return state.rows;
+    return state.rows.filter(r => r.mesKey === state.mesFiltro);
+  }
+
+  function populateMesFilter(){
+    const sel = document.getElementById('mes-filter');
+    const keys = Array.from(new Set(state.rows.map(r => r.mesKey).filter(Boolean))).sort();
+    sel.innerHTML = keys.map(k => '<option value="'+k+'">'+mesLabel(k)+'</option>').join('') + '<option value="todos">Todos los meses</option>';
+    if (keys.includes(state.mesFiltro)){ sel.value = state.mesFiltro; }
+    else { state.mesFiltro = keys.length ? keys[keys.length-1] : 'todos'; sel.value = state.mesFiltro; }
+  }
+
+  function renderResumen(){
+    const rows = filteredRows();
+    const map = new Map(); // key: estacion + '|' + categoria
+    rows.forEach(r => {
+      const key = r.estacion + '|' + r.categoria;
+      if (!map.has(key)) map.set(key, { estacion:r.estacion, categoria:r.categoria, litros:0, neto:0, iva:0, itc:0, idc:0, subtotal:0 });
+      const e = map.get(key);
+      e.litros += r.cantidad; e.neto += r.neto; e.iva += r.iva; e.itc += r.itc; e.idc += r.idc; e.subtotal += r.subtotal;
+    });
+    const orden = ['Estación CD','Planta CD','Remota TP','Remota AG','Remota VH','Sin clasificar'];
+    const entries = Array.from(map.values()).sort((a,b) => {
+      const ia = orden.indexOf(a.estacion), ib = orden.indexOf(b.estacion);
+      return (ia===-1?99:ia) - (ib===-1?99:ib) || a.categoria.localeCompare(b.categoria);
+    });
+
+    document.getElementById('resumen-titulo').textContent = 'Resumen por estación y producto — ' + (state.mesFiltro!=='todos' ? mesLabel(state.mesFiltro) : 'todos los meses');
+    document.getElementById('empty-resumen').style.display = entries.length ? 'none' : '';
+    document.getElementById('tbody-resumen').innerHTML = entries.map(e => (
+      '<tr>' +
+        '<td class="est-cell">'+e.estacion+'</td>' +
+        '<td class="prod-cell">'+e.categoria+'</td>' +
+        '<td class="'+numCls(e.litros)+'">'+fmtLitros(e.litros)+'</td>' +
+        '<td class="'+numCls(e.neto)+'">'+fmtMoney(e.neto)+'</td>' +
+        '<td class="'+numCls(e.iva)+'">'+fmtMoney(e.iva)+'</td>' +
+        '<td class="'+numCls(e.itc)+'">'+fmtMoney(e.itc)+'</td>' +
+        '<td class="'+numCls(e.idc)+'">'+fmtMoney(e.idc)+'</td>' +
+        '<td class="'+numCls(e.subtotal)+'">'+fmtMoney(e.subtotal)+'</td>' +
+      '</tr>'
+    )).join('');
+
+    const totLitros = rows.reduce((s,r)=>s+r.cantidad,0);
+    const totNeto = rows.reduce((s,r)=>s+r.neto,0);
+    const totIva = rows.reduce((s,r)=>s+r.iva,0);
+    const totItc = rows.reduce((s,r)=>s+r.itc,0);
+    const totIdc = rows.reduce((s,r)=>s+r.idc,0);
+    const totSub = rows.reduce((s,r)=>s+r.subtotal,0);
+    document.getElementById('foot-row').innerHTML =
+      '<td colspan="2">Total general</td>' +
+      '<td class="'+numCls(totLitros)+'">'+fmtLitros(totLitros)+'</td>' +
+      '<td class="'+numCls(totNeto)+'">'+fmtMoney(totNeto)+'</td>' +
+      '<td class="'+numCls(totIva)+'">'+fmtMoney(totIva)+'</td>' +
+      '<td class="'+numCls(totItc)+'">'+fmtMoney(totItc)+'</td>' +
+      '<td class="'+numCls(totIdc)+'">'+fmtMoney(totIdc)+'</td>' +
+      '<td class="'+numCls(totSub)+'">'+fmtMoney(totSub)+'</td>';
+
+    document.getElementById('g-litros').textContent = fmtLitros(totLitros);
+    document.getElementById('g-facturado').textContent = fmtMoney(totSub);
+    document.getElementById('g-mes').textContent = state.mesFiltro!=='todos' ? mesLabel(state.mesFiltro) : 'Todos los meses';
+  }
+
+  function renderSinClasificar(){
+    const rows = filteredRows().filter(r => !r.clasificada);
+    const panel = document.getElementById('panel-sinclasificar');
+    panel.style.display = rows.length ? '' : 'none';
+    document.getElementById('tbody-sinclasificar').innerHTML = rows.map(r => (
+      '<tr><td>'+r.fechaTxt+'</td><td class="prod-cell">'+(r.comprobante||'—')+'</td><td class="prod-cell">'+(r.cliente||'—')+'</td>' +
+      '<td>'+(r.codigo||'—')+'</td><td class="prod-cell">'+(r.producto||'—')+'</td><td class="'+numCls(r.cantidad)+'">'+fmtLitros(r.cantidad)+'</td></tr>'
+    )).join('');
+  }
+
+  function renderAll(){ renderResumen(); renderSinClasificar(); }
+
+  document.getElementById('btn-conectar').addEventListener('click', conectarYCargar);
+  document.getElementById('mes-filter').addEventListener('change', (e) => { state.mesFiltro = e.target.value; renderAll(); });
+
+  loadConfig();
+})();
+</script>
+</body>
+</html>
