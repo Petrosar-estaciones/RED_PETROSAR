@@ -136,6 +136,7 @@
   <div class="topbar">
     <div class="brand">
       <div class="mark">COMBEX <span class="dot">·</span> compras de combustible</div>
+      <a href="#" id="link-conexion" style="color:#9FC1C3; font-size:11px; text-decoration:underline; cursor:pointer;">cambiar conexión</a>
     </div>
     <div class="gauge">
       <div class="gauge-item"><span class="num" id="g-litros">— L</span><span class="lbl">Litros</span></div>
@@ -147,21 +148,20 @@
 
   <div class="body">
 
-    <div class="panel" id="panel-config">
-      <div class="panel-head"><h2><span class="step-chip">1</span>Conectar con el Sheet</h2></div>
+    <div class="panel" id="panel-config" style="display:none;">
+      <div class="panel-head"><h2><span class="step-chip">•</span>Conexión con el Sheet</h2></div>
       <div class="panel-body">
         <div class="sync-row">
           <div class="sync-field">
             <label class="sync-label">URL del Web App de Apps Script</label>
             <input type="url" id="input-script-url" placeholder="https://script.google.com/macros/s/.../exec">
           </div>
-          <button class="btn btn-primary" id="btn-conectar">Conectar y cargar</button>
+          <button class="btn btn-primary" id="btn-conectar">Reconectar</button>
         </div>
         <div class="status-line">
           <span class="status-dot status-off" id="status-dot"></span>
           <span id="status-text">Sin conectar todavía.</span>
         </div>
-        <div class="hint" style="margin-top:10px;">Este es el mismo link que generás al implementar el Apps Script como aplicación web. Se guarda en este navegador para la próxima vez.</div>
       </div>
     </div>
 
@@ -295,6 +295,7 @@
     const dot = document.getElementById('status-dot');
     dot.className = 'status-dot status-' + kind;
     document.getElementById('status-text').textContent = text;
+    if (kind === 'err') document.getElementById('panel-config').style.display = '';
   }
 
   function loadConfig(){
@@ -608,11 +609,19 @@
     document.getElementById('export-status').textContent = 'Descargado ' + new Date().toLocaleTimeString('es-AR');
   });
 
-  // Prefill con la URL que ya tenían configurada, si la hay
+  document.getElementById('link-conexion').addEventListener('click', (e) => {
+    e.preventDefault();
+    const p = document.getElementById('panel-config');
+    p.style.display = (p.style.display === 'none') ? '' : 'none';
+  });
+
+  // Arranca solo, con la URL fija del Web App — no hace falta que el usuario conecte nada a mano.
   loadConfig();
   const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzpAZZ61cyP2mOI4bsLM5RpUIBnYzkH_zzqz-lbL1GGtdIdDX0_BlYFJant4LRek6qpaA/exec';
   const inputUrl = document.getElementById('input-script-url');
   if (!inputUrl.value) inputUrl.value = DEFAULT_SCRIPT_URL;
+  state.scriptUrl = inputUrl.value;
+  cargarDesdeSheet();
 
 })();
 </script>
