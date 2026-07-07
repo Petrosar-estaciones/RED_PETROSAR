@@ -355,6 +355,8 @@
           neto: neto,
           ivaR: parseNumLoose(getVal(r,'IVA R.')),
           perIva: parseNumLoose(getVal(r,'Per. IVA')),
+          itc: parseNumLoose(getVal(r,'ITC')),
+          idc: parseNumLoose(getVal(r,'IDC')),
           total: parseNumLoose(getVal(r,'Total')),
           costo: cantidad > 0 ? (neto / cantidad) : null,
           status: 'ok'
@@ -604,16 +606,45 @@
   });
 
   document.getElementById('btn-export').addEventListener('click', () => {
+    const pendientes = state.rows.filter(r => !r.cantidad || !r.producto);
+    document.getElementById('export-status').textContent = pendientes.length
+      ? '⚠ ' + pendientes.length + ' factura(s) sin cantidad y/o producto: se exportan igual' : '';
+
     const rows = state.rows.slice().sort((a,b) => (a.fecha && b.fecha) ? a.fecha - b.fecha : (a.fila - b.fila));
-    const data = rows.map(r => ({
+    const detalle = rows.map(r => ({
       'Fecha': r.fechaTxt, 'N. Comprobante': r.comprobante, 'Proveedor': r.proveedor, 'CUIT': r.cuit,
-      'Cantidad (L)': r.cantidad, 'Producto': r.producto, 'Neto': r.neto, 'Costo/L': r.costo, 'Total': r.total
+      'Producto': r.producto || '', 'Cantidad (L)': r.cantidad || '', 'Neto': r.neto, 'IVA R.': r.ivaR,
+      'Per. IVA': r.perIva, 'ITC': r.itc, 'IDC': r.idc, 'Total': r.total,
+      'Costo x Litro': r.costo ? +r.costo.toFixed(2) : ''
     }));
-    const ws = XLSX.utils.json_to_sheet(data);
+
+    const resumenProducto = groupByProducto().map(g => ({
+      'Producto': g.producto, 'Litros': +g.litros.toFixed(2),
+      'Neto total': +g.neto.toFixed(2), 'Costo promedio x Litro': g.costo ? +g.costo.toFixed(2) : '',
+      'Último costo x Litro': g.ultimoCosto ? +g.ultimoCosto.toFixed(2) : '',
+      'Total facturado': +g.total.toFixed(2)
+    }));
+
+    const provMap = new Map();
+    state.rows.forEach(r => {
+      if (!provMap.has(r.proveedor)) provMap.set(r.proveedor, { diesel:0, gasoil:0, neto:0, total:0 });
+      const e = provMap.get(r.proveedor);
+      if (r.producto === 'Euro Diesel') e.diesel += (r.cantidad||0);
+      else if (r.producto === 'Gasoil') e.gasoil += (r.cantidad||0);
+      e.neto += (r.neto||0); e.total += (r.total||0);
+    });
+    const resumenProveedor = Array.from(provMap.entries()).map(([prov, e]) => ({
+      'Proveedor': prov, 'Euro Diesel (L)': +e.diesel.toFixed(2), 'Gasoil (L)': +e.gasoil.toFixed(2),
+      'Litros totales': +(e.diesel + e.gasoil).toFixed(2), 'Neto total': +e.neto.toFixed(2), 'Total facturado': +e.total.toFixed(2)
+    }));
+
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Compras combustible');
-    XLSX.writeFile(wb, 'compras_combustible.xlsx');
-    document.getElementById('export-status').textContent = 'Descargado ' + new Date().toLocaleTimeString('es-AR');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(detalle), 'Detalle');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumenProducto), 'Resumen por producto');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumenProveedor), 'Resumen por proveedor');
+    const now = new Date();
+    XLSX.writeFile(wb, 'compras_combustible_' + now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '.xlsx');
+    toast('Excel exportado');
   });
 
   document.getElementById('link-conexion').addEventListener('click', (e) => {
