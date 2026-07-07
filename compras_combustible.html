@@ -168,7 +168,13 @@
     <div class="panel" id="panel-tabla" style="display:none;">
       <div class="panel-head">
         <h2><span class="step-chip">2</span>Completar litros y producto</h2>
-        <button class="btn btn-dark" id="btn-refrescar">Actualizar desde el Sheet</button>
+        <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+          <div class="sync-field" style="min-width:180px; max-width:210px;">
+            <label class="sync-label">Ver mes</label>
+            <select id="mes-filter-tabla"></select>
+          </div>
+          <button class="btn btn-dark" id="btn-refrescar">Actualizar desde el Sheet</button>
+        </div>
       </div>
       <div class="panel-body" style="overflow-x:auto;">
         <table>
@@ -188,10 +194,6 @@
     <div class="panel" id="panel-mensual" style="display:none;">
       <div class="panel-head">
         <h2><span class="step-chip">3</span>Resumen mensual</h2>
-        <div class="sync-field" style="min-width:200px; max-width:230px;">
-          <label class="sync-label">Ver resumen del mes</label>
-          <select id="mes-filter"></select>
-        </div>
       </div>
       <div class="panel-body">
         <div class="hint" style="margin-bottom:10px; font-weight:600; color:var(--ink);">Litros comprados por mes y producto</div>
@@ -389,7 +391,7 @@
   }
 
   function populateMesFilter(){
-    const sel = document.getElementById('mes-filter');
+    const sel = document.getElementById('mes-filter-tabla');
     const keys = Array.from(new Set(state.rows.map(r => r.mesKey).filter(Boolean))).sort();
     sel.innerHTML = '<option value="todos">Todos los meses</option>' + keys.map(k => '<option value="'+k+'">'+mesLabel(k)+'</option>').join('');
     if (keys.includes(state.mesFiltro)){
@@ -402,7 +404,7 @@
 
   function renderTabla(){
     const tbody = document.getElementById('tbody-filas');
-    const rows = state.rows.slice().sort((a,b) => (a.fecha && b.fecha) ? a.fecha - b.fecha : (a.fila - b.fila));
+    const rows = filteredRows().slice().sort((a,b) => (a.fecha && b.fecha) ? a.fecha - b.fecha : (a.fila - b.fila));
     document.getElementById('empty-tabla').style.display = rows.length ? 'none' : '';
     tbody.innerHTML = rows.map(r => {
       const dotClass = r.status === 'saving' ? 'status-saving' : r.status === 'error' ? 'status-err' : (r.cantidad && r.producto) ? 'status-ok' : 'status-off';
@@ -427,9 +429,9 @@
     tbody.querySelectorAll('.qty-input').forEach(inp => inp.addEventListener('input', onEditCantidad));
     tbody.querySelectorAll('.prod-select').forEach(sel => sel.addEventListener('change', onEditProducto));
 
-    const totalLitros = state.rows.reduce((s,r) => s + (r.cantidad||0), 0);
-    const totalNeto = state.rows.reduce((s,r) => s + (r.neto||0), 0);
-    const totalFacturado = state.rows.reduce((s,r) => s + (r.total||0), 0);
+    const totalLitros = rows.reduce((s,r) => s + (r.cantidad||0), 0);
+    const totalNeto = rows.reduce((s,r) => s + (r.neto||0), 0);
+    const totalFacturado = rows.reduce((s,r) => s + (r.total||0), 0);
     document.getElementById('foot-row').innerHTML =
       '<td></td><td colspan="3">Totales</td>' +
       '<td class="num-cell">'+fmtLitros(totalLitros)+'</td><td></td>' +
@@ -509,7 +511,10 @@
       const litros = rs.reduce((s,r) => s + (r.cantidad||0), 0);
       const neto = rs.reduce((s,r) => s + (r.neto||0), 0);
       const total = rs.reduce((s,r) => s + (r.total||0), 0);
-      return { producto:p, litros, neto, total, costo: litros>0 ? neto/litros : null };
+      const conCosto = rs.filter(r => r.costo !== null && r.costo !== undefined && r.fecha);
+      conCosto.sort((a,b) => (a.fecha - b.fecha) || (a.fila - b.fila));
+      const ultimo = conCosto.length ? conCosto[conCosto.length - 1] : null;
+      return { producto:p, litros, neto, total, costo: litros>0 ? neto/litros : null, ultimoCosto: ultimo ? ultimo.costo : null, ultimaFecha: ultimo ? ultimo.fechaTxt : null };
     });
   }
 
@@ -525,6 +530,7 @@
         '<div class="sc-row"><span class="k">Litros</span><span class="v">'+fmtLitros(g.litros)+'</span></div>' +
         '<div class="sc-row"><span class="k">Neto</span><span class="v">'+fmtMoney(g.neto)+'</span></div>' +
         '<div class="sc-row"><span class="k">Costo prom. / L</span><span class="v">'+(g.costo?fmtMoney(g.costo):'—')+'</span></div>' +
+        '<div class="sc-row"><span class="k">Último costo / L'+(g.ultimaFecha?' ('+g.ultimaFecha+')':'')+'</span><span class="v">'+(g.ultimoCosto?fmtMoney(g.ultimoCosto):'—')+'</span></div>' +
         '<div class="sc-row"><span class="k">Total facturado</span><span class="v">'+fmtMoney(g.total)+'</span></div>' +
       '</div>'
     )).join('') + (sinAsignar ? '<div class="sum-card"><div class="sc-title">Sin asignar</div><div class="sc-row"><span class="k">Filas pendientes</span><span class="v">'+sinAsignar+'</span></div></div>' : '');
@@ -591,8 +597,9 @@
 
   document.getElementById('btn-conectar').addEventListener('click', conectarYCargar);
   document.getElementById('btn-refrescar').addEventListener('click', cargarDesdeSheet);
-  document.getElementById('mes-filter').addEventListener('change', (e) => {
+  document.getElementById('mes-filter-tabla').addEventListener('change', (e) => {
     state.mesFiltro = e.target.value;
+    renderTabla();
     renderGaugeResumenProveedorMensual();
   });
 
