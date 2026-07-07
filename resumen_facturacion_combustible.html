@@ -84,7 +84,6 @@
   <div class="topbar">
     <div class="brand">
       <div class="mark">FACTURACIÓN <span class="dot">·</span> resumen por estación</div>
-      <a href="#" id="link-conexion">cambiar conexión</a>
     </div>
     <div class="gauge">
       <div class="gauge-item"><span class="num" id="g-litros">— L</span><span class="lbl">Litros</span></div>
@@ -223,11 +222,7 @@
   }
   function saveConfig(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({ scriptUrl: state.scriptUrl })); }catch(e){} }
 
-  document.getElementById('link-conexion').addEventListener('click', (e) => {
-    e.preventDefault();
-    const p = document.getElementById('panel-config');
-    p.style.display = (p.style.display === 'none') ? '' : 'none';
-  });
+  // El panel de conexión solo se muestra automáticamente si hay un error al cargar (ver setConnStatus)
 
   async function conectarYCargar(){
     const url = document.getElementById('input-script-url').value.trim();
