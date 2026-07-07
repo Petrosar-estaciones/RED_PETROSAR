@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Resumen de facturación · PSGRUPO</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -115,9 +116,12 @@
     <div class="panel" id="panel-resumen" style="display:none;">
       <div class="panel-head">
         <h2 id="resumen-titulo">Resumen por estación y producto</h2>
-        <div class="sync-field" style="min-width:180px; max-width:210px;">
-          <label class="sync-label">Mes</label>
-          <select id="mes-filter"></select>
+        <div style="display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap;">
+          <div class="sync-field" style="min-width:180px; max-width:210px;">
+            <label class="sync-label">Mes</label>
+            <select id="mes-filter"></select>
+          </div>
+          <button class="btn btn-dark" id="btn-export">Exportar a Excel</button>
         </div>
       </div>
       <div class="panel-body" style="overflow-x:auto;">
@@ -185,7 +189,7 @@
     t.textContent = msg; t.classList.add('show');
     clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2600);
   }
-  function fmtLitros(n){ if (n===null||n===undefined||isNaN(n)) return '—'; return Math.round(n).toLocaleString('es-AR') + ' L'; }
+  function fmtLitros(n){ if (n===null||n===undefined||isNaN(n)) return '—'; return n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' L'; }
   function fmtMoney(n){ if (n===null||n===undefined||isNaN(n)) return '—'; return '$' + n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
   function numCls(n){ return (n||0) < 0 ? 'num-cell neg' : 'num-cell'; }
   function parseNumLoose(v){
@@ -289,8 +293,7 @@
     else { state.mesFiltro = keys.length ? keys[keys.length-1] : 'todos'; sel.value = state.mesFiltro; }
   }
 
-  function renderResumen(){
-    const rows = filteredRows();
+  function computeResumen(rows){
     const map = new Map(); // key: estacion + '|' + categoria
     rows.forEach(r => {
       const key = r.estacion + '|' + r.categoria;
@@ -303,6 +306,20 @@
       const ia = orden.indexOf(a.estacion), ib = orden.indexOf(b.estacion);
       return (ia===-1?99:ia) - (ib===-1?99:ib) || a.categoria.localeCompare(b.categoria);
     });
+    const totales = {
+      litros: rows.reduce((s,r)=>s+r.cantidad,0),
+      neto: rows.reduce((s,r)=>s+r.neto,0),
+      iva: rows.reduce((s,r)=>s+r.iva,0),
+      itc: rows.reduce((s,r)=>s+r.itc,0),
+      idc: rows.reduce((s,r)=>s+r.idc,0),
+      subtotal: rows.reduce((s,r)=>s+r.subtotal,0),
+    };
+    return { entries, totales };
+  }
+
+  function renderResumen(){
+    const rows = filteredRows();
+    const { entries, totales } = computeResumen(rows);
 
     document.getElementById('resumen-titulo').textContent = 'Resumen por estación y producto — ' + (state.mesFiltro!=='todos' ? mesLabel(state.mesFiltro) : 'todos los meses');
     document.getElementById('empty-resumen').style.display = entries.length ? 'none' : '';
@@ -319,23 +336,17 @@
       '</tr>'
     )).join('');
 
-    const totLitros = rows.reduce((s,r)=>s+r.cantidad,0);
-    const totNeto = rows.reduce((s,r)=>s+r.neto,0);
-    const totIva = rows.reduce((s,r)=>s+r.iva,0);
-    const totItc = rows.reduce((s,r)=>s+r.itc,0);
-    const totIdc = rows.reduce((s,r)=>s+r.idc,0);
-    const totSub = rows.reduce((s,r)=>s+r.subtotal,0);
     document.getElementById('foot-row').innerHTML =
       '<td colspan="2">Total general</td>' +
-      '<td class="'+numCls(totLitros)+'">'+fmtLitros(totLitros)+'</td>' +
-      '<td class="'+numCls(totNeto)+'">'+fmtMoney(totNeto)+'</td>' +
-      '<td class="'+numCls(totIva)+'">'+fmtMoney(totIva)+'</td>' +
-      '<td class="'+numCls(totItc)+'">'+fmtMoney(totItc)+'</td>' +
-      '<td class="'+numCls(totIdc)+'">'+fmtMoney(totIdc)+'</td>' +
-      '<td class="'+numCls(totSub)+'">'+fmtMoney(totSub)+'</td>';
+      '<td class="'+numCls(totales.litros)+'">'+fmtLitros(totales.litros)+'</td>' +
+      '<td class="'+numCls(totales.neto)+'">'+fmtMoney(totales.neto)+'</td>' +
+      '<td class="'+numCls(totales.iva)+'">'+fmtMoney(totales.iva)+'</td>' +
+      '<td class="'+numCls(totales.itc)+'">'+fmtMoney(totales.itc)+'</td>' +
+      '<td class="'+numCls(totales.idc)+'">'+fmtMoney(totales.idc)+'</td>' +
+      '<td class="'+numCls(totales.subtotal)+'">'+fmtMoney(totales.subtotal)+'</td>';
 
-    document.getElementById('g-litros').textContent = fmtLitros(totLitros);
-    document.getElementById('g-facturado').textContent = fmtMoney(totSub);
+    document.getElementById('g-litros').textContent = fmtLitros(totales.litros);
+    document.getElementById('g-facturado').textContent = fmtMoney(totales.subtotal);
     document.getElementById('g-mes').textContent = state.mesFiltro!=='todos' ? mesLabel(state.mesFiltro) : 'Todos los meses';
   }
 
@@ -353,6 +364,31 @@
 
   document.getElementById('btn-conectar').addEventListener('click', conectarYCargar);
   document.getElementById('mes-filter').addEventListener('change', (e) => { state.mesFiltro = e.target.value; renderAll(); });
+
+  document.getElementById('btn-export').addEventListener('click', () => {
+    const rows = filteredRows();
+    if (!rows.length){ toast('No hay datos para exportar en ese mes'); return; }
+    const { entries, totales } = computeResumen(rows);
+    const mesTxt = state.mesFiltro !== 'todos' ? mesLabel(state.mesFiltro) : 'todos los meses';
+
+    const data = entries.map(e => ({
+      'Estación': e.estacion, 'Producto': e.categoria,
+      'Litros': +e.litros.toFixed(2), 'Neto': +e.neto.toFixed(2), 'IVA': +e.iva.toFixed(2),
+      'ITC': +e.itc.toFixed(2), 'IDC': +e.idc.toFixed(2), 'Subtotal': +e.subtotal.toFixed(2)
+    }));
+    data.push({
+      'Estación': 'Total general', 'Producto': '',
+      'Litros': +totales.litros.toFixed(2), 'Neto': +totales.neto.toFixed(2), 'IVA': +totales.iva.toFixed(2),
+      'ITC': +totales.itc.toFixed(2), 'IDC': +totales.idc.toFixed(2), 'Subtotal': +totales.subtotal.toFixed(2)
+    });
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Resumen');
+    const sufijo = state.mesFiltro !== 'todos' ? state.mesFiltro : 'todos_los_meses';
+    XLSX.writeFile(wb, 'resumen_facturacion_' + sufijo + '.xlsx');
+    toast('Excel exportado (' + mesTxt + ')');
+  });
 
   loadConfig();
   const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwpvZnGCa1P4LifYBqGlKkWc0p8P_NY7HGB9wEdKK6VIdfia5jVOwpd61TPB_I8MWzMwg/exec';
