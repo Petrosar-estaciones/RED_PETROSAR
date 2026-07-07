@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Compras de combustible · PSGRUPO</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --paper:#F1F3F2;
+    --card:#ffffff;
+    --ink:#132226;
+    --ink-soft:#5C6B6E;
+    --line:#DCE2E1;
+    --line-strong:#C3CBC9;
+    --petrol:#0E3F45;
+    --petrol-soft:#E4EEEF;
+    --amber:#DE9A2C;
+    --amber-soft:#FBF0DC;
+    --amber-line:#EFC885;
+    --green:#2F8F5B;
+    --red:#C0392B;
+    --sans:'Inter', system-ui, -apple-system, sans-serif;
+    --display:'Space Grotesk', var(--sans);
+    --mono:'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{ background:var(--paper); font-family:var(--sans); color:var(--ink); }
+
+  .app{ min-height:100%; padding-bottom:60px; }
+
+  .topbar{
+    background:var(--petrol); color:#fff; padding:22px 30px;
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;
+  }
+  .brand{ display:flex; align-items:baseline; gap:10px; }
+  .brand .mark{ font-family:var(--display); font-weight:700; font-size:19px; letter-spacing:-0.01em; }
+  .brand .mark .dot{ color:var(--amber); }
+  .brand .sub{ font-size:11.5px; color:#B9CBCC; letter-spacing:.04em; }
+  .gauge{ display:flex; gap:0; flex-wrap:wrap; }
+  .gauge-item{ text-align:right; padding:0 18px; border-left:1px solid rgba(255,255,255,.18); }
+  .gauge-item:first-child{ border-left:none; }
+  .gauge-item .num{ font-family:var(--mono); font-size:17px; font-weight:600; display:block; line-height:1.15; }
+  .gauge-item .lbl{ font-size:9.5px; text-transform:uppercase; letter-spacing:.08em; color:#9FC1C3; }
+
+  .body{ padding:26px 30px 0; max-width:1200px; margin:0 auto; }
+
+  .tick-rule{ height:1px; background-image: linear-gradient(to right, var(--line-strong) 0 6px, transparent 6px 10px); background-size:10px 1px; margin:26px 0; }
+
+  .panel{ background:var(--card); border:1px solid var(--line); border-radius:10px; margin-bottom:22px; overflow:hidden; }
+  .panel-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px 18px; border-bottom:1px solid var(--line); background:#FAFBFA; flex-wrap:wrap; }
+  .panel-head h2{ font-family:var(--display); font-weight:600; font-size:14px; margin:0; color:var(--ink); display:flex; align-items:center; gap:10px; }
+  .step-chip{ font-family:var(--mono); font-size:11px; background:var(--petrol); color:#fff; width:22px; height:22px; border-radius:5px; display:flex; align-items:center; justify-content:center; flex:none; }
+  .panel-body{ padding:18px; }
+
+  .sync-row{ display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+  .sync-field{ display:flex; flex-direction:column; flex:1; min-width:260px; }
+  .sync-label{ font-size:11px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.06em; margin-bottom:5px; }
+  .sync-field input, .sync-field select{
+    font-family:var(--mono); font-size:12.5px; padding:9px 10px; border:1px solid var(--line-strong);
+    border-radius:6px; background:#fff; color:var(--ink);
+  }
+  .sync-field select{ font-family:var(--sans); }
+  .sync-field input:focus, .sync-field select:focus{ outline:2px solid var(--amber); outline-offset:1px; border-color:var(--amber); }
+
+  .status-line{ display:flex; align-items:center; gap:8px; font-size:12px; color:var(--ink-soft); margin-top:12px; }
+  .status-dot{ width:8px; height:8px; border-radius:50%; flex:none; }
+  .status-off{ background:var(--line-strong); }
+  .status-ok{ background:var(--green); }
+  .status-err{ background:var(--red); }
+  .status-saving{ background:var(--amber); animation:pulse 1s infinite; }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+
+  table{ width:100%; border-collapse:collapse; font-size:12.8px; }
+  thead th{
+    text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft);
+    border-bottom:1px solid var(--line-strong); padding:9px 8px; white-space:nowrap; font-weight:600; background:#FAFBFA;
+  }
+  tbody td{ padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:middle; font-family:var(--mono); white-space:nowrap; }
+  tbody tr:hover{ background:#FAFBFA; }
+  .num-cell{ text-align:right; }
+  .prov-cell{ font-family:var(--sans); white-space:normal; max-width:210px; font-size:12.3px; }
+  .sync-cell{ text-align:center; width:24px; }
+  .cell-editable{ background:var(--amber-soft); }
+
+  input.qty-input{
+    width:90px; padding:5px 6px; border:1px solid var(--amber-line); border-radius:4px; background:#fff;
+    font-family:var(--mono); font-size:12.8px; text-align:right; color:var(--ink);
+  }
+  input.qty-input:focus{ outline:2px solid var(--amber); outline-offset:1px; }
+  select.prod-select{ padding:5px 6px; border:1px solid var(--amber-line); border-radius:4px; background:#fff; font-family:var(--sans); font-size:12.3px; color:var(--ink); }
+  select.prod-select.empty{ color:var(--ink-soft); }
+  select.prod-select:focus{ outline:2px solid var(--amber); outline-offset:1px; }
+
+  .foot-row td{ border-top:1.5px solid var(--ink); border-bottom:none; font-weight:600; background:#FAFBFA; }
+
+  .summary-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; }
+  .sum-card{ border:1px solid var(--line); border-radius:9px; padding:14px 16px; }
+  .sum-card.diesel{ border-top:3px solid var(--amber); }
+  .sum-card.gasoil{ border-top:3px solid var(--petrol); }
+  .sum-card .sc-title{ font-family:var(--display); font-weight:600; font-size:13.5px; margin-bottom:10px; }
+  .sc-row{ display:flex; justify-content:space-between; font-size:12.5px; padding:3px 0; }
+  .sc-row .k{ color:var(--ink-soft); }
+  .sc-row .v{ font-family:var(--mono); font-weight:600; }
+
+  .btn{ font-family:var(--sans); font-weight:600; font-size:13px; padding:9px 18px; border-radius:6px; border:none; cursor:pointer; white-space:nowrap; transition:opacity .15s, background .15s; }
+  .btn:active{ opacity:.85; }
+  .btn:disabled{ background:var(--line-strong)!important; color:#fff!important; cursor:not-allowed; }
+  .btn-primary{ background:var(--amber); color:#fff; }
+  .btn-primary:hover{ background:#c6851f; }
+  .btn-dark{ background:var(--petrol); color:#fff; }
+  .btn-dark:hover{ background:#0a2c30; }
+
+  .toast{
+    position:fixed; bottom:22px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff;
+    padding:10px 20px; border-radius:7px; font-size:13px; font-weight:600; box-shadow:0 4px 16px rgba(0,0,0,.18);
+    opacity:0; pointer-events:none; transition:opacity .25s; z-index:999;
+  }
+  .toast.show{ opacity:1; }
+  .hint{ font-size:11.5px; color:var(--ink-soft); }
+  .empty-state{ padding:30px 18px; text-align:center; color:var(--ink-soft); font-size:13px; }
+
+  @media (max-width:720px){
+    .topbar{ flex-direction:column; align-items:flex-start; }
+    .body{ padding:18px 12px 0; }
+    table{ font-size:12px; }
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="mark">COMBEX <span class="dot">·</span> compras de combustible</div>
+    </div>
+    <div class="gauge">
+      <div class="gauge-item"><span class="num" id="g-litros">— L</span><span class="lbl">Litros</span></div>
+      <div class="gauge-item"><span class="num" id="g-neto">—</span><span class="lbl">Neto</span></div>
+      <div class="gauge-item"><span class="num" id="g-costo">—</span><span class="lbl">Costo prom. / L</span></div>
+      <div class="gauge-item"><span class="num" id="g-mes">—</span><span class="lbl">Mostrando</span></div>
+    </div>
+  </div>
+
+  <div class="body">
+
+    <div class="panel" id="panel-config">
+      <div class="panel-head"><h2><span class="step-chip">1</span>Conectar con el Sheet</h2></div>
+      <div class="panel-body">
+        <div class="sync-row">
+          <div class="sync-field">
+            <label class="sync-label">URL del Web App de Apps Script</label>
+            <input type="url" id="input-script-url" placeholder="https://script.google.com/macros/s/.../exec">
+          </div>
+          <button class="btn btn-primary" id="btn-conectar">Conectar y cargar</button>
+        </div>
+        <div class="status-line">
+          <span class="status-dot status-off" id="status-dot"></span>
+          <span id="status-text">Sin conectar todavía.</span>
+        </div>
+        <div class="hint" style="margin-top:10px;">Este es el mismo link que generás al implementar el Apps Script como aplicación web. Se guarda en este navegador para la próxima vez.</div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-tabla" style="display:none;">
+      <div class="panel-head">
+        <h2><span class="step-chip">2</span>Completar litros y producto</h2>
+        <button class="btn btn-dark" id="btn-refrescar">Actualizar desde el Sheet</button>
+      </div>
+      <div class="panel-body" style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th></th><th>Fecha</th><th>Comprobante</th><th>Proveedor</th>
+              <th>Cantidad (L)</th><th>Producto</th><th>Neto</th><th>Costo / L</th><th>Total</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-filas"></tbody>
+          <tfoot><tr class="foot-row" id="foot-row"></tr></tfoot>
+        </table>
+        <div class="empty-state" id="empty-tabla" style="display:none;">No hay filas cargadas todavía en el Sheet.</div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-mensual" style="display:none;">
+      <div class="panel-head">
+        <h2><span class="step-chip">3</span>Resumen mensual</h2>
+        <div class="sync-field" style="min-width:200px; max-width:230px;">
+          <label class="sync-label">Ver resumen del mes</label>
+          <select id="mes-filter"></select>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="hint" style="margin-bottom:10px; font-weight:600; color:var(--ink);">Litros comprados por mes y producto</div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr><th>Mes</th><th>Euro Diesel (L)</th><th>Gasoil (L)</th><th>Total (L)</th></tr></thead>
+            <tbody id="tbody-mensual"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-resumen" style="display:none;">
+      <div class="panel-head"><h2><span class="step-chip">4</span><span id="resumen-titulo">Resumen por producto</span></h2></div>
+      <div class="panel-body"><div class="summary-grid" id="summary-cards"></div></div>
+    </div>
+
+    <div class="panel" id="panel-proveedor" style="display:none;">
+      <div class="panel-head"><h2 id="proveedor-titulo">Resumen por proveedor</h2></div>
+      <div class="panel-body" style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>Proveedor</th><th>Euro Diesel (L)</th><th>Gasoil (L)</th><th>Litros totales</th><th>Neto total</th></tr></thead>
+          <tbody id="tbody-proveedor"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-export" style="display:none;">
+      <div class="panel-head"><h2><span class="step-chip">5</span>Exportar</h2></div>
+      <div class="panel-body" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+        <button class="btn btn-dark" id="btn-export">Exportar a Excel</button>
+        <span class="hint" id="export-status"></span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  const state = { scriptUrl: '', rows: [], mesFiltro: 'todos', dirty: new Set(), timers: new Map() };
+  const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const STORAGE_KEY = 'combex_compras_combustible_config';
+
+  function toast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._h);
+    t._h = setTimeout(() => t.classList.remove('show'), 2600);
+  }
+
+  function fmtLitros(n){
+    if (n === null || n === undefined || isNaN(n)) return '—';
+    return Math.round(n).toLocaleString('es-AR') + ' L';
+  }
+  function fmtMoney(n){
+    if (n === null || n === undefined || isNaN(n)) return '—';
+    return '$' + n.toLocaleString('es-AR', { minimumFractionDigits:2, maximumFractionDigits:2 });
+  }
+  function parseNumLoose(v){
+    if (v === null || v === undefined || v === '') return 0;
+    if (typeof v === 'number') return v;
+    let s = String(v).trim();
+    if (!s) return 0;
+    s = s.replace(/\$/g,'').replace(/\s/g,'');
+    if (s.includes(',') && s.includes('.')) s = s.replace(/\./g,'').replace(',', '.');
+    else if (s.includes(',')) s = s.replace(',', '.');
+    const n = parseFloat(s);
+    return isNaN(n) ? 0 : n;
+  }
+  function getVal(obj, name){
+    const keys = Object.keys(obj);
+    const target = name.trim().toUpperCase();
+    const key = keys.find(k => k.trim().toUpperCase() === target);
+    return key ? obj[key] : undefined;
+  }
+  function parseFechaUTC(v){
+    if (!v) return null;
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  function fechaLabel(d){
+    if (!d) return '—';
+    const dd = String(d.getUTCDate()).padStart(2,'0');
+    const mm = String(d.getUTCMonth()+1).padStart(2,'0');
+    return dd + '/' + mm + '/' + d.getUTCFullYear();
+  }
+  function monthKeyOf(d){
+    if (!d) return '';
+    return d.getUTCFullYear() + '-' + String(d.getUTCMonth()+1).padStart(2,'0');
+  }
+  function mesLabel(key){
+    const [y,m] = key.split('-');
+    return MESES[parseInt(m,10)-1] + ' ' + y;
+  }
+
+  function setConnStatus(kind, text){
+    const dot = document.getElementById('status-dot');
+    dot.className = 'status-dot status-' + kind;
+    document.getElementById('status-text').textContent = text;
+  }
+
+  function loadConfig(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw){
+        const cfg = JSON.parse(raw);
+        if (cfg.scriptUrl) document.getElementById('input-script-url').value = cfg.scriptUrl;
+      }
+    }catch(e){}
+  }
+  function saveConfig(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({ scriptUrl: state.scriptUrl })); }catch(e){}
+  }
+
+  function showPanels(){
+    ['panel-tabla','panel-mensual','panel-resumen','panel-proveedor','panel-export'].forEach(id => document.getElementById(id).style.display = '');
+  }
+
+  async function conectarYCargar(){
+    const url = document.getElementById('input-script-url').value.trim();
+    if (!url){ toast('Pegá primero la URL del Web App'); return; }
+    state.scriptUrl = url;
+    saveConfig();
+    await cargarDesdeSheet();
+  }
+
+  async function cargarDesdeSheet(){
+    if (!state.scriptUrl){ toast('Conectá primero el Web App'); return; }
+    setConnStatus('saving', 'Cargando datos del Sheet…');
+    try{
+      const sep = state.scriptUrl.includes('?') ? '&' : '?';
+      const resp = await fetch(state.scriptUrl + sep + '_=' + Date.now());
+      const data = await resp.json();
+      if (!data || data.ok === false){
+        setConnStatus('err', 'Error del Web App: ' + (data && data.error ? data.error : 'respuesta inválida'));
+        return;
+      }
+      const rawRows = data.rows || [];
+      const parsed = rawRows.map(r => {
+        const fila = r._fila;
+        const fecha = parseFechaUTC(getVal(r,'Fecha'));
+        const cantidad = parseNumLoose(getVal(r,'CANTIDAD'));
+        const neto = parseNumLoose(getVal(r,'Neto'));
+        return {
+          fila: fila,
+          fecha: fecha,
+          fechaTxt: fechaLabel(fecha),
+          mesKey: monthKeyOf(fecha),
+          comprobante: (getVal(r,'N. Comprobante') || '').toString().trim(),
+          proveedor: (getVal(r,'Proveedor') || '').toString().trim(),
+          cuit: (getVal(r,'CUIT') || '').toString().trim(),
+          cantidad: cantidad,
+          producto: (getVal(r,'PRODUCTO') || '').toString().trim(),
+          neto: neto,
+          ivaR: parseNumLoose(getVal(r,'IVA R.')),
+          perIva: parseNumLoose(getVal(r,'Per. IVA')),
+          total: parseNumLoose(getVal(r,'Total')),
+          costo: cantidad > 0 ? (neto / cantidad) : null,
+          status: 'ok'
+        };
+      }).filter(r => r.fila && (r.comprobante || r.fecha));
+
+      ingestRows(parsed);
+      showPanels();
+      renderAll();
+      setConnStatus('ok', 'Conectado. ' + parsed.length + ' filas cargadas.');
+    }catch(e){
+      console.error(e);
+      setConnStatus('err', 'No se pudo conectar. Revisá la URL o que el Web App esté implementado como "Cualquiera con el link".');
+    }
+  }
+
+  function ingestRows(newRows){
+    const prevByFila = new Map(state.rows.map(r => [r.fila, r]));
+    newRows.forEach(r => {
+      const prev = prevByFila.get(r.fila);
+      if (prev && state.dirty.has(r.fila)){
+        r.cantidad = prev.cantidad;
+        r.producto = prev.producto;
+        r.costo = prev.cantidad > 0 ? (r.neto / prev.cantidad) : null;
+        r.status = prev.status;
+      }
+    });
+    state.rows = newRows;
+  }
+
+  function filteredRows(){
+    if (!state.mesFiltro || state.mesFiltro === 'todos') return state.rows;
+    return state.rows.filter(r => r.mesKey === state.mesFiltro);
+  }
+
+  function populateMesFilter(){
+    const sel = document.getElementById('mes-filter');
+    const keys = Array.from(new Set(state.rows.map(r => r.mesKey).filter(Boolean))).sort();
+    sel.innerHTML = '<option value="todos">Todos los meses</option>' + keys.map(k => '<option value="'+k+'">'+mesLabel(k)+'</option>').join('');
+    if (keys.includes(state.mesFiltro)){
+      sel.value = state.mesFiltro;
+    } else {
+      state.mesFiltro = keys.length ? keys[keys.length-1] : 'todos';
+      sel.value = state.mesFiltro;
+    }
+  }
+
+  function renderTabla(){
+    const tbody = document.getElementById('tbody-filas');
+    const rows = state.rows.slice().sort((a,b) => (a.fecha && b.fecha) ? a.fecha - b.fecha : (a.fila - b.fila));
+    document.getElementById('empty-tabla').style.display = rows.length ? 'none' : '';
+    tbody.innerHTML = rows.map(r => {
+      const dotClass = r.status === 'saving' ? 'status-saving' : r.status === 'error' ? 'status-err' : (r.cantidad && r.producto) ? 'status-ok' : 'status-off';
+      const prodEmpty = !r.producto ? ' empty' : '';
+      return '<tr data-fila="'+r.fila+'">' +
+        '<td class="sync-cell"><span class="status-dot '+dotClass+'"></span></td>' +
+        '<td>'+r.fechaTxt+'</td>' +
+        '<td class="prov-cell">'+(r.comprobante||'—')+'</td>' +
+        '<td class="prov-cell">'+(r.proveedor||'—')+'</td>' +
+        '<td class="cell-editable"><input type="number" step="1" min="0" class="qty-input" data-fila="'+r.fila+'" value="'+(r.cantidad || '')+'"></td>' +
+        '<td class="cell-editable"><select class="prod-select'+prodEmpty+'" data-fila="'+r.fila+'">' +
+          '<option value=""'+(!r.producto?' selected':'')+'>— elegir —</option>' +
+          '<option value="Euro Diesel"'+(r.producto==='Euro Diesel'?' selected':'')+'>Euro Diesel</option>' +
+          '<option value="Gasoil"'+(r.producto==='Gasoil'?' selected':'')+'>Gasoil</option>' +
+        '</select></td>' +
+        '<td class="num-cell">'+fmtMoney(r.neto)+'</td>' +
+        '<td class="num-cell">'+(r.costo ? fmtMoney(r.costo) : '—')+'</td>' +
+        '<td class="num-cell">'+fmtMoney(r.total)+'</td>' +
+      '</tr>';
+    }).join('');
+
+    tbody.querySelectorAll('.qty-input').forEach(inp => inp.addEventListener('input', onEditCantidad));
+    tbody.querySelectorAll('.prod-select').forEach(sel => sel.addEventListener('change', onEditProducto));
+
+    const totalLitros = state.rows.reduce((s,r) => s + (r.cantidad||0), 0);
+    const totalNeto = state.rows.reduce((s,r) => s + (r.neto||0), 0);
+    const totalFacturado = state.rows.reduce((s,r) => s + (r.total||0), 0);
+    document.getElementById('foot-row').innerHTML =
+      '<td></td><td colspan="3">Totales</td>' +
+      '<td class="num-cell">'+fmtLitros(totalLitros)+'</td><td></td>' +
+      '<td class="num-cell">'+fmtMoney(totalNeto)+'</td><td></td>' +
+      '<td class="num-cell">'+fmtMoney(totalFacturado)+'</td>';
+  }
+
+  function findRow(fila){ return state.rows.find(r => r.fila === parseInt(fila,10)); }
+
+  function onEditCantidad(e){
+    const fila = e.target.dataset.fila;
+    const row = findRow(fila);
+    if (!row) return;
+    row.cantidad = parseNumLoose(e.target.value);
+    row.costo = row.cantidad > 0 ? (row.neto / row.cantidad) : null;
+    state.dirty.add(row.fila);
+    scheduleSave(row);
+    renderGaugeResumenProveedorMensual();
+    updateRowStatusDot(row, 'saving');
+  }
+  function onEditProducto(e){
+    const fila = e.target.dataset.fila;
+    const row = findRow(fila);
+    if (!row) return;
+    row.producto = e.target.value;
+    e.target.classList.toggle('empty', !row.producto);
+    state.dirty.add(row.fila);
+    scheduleSave(row);
+    renderGaugeResumenProveedorMensual();
+    updateRowStatusDot(row, 'saving');
+  }
+  function updateRowStatusDot(row, kind){
+    const tr = document.querySelector('tr[data-fila="'+row.fila+'"]');
+    if (!tr) return;
+    const dot = tr.querySelector('.status-dot');
+    dot.className = 'status-dot status-' + kind;
+    const costCell = tr.children[6];
+    costCell.textContent = row.costo ? fmtMoney(row.costo) : '—';
+  }
+
+  function scheduleSave(row){
+    clearTimeout(state.timers.get(row.fila));
+    const t = setTimeout(() => guardarFila(row), 600);
+    state.timers.set(row.fila, t);
+  }
+
+  async function guardarFila(row){
+    if (!state.scriptUrl) return;
+    try{
+      const resp = await fetch(state.scriptUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ fila: row.fila, cantidad: row.cantidad, producto: row.producto, costo: row.costo })
+      });
+      const data = await resp.json();
+      if (data && data.ok){
+        row.status = 'ok';
+        state.dirty.delete(row.fila);
+        updateRowStatusDot(row, 'ok');
+      } else {
+        row.status = 'error';
+        updateRowStatusDot(row, 'err');
+        toast('No se pudo guardar la fila ' + row.fila + (data && data.error ? ': ' + data.error : ''));
+      }
+    }catch(e){
+      console.error(e);
+      row.status = 'error';
+      updateRowStatusDot(row, 'err');
+      toast('No se pudo guardar (revisá la conexión)');
+    }
+  }
+
+  function groupByProducto(rowsIn){
+    const base = rowsIn || state.rows;
+    return ['Euro Diesel','Gasoil'].map(p => {
+      const rs = base.filter(r => r.producto === p);
+      const litros = rs.reduce((s,r) => s + (r.cantidad||0), 0);
+      const neto = rs.reduce((s,r) => s + (r.neto||0), 0);
+      const total = rs.reduce((s,r) => s + (r.total||0), 0);
+      return { producto:p, litros, neto, total, costo: litros>0 ? neto/litros : null };
+    });
+  }
+
+  function renderResumen(){
+    const rows = filteredRows();
+    const groups = groupByProducto(rows);
+    const sinAsignar = rows.filter(r => !r.producto).length;
+    const titulo = document.getElementById('resumen-titulo');
+    titulo.textContent = 'Resumen por producto — ' + (state.mesFiltro!=='todos' ? mesLabel(state.mesFiltro) : 'todos los meses');
+    document.getElementById('summary-cards').innerHTML = groups.map(g => (
+      '<div class="sum-card '+(g.producto==='Euro Diesel'?'diesel':'gasoil')+'">' +
+        '<div class="sc-title">'+g.producto+'</div>' +
+        '<div class="sc-row"><span class="k">Litros</span><span class="v">'+fmtLitros(g.litros)+'</span></div>' +
+        '<div class="sc-row"><span class="k">Neto</span><span class="v">'+fmtMoney(g.neto)+'</span></div>' +
+        '<div class="sc-row"><span class="k">Costo prom. / L</span><span class="v">'+(g.costo?fmtMoney(g.costo):'—')+'</span></div>' +
+        '<div class="sc-row"><span class="k">Total facturado</span><span class="v">'+fmtMoney(g.total)+'</span></div>' +
+      '</div>'
+    )).join('') + (sinAsignar ? '<div class="sum-card"><div class="sc-title">Sin asignar</div><div class="sc-row"><span class="k">Filas pendientes</span><span class="v">'+sinAsignar+'</span></div></div>' : '');
+  }
+
+  function renderProveedor(){
+    const rows = filteredRows();
+    const map = new Map();
+    rows.forEach(r => {
+      if (!map.has(r.proveedor)) map.set(r.proveedor, { diesel:0, gasoil:0, neto:0 });
+      const e = map.get(r.proveedor);
+      if (r.producto === 'Euro Diesel') e.diesel += (r.cantidad||0);
+      else if (r.producto === 'Gasoil') e.gasoil += (r.cantidad||0);
+      e.neto += (r.neto||0);
+    });
+    document.getElementById('proveedor-titulo').textContent = 'Resumen por proveedor — ' + (state.mesFiltro!=='todos' ? mesLabel(state.mesFiltro) : 'todos los meses');
+    document.getElementById('tbody-proveedor').innerHTML = Array.from(map.entries()).map(([prov,e]) => (
+      '<tr><td class="prov-cell">'+(prov||'—')+'</td>' +
+      '<td class="num-cell">'+fmtLitros(e.diesel)+'</td>' +
+      '<td class="num-cell">'+fmtLitros(e.gasoil)+'</td>' +
+      '<td class="num-cell">'+fmtLitros(e.diesel+e.gasoil)+'</td>' +
+      '<td class="num-cell">'+fmtMoney(e.neto)+'</td></tr>'
+    )).join('') || '<tr><td colspan="5" class="hint" style="padding:10px;">Sin datos todavía</td></tr>';
+  }
+
+  function renderMensual(){
+    const map = new Map();
+    state.rows.forEach(r => {
+      if (!r.mesKey) return;
+      if (!map.has(r.mesKey)) map.set(r.mesKey, { diesel:0, gasoil:0 });
+      const e = map.get(r.mesKey);
+      if (r.producto === 'Euro Diesel') e.diesel += (r.cantidad||0);
+      else if (r.producto === 'Gasoil') e.gasoil += (r.cantidad||0);
+    });
+    const keys = Array.from(map.keys()).sort();
+    document.getElementById('tbody-mensual').innerHTML = keys.map(k => {
+      const e = map.get(k);
+      return '<tr><td class="prov-cell">'+mesLabel(k)+'</td>' +
+        '<td class="num-cell">'+fmtLitros(e.diesel)+'</td>' +
+        '<td class="num-cell">'+fmtLitros(e.gasoil)+'</td>' +
+        '<td class="num-cell">'+fmtLitros(e.diesel+e.gasoil)+'</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="hint" style="padding:10px;">Sin datos todavía</td></tr>';
+  }
+
+  function renderGauge(){
+    const rows = filteredRows();
+    const litros = rows.reduce((s,r) => s + (r.cantidad||0), 0);
+    const neto = rows.reduce((s,r) => s + (r.neto||0), 0);
+    document.getElementById('g-litros').textContent = fmtLitros(litros);
+    document.getElementById('g-neto').textContent = fmtMoney(neto);
+    document.getElementById('g-costo').textContent = litros>0 ? fmtMoney(neto/litros) : '—';
+    document.getElementById('g-mes').textContent = state.mesFiltro!=='todos' ? mesLabel(state.mesFiltro) : 'Todos los meses';
+  }
+
+  function renderGaugeResumenProveedorMensual(){
+    renderGauge(); renderResumen(); renderProveedor(); renderMensual();
+  }
+
+  function renderAll(){
+    populateMesFilter();
+    renderTabla();
+    renderGaugeResumenProveedorMensual();
+  }
+
+  document.getElementById('btn-conectar').addEventListener('click', conectarYCargar);
+  document.getElementById('btn-refrescar').addEventListener('click', cargarDesdeSheet);
+  document.getElementById('mes-filter').addEventListener('change', (e) => {
+    state.mesFiltro = e.target.value;
+    renderGaugeResumenProveedorMensual();
+  });
+
+  document.getElementById('btn-export').addEventListener('click', () => {
+    const rows = state.rows.slice().sort((a,b) => (a.fecha && b.fecha) ? a.fecha - b.fecha : (a.fila - b.fila));
+    const data = rows.map(r => ({
+      'Fecha': r.fechaTxt, 'N. Comprobante': r.comprobante, 'Proveedor': r.proveedor, 'CUIT': r.cuit,
+      'Cantidad (L)': r.cantidad, 'Producto': r.producto, 'Neto': r.neto, 'Costo/L': r.costo, 'Total': r.total
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Compras combustible');
+    XLSX.writeFile(wb, 'compras_combustible.xlsx');
+    document.getElementById('export-status').textContent = 'Descargado ' + new Date().toLocaleTimeString('es-AR');
+  });
+
+  // Prefill con la URL que ya tenían configurada, si la hay
+  loadConfig();
+  const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzpAZZ61cyP2mOI4bsLM5RpUIBnYzkH_zzqz-lbL1GGtdIdDX0_BlYFJant4LRek6qpaA/exec';
+  const inputUrl = document.getElementById('input-script-url');
+  if (!inputUrl.value) inputUrl.value = DEFAULT_SCRIPT_URL;
+
+})();
+</script>
+</body>
+</html>
