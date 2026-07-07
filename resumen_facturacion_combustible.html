@@ -94,7 +94,7 @@
 
   <div class="body">
 
-    <div class="panel" id="panel-config">
+    <div class="panel" id="panel-config" style="display:none;">
       <div class="panel-head"><h2>Conexión con el Sheet</h2></div>
       <div class="panel-body">
         <div class="sync-row">
@@ -166,8 +166,14 @@
     { codigo: '0011', match: /./,      estacion: 'Estación CD',  categoria: 'Gasoil' },
   ];
 
+  function normCodigo(v){
+    const s = String(v == null ? '' : v).trim();
+    const m = s.match(/(\d+)\s*$/);
+    if (!m) return s;
+    return m[1].padStart(4,'0').slice(-4);
+  }
   function clasificar(codigo, producto){
-    const cod = String(codigo == null ? '' : codigo).trim();
+    const cod = normCodigo(codigo);
     const prod = String(producto == null ? '' : producto);
     const regla = REGLAS.find(r => r.codigo === cod && r.match.test(prod));
     if (regla) return { estacion: regla.estacion, categoria: regla.categoria, clasificada: true };
@@ -349,6 +355,11 @@
   document.getElementById('mes-filter').addEventListener('change', (e) => { state.mesFiltro = e.target.value; renderAll(); });
 
   loadConfig();
+  const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwpvZnGCa1P4LifYBqGlKkWc0p8P_NY7HGB9wEdKK6VIdfia5jVOwpd61TPB_I8MWzMwg/exec';
+  const inputUrl = document.getElementById('input-script-url');
+  if (!inputUrl.value) inputUrl.value = DEFAULT_SCRIPT_URL;
+  state.scriptUrl = inputUrl.value;
+  cargarDesdeSheet();
 })();
 </script>
 </body>
