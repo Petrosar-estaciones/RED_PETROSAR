@@ -165,9 +165,9 @@
       </div>
     </div>
 
-    <div class="panel" id="panel-tabla" style="display:none;">
+    <div class="panel" id="panel-detalle" style="display:none;">
       <div class="panel-head">
-        <h2><span class="step-chip">2</span>Completar litros y producto</h2>
+        <h2><span class="step-chip">1</span>Detalle del mes</h2>
         <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
           <div class="sync-field" style="min-width:180px; max-width:210px;">
             <label class="sync-label">Ver mes</label>
@@ -180,20 +180,20 @@
         <table>
           <thead>
             <tr>
-              <th></th><th>Fecha</th><th>Comprobante</th><th>Proveedor</th>
+              <th>Fecha</th><th>Comprobante</th><th>Proveedor</th>
               <th>Cantidad (L)</th><th>Producto</th><th>Neto</th><th>Costo / L</th><th>Total</th>
             </tr>
           </thead>
-          <tbody id="tbody-filas"></tbody>
-          <tfoot><tr class="foot-row" id="foot-row"></tr></tfoot>
+          <tbody id="tbody-detalle"></tbody>
+          <tfoot><tr class="foot-row" id="foot-row-detalle"></tr></tfoot>
         </table>
-        <div class="empty-state" id="empty-tabla" style="display:none;">No hay filas cargadas todavía en el Sheet.</div>
+        <div class="empty-state" id="empty-detalle" style="display:none;">No hay filas cargadas todavía en el Sheet.</div>
       </div>
     </div>
 
     <div class="panel" id="panel-mensual" style="display:none;">
       <div class="panel-head">
-        <h2><span class="step-chip">3</span>Resumen mensual</h2>
+        <h2><span class="step-chip">2</span>Resumen del año</h2>
       </div>
       <div class="panel-body">
         <div class="hint" style="margin-bottom:10px; font-weight:600; color:var(--ink);">Litros comprados por mes y producto</div>
@@ -207,12 +207,12 @@
     </div>
 
     <div class="panel" id="panel-resumen" style="display:none;">
-      <div class="panel-head"><h2><span class="step-chip">4</span><span id="resumen-titulo">Resumen por producto</span></h2></div>
+      <div class="panel-head"><h2><span class="step-chip">3</span><span id="resumen-titulo">Resumen por producto</span></h2></div>
       <div class="panel-body"><div class="summary-grid" id="summary-cards"></div></div>
     </div>
 
     <div class="panel" id="panel-proveedor" style="display:none;">
-      <div class="panel-head"><h2 id="proveedor-titulo">Resumen por proveedor</h2></div>
+      <div class="panel-head"><h2><span class="step-chip">4</span><span id="proveedor-titulo">Resumen por proveedor</span></h2></div>
       <div class="panel-body" style="overflow-x:auto;">
         <table>
           <thead><tr><th>Proveedor</th><th>Euro Diesel (L)</th><th>Gasoil (L)</th><th>Litros totales</th><th>Neto total</th></tr></thead>
@@ -221,11 +221,35 @@
       </div>
     </div>
 
+    <div class="panel" id="panel-chart" style="display:none;">
+      <div class="panel-head"><h2><span class="step-chip">5</span>Evolución del costo por litro</h2></div>
+      <div class="panel-body" id="chart-container" style="overflow-x:auto;"></div>
+    </div>
+
     <div class="panel" id="panel-export" style="display:none;">
-      <div class="panel-head"><h2><span class="step-chip">5</span>Exportar</h2></div>
+      <div class="panel-head"><h2><span class="step-chip">6</span>Exportar</h2></div>
       <div class="panel-body" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
         <button class="btn btn-dark" id="btn-export">Exportar a Excel</button>
         <span class="hint" id="export-status"></span>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-tabla" style="display:none;">
+      <div class="panel-head">
+        <h2><span class="step-chip">•</span>Completar litros y producto</h2>
+      </div>
+      <div class="panel-body" style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th></th><th>Fecha</th><th>Comprobante</th><th>Proveedor</th>
+              <th>Cantidad (L)</th><th>Producto</th><th>Neto</th><th>Costo / L</th><th>Total</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-filas"></tbody>
+          <tfoot><tr class="foot-row" id="foot-row"></tr></tfoot>
+        </table>
+        <div class="empty-state" id="empty-tabla" style="display:none;">No hay filas cargadas todavía en el Sheet.</div>
       </div>
     </div>
 
@@ -314,8 +338,22 @@
   }
 
   function showPanels(){
-    ['panel-tabla','panel-mensual','panel-resumen','panel-proveedor','panel-export'].forEach(id => document.getElementById(id).style.display = '');
+    ['panel-detalle','panel-mensual','panel-resumen','panel-proveedor','panel-chart','panel-export'].forEach(id => document.getElementById(id).style.display = '');
   }
+
+  // Panel de carga (edición) oculto por defecto — solo se muestra con el atajo de teclado Ctrl+Shift+E
+  function togglePanelEdicion(){
+    const p = document.getElementById('panel-tabla');
+    const visible = p.style.display !== 'none';
+    p.style.display = visible ? 'none' : '';
+    if (!visible) p.scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'e'){
+      e.preventDefault();
+      togglePanelEdicion();
+    }
+  });
 
   async function conectarYCargar(){
     const url = document.getElementById('input-script-url').value.trim();
@@ -402,6 +440,33 @@
       state.mesFiltro = keys.length ? keys[keys.length-1] : 'todos';
       sel.value = state.mesFiltro;
     }
+  }
+
+  function renderDetalleMes(){
+    const tbody = document.getElementById('tbody-detalle');
+    const rows = filteredRows().slice().sort((a,b) => (a.fecha && b.fecha) ? a.fecha - b.fecha : (a.fila - b.fila));
+    document.getElementById('empty-detalle').style.display = rows.length ? 'none' : '';
+    tbody.innerHTML = rows.map(r => (
+      '<tr>' +
+        '<td>'+r.fechaTxt+'</td>' +
+        '<td class="prov-cell">'+(r.comprobante||'—')+'</td>' +
+        '<td class="prov-cell">'+(r.proveedor||'—')+'</td>' +
+        '<td class="num-cell">'+(r.cantidad ? fmtLitros(r.cantidad) : '—')+'</td>' +
+        '<td>'+(r.producto||'—')+'</td>' +
+        '<td class="num-cell">'+fmtMoney(r.neto)+'</td>' +
+        '<td class="num-cell">'+(r.costo ? fmtMoney(r.costo) : '—')+'</td>' +
+        '<td class="num-cell">'+fmtMoney(r.total)+'</td>' +
+      '</tr>'
+    )).join('');
+
+    const totalLitros = rows.reduce((s,r) => s + (r.cantidad||0), 0);
+    const totalNeto = rows.reduce((s,r) => s + (r.neto||0), 0);
+    const totalFacturado = rows.reduce((s,r) => s + (r.total||0), 0);
+    document.getElementById('foot-row-detalle').innerHTML =
+      '<td colspan="3">Totales</td>' +
+      '<td class="num-cell">'+fmtLitros(totalLitros)+'</td><td></td>' +
+      '<td class="num-cell">'+fmtMoney(totalNeto)+'</td><td></td>' +
+      '<td class="num-cell">'+fmtMoney(totalFacturado)+'</td>';
   }
 
   function renderTabla(){
@@ -587,8 +652,73 @@
     document.getElementById('g-mes').textContent = state.mesFiltro!=='todos' ? mesLabel(state.mesFiltro) : 'Todos los meses';
   }
 
+  function renderChart(){
+    const map = new Map();
+    state.rows.forEach(r => {
+      if (!r.mesKey || !r.producto || !r.cantidad) return;
+      if (!map.has(r.mesKey)) map.set(r.mesKey, { diesel:{l:0,n:0}, gasoil:{l:0,n:0} });
+      const e = map.get(r.mesKey);
+      const slot = r.producto === 'Euro Diesel' ? e.diesel : (r.producto === 'Gasoil' ? e.gasoil : null);
+      if (!slot) return;
+      slot.l += r.cantidad; slot.n += (r.neto||0);
+    });
+    const keys = Array.from(map.keys()).sort();
+    const container = document.getElementById('chart-container');
+    if (keys.length < 2){
+      container.innerHTML = '<div class="empty-state">Hace falta más de un mes cargado para mostrar la evolución.</div>';
+      return;
+    }
+    const dieselVals = keys.map(k => { const e = map.get(k).diesel; return e.l>0 ? e.n/e.l : null; });
+    const gasoilVals = keys.map(k => { const e = map.get(k).gasoil; return e.l>0 ? e.n/e.l : null; });
+    const allVals = dieselVals.concat(gasoilVals).filter(v => v !== null);
+    const maxV = Math.max(...allVals), minV = Math.min(...allVals);
+    const pad = (maxV - minV) * 0.12 || maxV * 0.1 || 1;
+    const yMax = maxV + pad, yMin = Math.max(0, minV - pad);
+
+    const W = Math.max(560, keys.length * 90), H = 300;
+    const ML = 70, MR = 20, MT = 20, MB = 40;
+    const plotW = W - ML - MR, plotH = H - MT - MB;
+    const x = i => ML + (keys.length===1 ? plotW/2 : (i/(keys.length-1))*plotW);
+    const y = v => MT + plotH - ((v - yMin) / (yMax - yMin || 1)) * plotH;
+
+    function pathFor(vals){
+      let d = '';
+      vals.forEach((v,i) => { if (v===null) return; d += (d?'L':'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1) + ' '; });
+      return d.trim();
+    }
+    function pointsFor(vals, color){
+      return vals.map((v,i) => v===null ? '' :
+        '<circle cx="'+x(i).toFixed(1)+'" cy="'+y(v).toFixed(1)+'" r="3.5" fill="'+color+'"></circle>' +
+        '<text x="'+x(i).toFixed(1)+'" y="'+(y(v)-9).toFixed(1)+'" font-size="10.5" font-family="IBM Plex Mono, monospace" text-anchor="middle" fill="'+color+'">$'+v.toFixed(0)+'</text>'
+      ).join('');
+    }
+    const gridLines = 4;
+    let gridSvg = '';
+    for (let g=0; g<=gridLines; g++){
+      const v = yMin + (yMax-yMin) * (g/gridLines);
+      const yy = y(v);
+      gridSvg += '<line x1="'+ML+'" y1="'+yy.toFixed(1)+'" x2="'+(W-MR)+'" y2="'+yy.toFixed(1)+'" stroke="#DCE2E1" stroke-width="1"></line>';
+      gridSvg += '<text x="'+(ML-8)+'" y="'+(yy+3).toFixed(1)+'" font-size="10" font-family="IBM Plex Mono, monospace" text-anchor="end" fill="#5C6B6E">$'+Math.round(v).toLocaleString('es-AR')+'</text>';
+    }
+    const labelsSvg = keys.map((k,i) => '<text x="'+x(i).toFixed(1)+'" y="'+(H-14)+'" font-size="10" font-family="Inter, sans-serif" text-anchor="middle" fill="#5C6B6E">'+mesLabel(k)+'</text>').join('');
+
+    container.innerHTML =
+      '<div style="display:flex; gap:18px; align-items:center; margin-bottom:10px; font-size:12.5px;">' +
+        '<span style="display:flex; align-items:center; gap:6px;"><span style="width:12px; height:3px; background:#DE9A2C; display:inline-block;"></span>Euro Diesel</span>' +
+        '<span style="display:flex; align-items:center; gap:6px;"><span style="width:12px; height:3px; background:#0E3F45; display:inline-block;"></span>Gasoil</span>' +
+      '</div>' +
+      '<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-width:'+W+'px; display:block;">' +
+        gridSvg +
+        '<path d="'+pathFor(dieselVals)+'" fill="none" stroke="#DE9A2C" stroke-width="2"></path>' +
+        '<path d="'+pathFor(gasoilVals)+'" fill="none" stroke="#0E3F45" stroke-width="2"></path>' +
+        pointsFor(dieselVals, '#DE9A2C') +
+        pointsFor(gasoilVals, '#0E3F45') +
+        labelsSvg +
+      '</svg>';
+  }
+
   function renderGaugeResumenProveedorMensual(){
-    renderGauge(); renderResumen(); renderProveedor(); renderMensual();
+    renderGauge(); renderResumen(); renderProveedor(); renderMensual(); renderDetalleMes(); renderChart();
   }
 
   function renderAll(){
