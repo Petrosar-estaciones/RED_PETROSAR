@@ -194,12 +194,16 @@
     <div class="panel" id="panel-mensual" style="display:none;">
       <div class="panel-head">
         <h2><span class="step-chip">2</span>Resumen del año</h2>
+        <div class="sync-field" style="min-width:140px; max-width:160px;">
+          <label class="sync-label">Año</label>
+          <select id="anio-filter"></select>
+        </div>
       </div>
       <div class="panel-body">
-        <div class="hint" style="margin-bottom:10px; font-weight:600; color:var(--ink);">Litros comprados por mes y producto</div>
+        <div class="hint" style="margin-bottom:10px; font-weight:600; color:var(--ink);">Litros comprados por producto y mes</div>
         <div style="overflow-x:auto;">
           <table>
-            <thead><tr><th>Mes</th><th>Euro Diesel (L)</th><th>Gasoil (L)</th><th>Total (L)</th></tr></thead>
+            <thead><tr id="thead-mensual"></tr></thead>
             <tbody id="tbody-mensual"></tbody>
           </table>
         </div>
@@ -260,7 +264,7 @@
 
 <script>
 (function(){
-  const state = { scriptUrl: '', rows: [], mesFiltro: 'todos', dirty: new Set(), timers: new Map() };
+  const state = { scriptUrl: '', rows: [], mesFiltro: 'todos', anioFiltro: null, dirty: new Set(), timers: new Map() };
   const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
   const STORAGE_KEY = 'combex_compras_combustible_config';
 
@@ -623,23 +627,50 @@
     )).join('') || '<tr><td colspan="5" class="hint" style="padding:10px;">Sin datos todavía</td></tr>';
   }
 
+  function populateAnioFilter(){
+    const sel = document.getElementById('anio-filter');
+    const anios = Array.from(new Set(state.rows.map(r => r.mesKey).filter(Boolean).map(k => k.split('-')[0]))).sort();
+    if (!anios.length) { sel.innerHTML = ''; return; }
+    if (!state.anioFiltro || !anios.includes(state.anioFiltro)) state.anioFiltro = anios[anios.length-1];
+    sel.innerHTML = anios.map(a => '<option value="'+a+'"'+(a===state.anioFiltro?' selected':'')+'>'+a+'</option>').join('');
+  }
+
   function renderMensual(){
+    populateAnioFilter();
+    const anio = state.anioFiltro;
     const map = new Map();
     state.rows.forEach(r => {
-      if (!r.mesKey) return;
+      if (!r.mesKey || r.mesKey.split('-')[0] !== anio) return;
       if (!map.has(r.mesKey)) map.set(r.mesKey, { diesel:0, gasoil:0 });
       const e = map.get(r.mesKey);
       if (r.producto === 'Euro Diesel') e.diesel += (r.cantidad||0);
       else if (r.producto === 'Gasoil') e.gasoil += (r.cantidad||0);
     });
     const keys = Array.from(map.keys()).sort();
-    document.getElementById('tbody-mensual').innerHTML = keys.map(k => {
-      const e = map.get(k);
-      return '<tr><td class="prov-cell">'+mesLabel(k)+'</td>' +
-        '<td class="num-cell">'+fmtLitros(e.diesel)+'</td>' +
-        '<td class="num-cell">'+fmtLitros(e.gasoil)+'</td>' +
-        '<td class="num-cell">'+fmtLitros(e.diesel+e.gasoil)+'</td></tr>';
-    }).join('') || '<tr><td colspan="4" class="hint" style="padding:10px;">Sin datos todavía</td></tr>';
+
+    document.getElementById('thead-mensual').innerHTML =
+      '<th>Producto</th>' + keys.map(k => '<th>'+MESES[parseInt(k.split('-')[1],10)-1]+'</th>').join('') + '<th>Total</th>';
+
+    if (!keys.length){
+      document.getElementById('tbody-mensual').innerHTML = '<tr><td colspan="2" class="hint" style="padding:10px;">Sin datos todavía</td></tr>';
+      return;
+    }
+
+    const dieselRow = keys.map(k => map.get(k).diesel);
+    const gasoilRow = keys.map(k => map.get(k).gasoil);
+    const totalRow = keys.map((k,i) => dieselRow[i] + gasoilRow[i]);
+    const sum = arr => arr.reduce((s,v) => s+v, 0);
+
+    function fila(label, vals, total, cls){
+      return '<tr'+(cls?(' class="'+cls+'"'):'')+'><td class="prov-cell">'+label+'</td>' +
+        vals.map(v => '<td class="num-cell">'+fmtLitros(v)+'</td>').join('') +
+        '<td class="num-cell">'+fmtLitros(total)+'</td></tr>';
+    }
+
+    document.getElementById('tbody-mensual').innerHTML =
+      fila('Euro Diesel', dieselRow, sum(dieselRow)) +
+      fila('Gasoil', gasoilRow, sum(gasoilRow)) +
+      fila('Total', totalRow, sum(totalRow), 'foot-row');
   }
 
   function renderGauge(){
@@ -702,17 +733,17 @@
     container.innerHTML =
       '<div style="display:flex; gap:18px; align-items:center; margin-bottom:10px; font-size:12.5px; flex-wrap:wrap;">' +
         '<span style="display:flex; align-items:center; gap:6px;"><span style="width:12px; height:3px; background:#132226; display:inline-block;"></span>Total</span>' +
-        '<span style="display:flex; align-items:center; gap:6px;"><span style="width:12px; height:3px; background:#DE9A2C; display:inline-block;"></span>Euro Diesel</span>' +
-        '<span style="display:flex; align-items:center; gap:6px;"><span style="width:12px; height:3px; background:#0E3F45; display:inline-block;"></span>Gasoil</span>' +
+        '<span style="display:flex; align-items:center; gap:6px;"><span style="width:12px; height:3px; background:#2F8F4E; display:inline-block;"></span>Euro Diesel</span>' +
+        '<span style="display:flex; align-items:center; gap:6px;"><span style="width:12px; height:3px; background:#E8720C; display:inline-block;"></span>Gasoil</span>' +
       '</div>' +
       '<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-width:'+W+'px; display:block;">' +
         gridSvg +
         '<path d="'+lineFor(totalVals)+'" fill="none" stroke="#132226" stroke-width="2.5"></path>' +
-        '<path d="'+lineFor(dieselVals)+'" fill="none" stroke="#DE9A2C" stroke-width="2"></path>' +
-        '<path d="'+lineFor(gasoilVals)+'" fill="none" stroke="#0E3F45" stroke-width="2"></path>' +
+        '<path d="'+lineFor(dieselVals)+'" fill="none" stroke="#2F8F4E" stroke-width="2"></path>' +
+        '<path d="'+lineFor(gasoilVals)+'" fill="none" stroke="#E8720C" stroke-width="2"></path>' +
         dotsFor(totalVals, '#132226', true) +
-        dotsFor(dieselVals, '#DE9A2C', true) +
-        dotsFor(gasoilVals, '#0E3F45', false) +
+        dotsFor(dieselVals, '#2F8F4E', true) +
+        dotsFor(gasoilVals, '#E8720C', false) +
         labelsSvg +
       '</svg>';
   }
@@ -733,6 +764,10 @@
     state.mesFiltro = e.target.value;
     renderTabla();
     renderGaugeResumenProveedorMensual();
+  });
+  document.getElementById('anio-filter').addEventListener('change', (e) => {
+    state.anioFiltro = e.target.value;
+    renderMensual();
   });
 
   document.getElementById('btn-export').addEventListener('click', () => {
