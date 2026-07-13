@@ -112,6 +112,25 @@
       </div>
     </div>
 
+    <div class="panel" id="panel-ventas-mes" style="display:none;">
+      <div class="panel-head">
+        <h2>Resumen de ventas por mes</h2>
+        <div class="sync-field" style="min-width:140px; max-width:160px;">
+          <label class="sync-label">Año</label>
+          <select id="anio-filter"></select>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="hint" style="margin-bottom:10px; font-weight:600; color:var(--ink);">Litros vendidos por estación y mes</div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr id="thead-ventas-mes"></tr></thead>
+            <tbody id="tbody-ventas-mes"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <div class="panel" id="panel-resumen" style="display:none;">
       <div class="panel-head">
         <h2 id="resumen-titulo">Resumen por estación y producto</h2>
@@ -135,6 +154,11 @@
       </div>
     </div>
 
+    <div class="panel" id="panel-chart-estaciones" style="display:none;">
+      <div class="panel-head"><h2>Evolución de litros por estación</h2></div>
+      <div class="panel-body" id="chart-estaciones-container" style="overflow-x:auto;"></div>
+    </div>
+
     <div class="panel" id="panel-sinclasificar" style="display:none;">
       <div class="panel-head"><h2>Filas sin clasificar</h2></div>
       <div class="panel-body" style="overflow-x:auto;">
@@ -153,7 +177,7 @@
 
 <script>
 (function(){
-  const state = { scriptUrl: '', rows: [], mesFiltro: 'todos' };
+  const state = { scriptUrl: '', rows: [], mesFiltro: 'todos', anioFiltro: null };
   const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
   const STORAGE_KEY = 'facturacion_combustible_config';
 
@@ -168,6 +192,14 @@
     { codigo: '0010', match: /./,      estacion: 'Estación CD',  categoria: 'Euro Diesel' },
     { codigo: '0011', match: /./,      estacion: 'Estación CD',  categoria: 'Gasoil' },
   ];
+
+  const ESTACION_ORDEN = ['Estación CD','Planta CD','Remota TP','Remota AG','Remota VH'];
+  // Agrupación por terminación de nombre, usada en el gráfico de evolución (no discrimina producto)
+  const GRUPO_DE_ESTACION = {
+    'Estación CD': 'CD', 'Planta CD': 'CD',
+    'Remota TP': 'TP', 'Remota AG': 'AG', 'Remota VH': 'VH'
+  };
+  const GRUPO_COLOR = { CD: '#0E3F45', TP: '#DE9A2C', VH: '#2F8F5B', AG: '#C0392B' };
 
   function normCodigo(v){
     const s = String(v == null ? '' : v).trim();
@@ -266,6 +298,8 @@
       }).filter(r => r.fila && (r.comprobante || r.fecha));
 
       document.getElementById('panel-resumen').style.display = '';
+      document.getElementById('panel-ventas-mes').style.display = '';
+      document.getElementById('panel-chart-estaciones').style.display = '';
       populateMesFilter();
       renderAll();
       setConnStatus('ok', 'Conectado. ' + state.rows.length + ' filas cargadas.');
@@ -355,10 +389,116 @@
     )).join('');
   }
 
-  function renderAll(){ renderResumen(); renderSinClasificar(); }
+  function populateAnioFilter(){
+    const sel = document.getElementById('anio-filter');
+    const anios = Array.from(new Set(state.rows.map(r => r.mesKey).filter(Boolean).map(k => k.split('-')[0]))).sort();
+    if (!anios.length) { sel.innerHTML = ''; return; }
+    if (!state.anioFiltro || !anios.includes(state.anioFiltro)) state.anioFiltro = anios[anios.length-1];
+    sel.innerHTML = anios.map(a => '<option value="'+a+'"'+(a===state.anioFiltro?' selected':'')+'>'+a+'</option>').join('');
+  }
+
+  function renderVentasMes(){
+    populateAnioFilter();
+    const anio = state.anioFiltro;
+    const map = new Map(); // mesKey -> { estacion: litros }
+    state.rows.forEach(r => {
+      if (!r.mesKey || r.mesKey.split('-')[0] !== anio) return;
+      if (!map.has(r.mesKey)) map.set(r.mesKey, {});
+      const e = map.get(r.mesKey);
+      e[r.estacion] = (e[r.estacion]||0) + (r.cantidad||0);
+    });
+    const keys = Array.from(map.keys()).sort();
+
+    document.getElementById('thead-ventas-mes').innerHTML =
+      '<th>Estación</th>' + keys.map(k => '<th>'+MESES[parseInt(k.split('-')[1],10)-1]+'</th>').join('') + '<th>Total</th>';
+
+    if (!keys.length){
+      document.getElementById('tbody-ventas-mes').innerHTML = '<tr><td class="hint" style="padding:10px;">Sin datos todavía</td></tr>';
+      return;
+    }
+
+    const estacionesConDatos = ESTACION_ORDEN.filter(est => keys.some(k => (map.get(k)[est]||0) !== 0));
+    const filas = estacionesConDatos.map(est => {
+      const vals = keys.map(k => map.get(k)[est] || 0);
+      const total = vals.reduce((s,v)=>s+v,0);
+      return '<tr><td class="est-cell">'+est+'</td>' +
+        vals.map(v => '<td class="'+numCls(v)+'">'+fmtLitros(v)+'</td>').join('') +
+        '<td class="'+numCls(total)+'">'+fmtLitros(total)+'</td></tr>';
+    }).join('');
+
+    const totalesPorMes = keys.map(k => estacionesConDatos.reduce((s,est) => s + (map.get(k)[est]||0), 0));
+    const totalGeneral = totalesPorMes.reduce((s,v)=>s+v,0);
+    const filaTotal = '<tr class="foot-row"><td>Total</td>' +
+      totalesPorMes.map(v => '<td class="'+numCls(v)+'">'+fmtLitros(v)+'</td>').join('') +
+      '<td class="'+numCls(totalGeneral)+'">'+fmtLitros(totalGeneral)+'</td></tr>';
+
+    document.getElementById('tbody-ventas-mes').innerHTML = filas + filaTotal;
+  }
+
+  function renderChartEstaciones(){
+    const map = new Map(); // mesKey -> { CD, TP, VH, AG }
+    state.rows.forEach(r => {
+      if (!r.mesKey) return;
+      const grupo = GRUPO_DE_ESTACION[r.estacion];
+      if (!grupo) return;
+      if (!map.has(r.mesKey)) map.set(r.mesKey, { CD:0, TP:0, VH:0, AG:0 });
+      map.get(r.mesKey)[grupo] += (r.cantidad||0);
+    });
+    const keys = Array.from(map.keys()).sort();
+    const container = document.getElementById('chart-estaciones-container');
+    if (keys.length < 2){
+      container.innerHTML = '<div class="empty-state">Hace falta más de un mes cargado para mostrar la evolución.</div>';
+      return;
+    }
+    const grupos = ['CD','TP','VH','AG'];
+    const series = {};
+    grupos.forEach(g => { series[g] = keys.map(k => map.get(k)[g]); });
+    const allVals = grupos.flatMap(g => series[g]);
+    const maxV = Math.max(...allVals) || 1;
+    const yMax = maxV * 1.15;
+
+    const W = Math.max(560, keys.length * 100), H = 320;
+    const ML = 66, MR = 20, MT = 34, MB = 42;
+    const plotW = W - ML - MR, plotH = H - MT - MB;
+    const x = i => ML + (keys.length===1 ? plotW/2 : (i/(keys.length-1))*plotW);
+    const y = v => MT + plotH - (v/yMax)*plotH;
+
+    const gridLines = 4;
+    let gridSvg = '';
+    for (let g=0; g<=gridLines; g++){
+      const v = yMax * (g/gridLines);
+      const yy = y(v);
+      gridSvg += '<line x1="'+ML+'" y1="'+yy.toFixed(1)+'" x2="'+(W-MR)+'" y2="'+yy.toFixed(1)+'" stroke="#DCE2E1" stroke-width="1"></line>';
+      gridSvg += '<text x="'+(ML-8)+'" y="'+(yy+3).toFixed(1)+'" font-size="10" font-family="IBM Plex Mono, monospace" text-anchor="end" fill="#5C6B6E">'+Math.round(v).toLocaleString('es-AR')+'</text>';
+    }
+    const labelsSvg = keys.map((k,i) => '<text x="'+x(i).toFixed(1)+'" y="'+(H-16)+'" font-size="10.5" font-family="Inter, sans-serif" text-anchor="middle" fill="#5C6B6E">'+mesLabel(k)+'</text>').join('');
+
+    function lineFor(vals){
+      return vals.map((v,i) => (i===0?'M':'L') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join(' ');
+    }
+    function dotsFor(vals, color){
+      return vals.map((v,i) =>
+        '<circle cx="'+x(i).toFixed(1)+'" cy="'+y(v).toFixed(1)+'" r="4" fill="'+color+'" stroke="#fff" stroke-width="1.5"></circle>' +
+        '<text x="'+x(i).toFixed(1)+'" y="'+(y(v)-10).toFixed(1)+'" font-size="10" font-family="IBM Plex Mono, monospace" text-anchor="middle" fill="'+color+'">'+Math.round(v).toLocaleString('es-AR')+'</text>'
+      ).join('');
+    }
+
+    const legendSvg = grupos.map(g => '<span style="display:flex; align-items:center; gap:6px;"><span style="width:12px; height:3px; background:'+GRUPO_COLOR[g]+'; display:inline-block;"></span>'+g+'</span>').join('');
+    const pathsSvg = grupos.map(g => '<path d="'+lineFor(series[g])+'" fill="none" stroke="'+GRUPO_COLOR[g]+'" stroke-width="2"></path>').join('');
+    const dotsSvg = grupos.map(g => dotsFor(series[g], GRUPO_COLOR[g])).join('');
+
+    container.innerHTML =
+      '<div style="display:flex; gap:18px; align-items:center; margin-bottom:10px; font-size:12.5px; flex-wrap:wrap;">' + legendSvg + '</div>' +
+      '<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-width:'+W+'px; display:block;">' +
+        gridSvg + pathsSvg + dotsSvg + labelsSvg +
+      '</svg>';
+  }
+
+  function renderAll(){ renderVentasMes(); renderResumen(); renderChartEstaciones(); renderSinClasificar(); }
 
   document.getElementById('btn-conectar').addEventListener('click', conectarYCargar);
   document.getElementById('mes-filter').addEventListener('change', (e) => { state.mesFiltro = e.target.value; renderAll(); });
+  document.getElementById('anio-filter').addEventListener('change', (e) => { state.anioFiltro = e.target.value; renderVentasMes(); });
 
   document.getElementById('btn-export').addEventListener('click', () => {
     const rows = filteredRows();
