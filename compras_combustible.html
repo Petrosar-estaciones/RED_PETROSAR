@@ -165,35 +165,9 @@
       </div>
     </div>
 
-    <div class="panel" id="panel-detalle" style="display:none;">
-      <div class="panel-head">
-        <h2><span class="step-chip">1</span>Detalle del mes</h2>
-        <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
-          <div class="sync-field" style="min-width:180px; max-width:210px;">
-            <label class="sync-label">Ver mes</label>
-            <select id="mes-filter-tabla"></select>
-          </div>
-          <button class="btn btn-dark" id="btn-refrescar">Actualizar desde el Sheet</button>
-        </div>
-      </div>
-      <div class="panel-body" style="overflow-x:auto;">
-        <table>
-          <thead>
-            <tr>
-              <th>Fecha</th><th>Comprobante</th><th>Proveedor</th>
-              <th>Cantidad (L)</th><th>Producto</th><th>Neto</th><th>Costo / L</th><th>Total</th>
-            </tr>
-          </thead>
-          <tbody id="tbody-detalle"></tbody>
-          <tfoot><tr class="foot-row" id="foot-row-detalle"></tr></tfoot>
-        </table>
-        <div class="empty-state" id="empty-detalle" style="display:none;">No hay filas cargadas todavía en el Sheet.</div>
-      </div>
-    </div>
-
     <div class="panel" id="panel-mensual" style="display:none;">
       <div class="panel-head">
-        <h2><span class="step-chip">2</span>Resumen del año</h2>
+        <h2><span class="step-chip">1</span>Resumen del año</h2>
         <div class="sync-field" style="min-width:140px; max-width:160px;">
           <label class="sync-label">Año</label>
           <select id="anio-filter"></select>
@@ -210,24 +184,50 @@
       </div>
     </div>
 
+    <div class="panel" id="panel-chart" style="display:none;">
+      <div class="panel-head"><h2><span class="step-chip">2</span>Evolución de litros comprados</h2></div>
+      <div class="panel-body" id="chart-container" style="overflow-x:auto;"></div>
+    </div>
+
+    <div class="panel" id="panel-detalle" style="display:none;">
+      <div class="panel-head">
+        <h2><span class="step-chip">3</span>Detalle del mes</h2>
+      </div>
+      <div class="panel-body" style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th><th>Comprobante</th><th>Proveedor</th>
+              <th>Cantidad (L)</th><th>Producto</th><th>Neto</th><th>Costo / L</th><th>Total</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-detalle"></tbody>
+          <tfoot><tr class="foot-row" id="foot-row-detalle"></tr></tfoot>
+        </table>
+        <div class="empty-state" id="empty-detalle" style="display:none;">No hay filas cargadas todavía en el Sheet.</div>
+        <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-top:16px; padding-top:14px; border-top:1px solid var(--line);">
+          <div class="sync-field" style="min-width:180px; max-width:210px;">
+            <label class="sync-label">Ver mes</label>
+            <select id="mes-filter-tabla"></select>
+          </div>
+          <button class="btn btn-dark" id="btn-refrescar">Actualizar desde el Sheet</button>
+        </div>
+      </div>
+    </div>
+
     <div class="panel" id="panel-resumen" style="display:none;">
-      <div class="panel-head"><h2><span class="step-chip">3</span><span id="resumen-titulo">Resumen por producto</span></h2></div>
+      <div class="panel-head"><h2><span class="step-chip">4</span><span id="resumen-titulo">Resumen por producto</span></h2></div>
       <div class="panel-body"><div class="summary-grid" id="summary-cards"></div></div>
     </div>
 
     <div class="panel" id="panel-proveedor" style="display:none;">
-      <div class="panel-head"><h2><span class="step-chip">4</span><span id="proveedor-titulo">Resumen por proveedor</span></h2></div>
+      <div class="panel-head"><h2><span class="step-chip">5</span><span id="proveedor-titulo">Resumen por proveedor</span></h2></div>
       <div class="panel-body" style="overflow-x:auto;">
         <table>
           <thead><tr><th>Proveedor</th><th>Euro Diesel (L)</th><th>Gasoil (L)</th><th>Litros totales</th><th>Neto total</th></tr></thead>
           <tbody id="tbody-proveedor"></tbody>
         </table>
       </div>
-    </div>
-
-    <div class="panel" id="panel-chart" style="display:none;">
-      <div class="panel-head"><h2><span class="step-chip">5</span>Evolución de litros comprados</h2></div>
-      <div class="panel-body" id="chart-container" style="overflow-x:auto;"></div>
     </div>
 
     <div class="panel" id="panel-export" style="display:none;">
