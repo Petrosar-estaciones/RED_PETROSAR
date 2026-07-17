@@ -94,24 +94,6 @@
 
   <div class="body">
 
-    <div class="panel" id="panel-config" style="display:none;">
-      <div class="panel-head"><h2>Conexión con el Sheet</h2></div>
-      <div class="panel-body">
-        <div class="sync-row">
-          <div class="sync-field">
-            <label class="sync-label">URL del Web App de Apps Script</label>
-            <input type="url" id="input-script-url" placeholder="https://script.google.com/macros/s/.../exec">
-          </div>
-          <button class="btn btn-primary" id="btn-conectar">Conectar y cargar</button>
-        </div>
-        <div class="status-line">
-          <span class="status-dot status-off" id="status-dot"></span>
-          <span id="status-text">Sin conectar todavía.</span>
-        </div>
-        <div class="hint" style="margin-top:10px;">Pegá acá la URL que te da Apps Script al implementar el script de tu Sheet "facturacion combustible" como aplicación web. Se guarda en este navegador.</div>
-      </div>
-    </div>
-
     <div class="panel" id="panel-ventas-mes" style="display:none;">
       <div class="panel-head">
         <h2>Resumen de ventas por mes</h2>
@@ -179,7 +161,6 @@
 (function(){
   const state = { scriptUrl: '', rows: [], mesFiltro: 'todos', anioFiltro: null };
   const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-  const STORAGE_KEY = 'facturacion_combustible_config';
 
   // Reglas de clasificación: cada código de producto (columna F) se mapea a una estación y categoría.
   // El código 0011 (Gasoil, Estación CD) quedó asumido por eliminación; revisar en "Filas sin clasificar" si no coincide.
@@ -245,28 +226,12 @@
   function mesLabel(key){ const [y,m]=key.split('-'); return MESES[parseInt(m,10)-1]+' '+y; }
 
   function setConnStatus(kind, text){
-    document.getElementById('status-dot').className = 'status-dot status-' + kind;
-    document.getElementById('status-text').textContent = text;
-    if (kind === 'err') document.getElementById('panel-config').style.display = '';
-  }
-  function loadConfig(){
-    try{ const raw = localStorage.getItem(STORAGE_KEY); if (raw){ const cfg = JSON.parse(raw); if (cfg.scriptUrl) document.getElementById('input-script-url').value = cfg.scriptUrl; } }catch(e){}
-  }
-  function saveConfig(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({ scriptUrl: state.scriptUrl })); }catch(e){} }
-
-  // El panel de conexión solo se muestra automáticamente si hay un error al cargar (ver setConnStatus)
-
-  async function conectarYCargar(){
-    const url = document.getElementById('input-script-url').value.trim();
-    if (!url){ toast('Pegá primero la URL del Web App'); return; }
-    state.scriptUrl = url;
-    saveConfig();
-    await cargarDesdeSheet();
+    if (kind === 'err') toast(text);
+    console.log('[facturacion]', kind, text);
   }
 
   async function cargarDesdeSheet(){
-    if (!state.scriptUrl){ toast('Conectá primero el Web App'); return; }
-    setConnStatus('saving', 'Cargando datos del Sheet…');
+    if (!state.scriptUrl){ return; }
     try{
       const sep = state.scriptUrl.includes('?') ? '&' : '?';
       const resp = await fetch(state.scriptUrl + sep + '_=' + Date.now());
@@ -496,7 +461,6 @@
 
   function renderAll(){ renderVentasMes(); renderResumen(); renderChartEstaciones(); renderSinClasificar(); }
 
-  document.getElementById('btn-conectar').addEventListener('click', conectarYCargar);
   document.getElementById('mes-filter').addEventListener('change', (e) => { state.mesFiltro = e.target.value; renderAll(); });
   document.getElementById('anio-filter').addEventListener('change', (e) => { state.anioFiltro = e.target.value; renderVentasMes(); });
 
@@ -525,11 +489,7 @@
     toast('Excel exportado (' + mesTxt + ')');
   });
 
-  loadConfig();
-  const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwpvZnGCa1P4LifYBqGlKkWc0p8P_NY7HGB9wEdKK6VIdfia5jVOwpd61TPB_I8MWzMwg/exec';
-  const inputUrl = document.getElementById('input-script-url');
-  if (!inputUrl.value) inputUrl.value = DEFAULT_SCRIPT_URL;
-  state.scriptUrl = inputUrl.value;
+  state.scriptUrl = 'https://script.google.com/macros/s/AKfycbxcnBWxjL--7DdJwKXxvAjZa52pmfSQ6WxG_ei3A5HVn6YpU74Pftf6TQaNdm3VjxSGjw/exec';
   cargarDesdeSheet();
 })();
 </script>
