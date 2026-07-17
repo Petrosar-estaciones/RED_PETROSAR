@@ -771,6 +771,7 @@ async function cargarFlota(){
 // TABS
 // ═══════════════════════════════════
 async function switchTab(t){
+  history.replaceState(null,'','#'+t);
   ['veh','totales','lineas','valorizacion','ingreso','autorizaciones','edenred'].forEach(id=>document.getElementById('tab-'+id).style.display=id===t?'block':'none');
   document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['totales','veh','valorizacion','ingreso','lineas','autorizaciones','edenred'][i]===t));
   if(t==='veh') poblarLineas();
@@ -970,10 +971,11 @@ function selValCC(cc){
       }
     }
   });
-  // Arrancar en Totales por Sector
-  await buildMesesDesplegable('mesTabs','totFrom','totTo',cargarTotales);
-  cargarResumenAnual();
-  cargarTotales();
+  // Arrancar en la pestaña indicada por el hash de la URL (ej. #edenred), o en Totales por Sector por defecto
+  const TABS_VALIDAS=['totales','veh','valorizacion','ingreso','lineas','autorizaciones','edenred'];
+  const hashTab=(location.hash||'').replace('#','').toLowerCase();
+  const tabInicial=TABS_VALIDAS.includes(hashTab)?hashTab:'totales';
+  await switchTab(tabInicial);
 })();
 
 // ═══════════════════════════════════
@@ -2740,7 +2742,7 @@ async function cargarEdenred() {
 
   const kpis = `
     <div class="kpi-grid" style="margin-bottom:20px">
-      <div class="kpi accent" style="background:#e84c3d;border-color:#e84c3d">
+      <div class="kpi accent" style="background:#475569;border-color:#475569">
         <div class="kpi-lbl">Total cobrado ${anio}</div>
         <div class="kpi-val">${fmtARSDec(totalAnio)}</div>
         <div class="kpi-unit">${cobros.length} comprobantes</div>
@@ -2769,9 +2771,9 @@ async function cargarEdenred() {
     const barH = Math.max(4, Math.round(pct * BAR_H));
     return `
       <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:${BAR_W}px">
-        <div style="font-size:10px;font-weight:700;color:#e84c3d">${fmtARSDec(m.total)}</div>
+        <div style="font-size:10px;font-weight:700;color:#475569">${fmtARSDec(m.total)}</div>
         <div style="width:${Math.max(BAR_W-10,30)}px;height:${BAR_H}px;display:flex;align-items:flex-end;justify-content:center">
-          <div style="width:100%;height:${barH}px;background:#e84c3d;border-radius:4px 4px 0 0;transition:height .4s" title="${m.nombre}: ${fmtARSDec(m.total)}"></div>
+          <div style="width:100%;height:${barH}px;background:#475569;border-radius:4px 4px 0 0;transition:height .4s" title="${m.nombre}: ${fmtARSDec(m.total)}"></div>
         </div>
         <div style="font-size:11px;font-weight:600;color:var(--muted)">${m.nombre.slice(0,3)}</div>
         <div style="font-size:10px;color:var(--muted)">${m.cobros.length} RC</div>
@@ -2780,9 +2782,9 @@ async function cargarEdenred() {
 
   const chart = `
     <div class="tbl-wrap fade" style="margin-bottom:20px">
-      <div class="tbl-hdr" style="background:#fdf2f0;border-bottom:1px solid #f5c5c0">
-        <span class="tbl-title" style="color:#7b241c">Cobros por mes — ${anio}</span>
-        <span class="tbl-count" style="background:#fff;border-color:#f5c5c0;color:#7b241c">${cobros.length} comprobantes · ${fmtARSDec(totalAnio)}</span>
+      <div class="tbl-hdr" style="background:#f1f5f9;border-bottom:1px solid #e2e8f0">
+        <span class="tbl-title" style="color:#334155">Cobros por mes — ${anio}</span>
+        <span class="tbl-count" style="background:#fff;border-color:#e2e8f0;color:#334155">${cobros.length} comprobantes · ${fmtARSDec(totalAnio)}</span>
       </div>
       <div style="padding:20px 24px;overflow-x:auto">
         <div style="display:flex;gap:6px;align-items:flex-end;min-width:${meses.length*BAR_W}px">
@@ -2795,11 +2797,11 @@ async function cargarEdenred() {
   let tableRows = '';
   meses.forEach(m => {
     tableRows += `
-      <tr style="background:#fdf2f0;cursor:pointer" onclick="toggleEdenredMes('mes-${m.num}')">
-        <td colspan="3" style="font-weight:700;color:#7b241c;padding:10px 18px">
+      <tr style="background:#f1f5f9;cursor:pointer" onclick="toggleEdenredMes('mes-${m.num}')">
+        <td colspan="3" style="font-weight:700;color:#334155;padding:10px 18px">
           <span style="margin-right:8px">▸</span>${m.nombre} ${anio}
         </td>
-        <td style="font-weight:700;color:#e84c3d;text-align:right;padding:10px 18px;font-size:15px">${fmtARSDec(m.total)}</td>
+        <td style="font-weight:700;color:#475569;text-align:right;padding:10px 18px;font-size:15px">${fmtARSDec(m.total)}</td>
       </tr>`;
     const sorted = [...m.cobros].sort((a,b)=>(a.fecha||0)-(b.fecha||0));
     sorted.forEach(c => {
@@ -2809,7 +2811,7 @@ async function cargarEdenred() {
           <td style="padding:9px 18px 9px 36px;font-size:12px;color:var(--muted)">${c.comp}</td>
           <td style="padding:9px 18px;font-size:12px;text-align:center">${fechaFmt}</td>
           <td style="padding:9px 18px;font-size:12px;text-align:center">
-            <span style="background:#fde8e6;color:#e84c3d;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px">${c.mesRaw}</span>
+            <span style="background:#e2e8f0;color:#475569;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px">${c.mesRaw}</span>
           </td>
           <td style="padding:9px 18px;text-align:right;font-weight:600;font-size:13px">${fmtARSDec(c.importe)}</td>
         </tr>`;
@@ -2817,15 +2819,15 @@ async function cargarEdenred() {
   });
 
   tableRows += `
-    <tr style="background:#fdf2f0">
-      <td colspan="3" style="font-weight:700;color:#7b241c;padding:12px 18px">TOTAL ${anio}</td>
-      <td style="font-weight:700;color:#e84c3d;font-size:16px;text-align:right;padding:12px 18px">${fmtARSDec(totalAnio)}</td>
+    <tr style="background:#f1f5f9">
+      <td colspan="3" style="font-weight:700;color:#334155;padding:12px 18px">TOTAL ${anio}</td>
+      <td style="font-weight:700;color:#475569;font-size:16px;text-align:right;padding:12px 18px">${fmtARSDec(totalAnio)}</td>
     </tr>`;
 
   const tabla = `
     <div class="tbl-wrap fade">
-      <div class="tbl-hdr" style="background:#fdf2f0;border-bottom:1px solid #f5c5c0">
-        <span class="tbl-title" style="color:#7b241c">Detalle de Comprobantes — ${anio}</span>
+      <div class="tbl-hdr" style="background:#f1f5f9;border-bottom:1px solid #e2e8f0">
+        <span class="tbl-title" style="color:#334155">Detalle de Comprobantes — ${anio}</span>
         <span style="font-size:11px;color:var(--muted)">Hacé clic en el mes para expandir</span>
       </div>
       <table class="dt" style="width:100%">
@@ -2999,7 +3001,7 @@ async function cargarEdenred() {
   // ── KPIs ──────────────────────────────
   const kpis = `
     <div class="kpi-grid" style="margin-bottom:20px">
-      <div class="kpi accent" style="background:#e84c3d;border-color:#e84c3d">
+      <div class="kpi accent" style="background:#475569;border-color:#475569">
         <div class="kpi-lbl">Total cobrado ${anio}</div>
         <div class="kpi-val">${fmtARSDec(totalAnio)}</div>
         <div class="kpi-unit">${cobros.length} comprobantes</div>
@@ -3027,11 +3029,11 @@ async function cargarEdenred() {
   const bars = meses.map((m, i) => {
     const pct = maxMes ? m.total / maxMes : 0;
     const barH = Math.max(4, Math.round(pct * BAR_H));
-    const color = '#e84c3d';
-    const colorLight = '#fde8e6';
+    const color = '#475569';
+    const colorLight = '#e2e8f0';
     return `
       <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:${BAR_W}px">
-        <div style="font-size:10px;font-weight:700;color:#e84c3d">${fmtARSDec(m.total)}</div>
+        <div style="font-size:10px;font-weight:700;color:#475569">${fmtARSDec(m.total)}</div>
         <div style="width:${Math.max(BAR_W-10,30)}px;height:${BAR_H}px;display:flex;align-items:flex-end;justify-content:center">
           <div style="width:100%;height:${barH}px;background:${color};border-radius:4px 4px 0 0;transition:height .4s" title="${m.nombre}: ${fmtARSDec(m.total)}"></div>
         </div>
@@ -3042,9 +3044,9 @@ async function cargarEdenred() {
 
   const chart = `
     <div class="tbl-wrap fade" style="margin-bottom:20px">
-      <div class="tbl-hdr" style="background:#fdf2f0;border-bottom:1px solid #f5c5c0">
-        <span class="tbl-title" style="color:#7b241c">Cobros por mes — ${anio}</span>
-        <span class="tbl-count" style="background:#fff;border-color:#f5c5c0;color:#7b241c">${cobros.length} comprobantes · ${fmtARSDec(totalAnio)}</span>
+      <div class="tbl-hdr" style="background:#f1f5f9;border-bottom:1px solid #e2e8f0">
+        <span class="tbl-title" style="color:#334155">Cobros por mes — ${anio}</span>
+        <span class="tbl-count" style="background:#fff;border-color:#e2e8f0;color:#334155">${cobros.length} comprobantes · ${fmtARSDec(totalAnio)}</span>
       </div>
       <div style="padding:20px 24px;overflow-x:auto">
         <div style="display:flex;gap:6px;align-items:flex-end;min-width:${meses.length*BAR_W}px">
@@ -3060,11 +3062,11 @@ async function cargarEdenred() {
   meses.forEach(m => {
     // Fila resumen de mes
     tableRows += `
-      <tr style="background:#fdf2f0;cursor:pointer" onclick="toggleEdenredMes('mes-${m.num}')">
-        <td colspan="3" style="font-weight:700;color:#7b241c;padding:10px 18px">
+      <tr style="background:#f1f5f9;cursor:pointer" onclick="toggleEdenredMes('mes-${m.num}')">
+        <td colspan="3" style="font-weight:700;color:#334155;padding:10px 18px">
           <span style="margin-right:8px">▸</span>${m.nombre} ${anio}
         </td>
-        <td style="font-weight:700;color:#e84c3d;text-align:right;padding:10px 18px;font-size:15px">${fmtARSDec(m.total)}</td>
+        <td style="font-weight:700;color:#475569;text-align:right;padding:10px 18px;font-size:15px">${fmtARSDec(m.total)}</td>
       </tr>`;
     // Filas detalle (colapsadas)
     const sorted = [...m.cobros].sort((a,b)=>(a.fecha||0)-(b.fecha||0));
@@ -3075,7 +3077,7 @@ async function cargarEdenred() {
           <td style="padding:9px 18px 9px 36px;font-size:12px;color:var(--muted)">${c.comp}</td>
           <td style="padding:9px 18px;font-size:12px;text-align:center">${fechaFmt}</td>
           <td style="padding:9px 18px;font-size:12px;text-align:center">
-            <span style="background:#fde8e6;color:#e84c3d;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px">${c.mesRaw}</span>
+            <span style="background:#e2e8f0;color:#475569;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px">${c.mesRaw}</span>
           </td>
           <td style="padding:9px 18px;text-align:right;font-weight:600;font-size:13px">${fmtARSDec(c.importe)}</td>
         </tr>`;
@@ -3084,15 +3086,15 @@ async function cargarEdenred() {
 
   // Fila total
   tableRows += `
-    <tr style="background:#fdf2f0">
-      <td colspan="3" style="font-weight:700;color:#7b241c;padding:12px 18px">TOTAL ${anio}</td>
-      <td style="font-weight:700;color:#e84c3d;font-size:16px;text-align:right;padding:12px 18px">${fmtARSDec(totalAnio)}</td>
+    <tr style="background:#f1f5f9">
+      <td colspan="3" style="font-weight:700;color:#334155;padding:12px 18px">TOTAL ${anio}</td>
+      <td style="font-weight:700;color:#475569;font-size:16px;text-align:right;padding:12px 18px">${fmtARSDec(totalAnio)}</td>
     </tr>`;
 
   const tabla = `
     <div class="tbl-wrap fade">
-      <div class="tbl-hdr" style="background:#fdf2f0;border-bottom:1px solid #f5c5c0">
-        <span class="tbl-title" style="color:#7b241c">Detalle de Comprobantes — ${anio}</span>
+      <div class="tbl-hdr" style="background:#f1f5f9;border-bottom:1px solid #e2e8f0">
+        <span class="tbl-title" style="color:#334155">Detalle de Comprobantes — ${anio}</span>
         <span style="font-size:11px;color:var(--muted)">Hacé clic en el mes para expandir</span>
       </div>
       <table class="dt" style="width:100%">
