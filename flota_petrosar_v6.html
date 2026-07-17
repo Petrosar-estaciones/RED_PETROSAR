@@ -771,6 +771,7 @@ async function cargarFlota(){
 // TABS
 // ═══════════════════════════════════
 async function switchTab(t){
+  history.replaceState(null,'','#'+t);
   ['veh','totales','lineas','valorizacion','ingreso','autorizaciones','edenred'].forEach(id=>document.getElementById('tab-'+id).style.display=id===t?'block':'none');
   document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['totales','veh','valorizacion','ingreso','lineas','autorizaciones','edenred'][i]===t));
   if(t==='veh') poblarLineas();
@@ -970,10 +971,11 @@ function selValCC(cc){
       }
     }
   });
-  // Arrancar en Totales por Sector
-  await buildMesesDesplegable('mesTabs','totFrom','totTo',cargarTotales);
-  cargarResumenAnual();
-  cargarTotales();
+  // Arrancar en la pestaña indicada por el hash de la URL (ej. #edenred), o en Totales por Sector por defecto
+  const TABS_VALIDAS=['totales','veh','valorizacion','ingreso','lineas','autorizaciones','edenred'];
+  const hashTab=(location.hash||'').replace('#','').toLowerCase();
+  const tabInicial=TABS_VALIDAS.includes(hashTab)?hashTab:'totales';
+  await switchTab(tabInicial);
 })();
 
 // ═══════════════════════════════════
