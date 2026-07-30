@@ -1664,18 +1664,19 @@ async function cargarValorizacion(){
         costoCO2Euro:0,costoCO2Gasoil:0,
         vtaNetoEuro:0,vtaNetoGasoil:0
       };
+      const lts=Math.round(d.litros*100)/100; // redondear litros a 2 dec antes de calcular
       if(d.prod==='GASOIL'){
-        meses[m].ltsGasoil+=d.litros;
-        meses[m].costoNetoGasoil+=d.litros*pGasoil;
-        meses[m].costoImpGasoil+=d.litros*pImpGasoil;
-        meses[m].costoCO2Gasoil+=d.litros*pCO2Gasoil;
-        if(calcVta) meses[m].vtaNetoGasoil+=d.litros*pVtaGasoil;
+        meses[m].ltsGasoil+=lts;
+        meses[m].costoNetoGasoil+=lts*pGasoil;
+        meses[m].costoImpGasoil+=lts*pImpGasoil;
+        meses[m].costoCO2Gasoil+=lts*pCO2Gasoil;
+        if(calcVta) meses[m].vtaNetoGasoil+=lts*pVtaGasoil;
       }else{
-        meses[m].ltsEuro+=d.litros;
-        meses[m].costoNetoEuro+=d.litros*pEuro;
-        meses[m].costoImpEuro+=d.litros*pImpEuro;
-        meses[m].costoCO2Euro+=d.litros*pCO2Euro;
-        if(calcVta) meses[m].vtaNetoEuro+=d.litros*pVtaEuro;
+        meses[m].ltsEuro+=lts;
+        meses[m].costoNetoEuro+=lts*pEuro;
+        meses[m].costoImpEuro+=lts*pImpEuro;
+        meses[m].costoCO2Euro+=lts*pCO2Euro;
+        if(calcVta) meses[m].vtaNetoEuro+=lts*pVtaEuro;
       }
     });
     return meses;
@@ -1918,16 +1919,17 @@ async function cargarIngreso(){
       costoTotalEuro:0,costoTotalGasoil:0,
       vtaNetoEuro:0,vtaNetoGasoil:0
     };
+    const lts=Math.round(d.litros*100)/100; // redondear litros a 2 dec antes de calcular
     if(d.prod==='GASOIL'){
-      meses[m].ltsGasoil+=d.litros;
-      meses[m].costoNetoGasoil+=d.litros*pGasoil;
-      meses[m].costoTotalGasoil+=d.litros*(pGasoil+pImpGasoil+pCO2Gasoil);
-      meses[m].vtaNetoGasoil+=d.litros*pVtaGasoil;
+      meses[m].ltsGasoil+=lts;
+      meses[m].costoNetoGasoil+=lts*pGasoil;
+      meses[m].costoTotalGasoil+=lts*(pGasoil+pImpGasoil+pCO2Gasoil);
+      meses[m].vtaNetoGasoil+=lts*pVtaGasoil;
     }else{
-      meses[m].ltsEuro+=d.litros;
-      meses[m].costoNetoEuro+=d.litros*pEuro;
-      meses[m].costoTotalEuro+=d.litros*(pEuro+pImpEuro+pCO2Euro);
-      meses[m].vtaNetoEuro+=d.litros*pVtaEuro;
+      meses[m].ltsEuro+=lts;
+      meses[m].costoNetoEuro+=lts*pEuro;
+      meses[m].costoTotalEuro+=lts*(pEuro+pImpEuro+pCO2Euro);
+      meses[m].vtaNetoEuro+=lts*pVtaEuro;
     }
   });
 
@@ -2110,12 +2112,12 @@ function exportValorizacion(){
   // ── Hoja 4: Precios ──────────────────────────────────────────────────
   const h4=['Concepto','Euro Diesel','Gasoil'];
   const r4=[
-    ['Precio neto costo ($/lts)',r2d(d.pEuro),r2d(d.pGasoil)],
-    ['Imp. Interno ($/lts)',r2d(d.pImpEuro),r2d(d.pImpGasoil)],
-    ['CO2 ($/lts)',r2d(d.pCO2Euro),r2d(d.pCO2Gasoil)],
-    ['Total costo ($/lts)',r2d(d.pEuro+d.pImpEuro+d.pCO2Euro),r2d(d.pGasoil+d.pImpGasoil+d.pCO2Gasoil)],
+    ['Precio neto costo ($/lts)',d.pEuro,d.pGasoil],
+    ['Imp. Interno ($/lts)',d.pImpEuro,d.pImpGasoil],
+    ['CO2 ($/lts)',d.pCO2Euro,d.pCO2Gasoil],
+    ['Total costo ($/lts)',d.pEuro+d.pImpEuro+d.pCO2Euro,d.pGasoil+d.pImpGasoil+d.pCO2Gasoil],
     [''],
-    ['Precio neto venta ($/lts)',r2d(d.pVtaEuro),r2d(d.pVtaGasoil)],
+    ['Precio neto venta ($/lts)',d.pVtaEuro,d.pVtaGasoil],
   ];
   const ws4=XLSX.utils.aoa_to_sheet([h4,...r4]);
   ws4['!cols']=[{wch:28},{wch:16},{wch:16}];
