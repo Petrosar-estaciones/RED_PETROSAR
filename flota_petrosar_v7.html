@@ -2058,6 +2058,7 @@ function exportValorizacion(){
   if(!d){ alert('Primero calculá la valorización'); return; }
 
   const wb = XLSX.utils.book_new();
+  const r2d = n => Math.round(n * 100) / 100; // redondear a 2 decimales
 
   function mesNom(k){const[y,m]=k.split('-');const n=new Date(+y,+m-1,1).toLocaleString('es-AR',{month:'long',year:'numeric'});return n.charAt(0).toUpperCase()+n.slice(1);}
 
@@ -2066,12 +2067,12 @@ function exportValorizacion(){
   const r1=[];
   d.allKeys.forEach(k=>{
     const m=d.mesPetrosar[k]; if(!m) return;
-    if(m.ltsEuro>0) r1.push([mesNom(k),'Euro Diesel',m.ltsEuro,m.costoNetoEuro,m.costoImpEuro,m.costoCO2Euro,m.costoNetoEuro+m.costoImpEuro+m.costoCO2Euro,m.vtaNetoEuro]);
-    if(m.ltsGasoil>0) r1.push([mesNom(k),'Gasoil',m.ltsGasoil,m.costoNetoGasoil,m.costoImpGasoil,m.costoCO2Gasoil,m.costoNetoGasoil+m.costoImpGasoil+m.costoCO2Gasoil,m.vtaNetoGasoil]);
+    if(m.ltsEuro>0) r1.push([mesNom(k),'Euro Diesel',r2d(m.ltsEuro),r2d(m.costoNetoEuro),r2d(m.costoImpEuro),r2d(m.costoCO2Euro),r2d(m.costoNetoEuro+m.costoImpEuro+m.costoCO2Euro),r2d(m.vtaNetoEuro)]);
+    if(m.ltsGasoil>0) r1.push([mesNom(k),'Gasoil',r2d(m.ltsGasoil),r2d(m.costoNetoGasoil),r2d(m.costoImpGasoil),r2d(m.costoCO2Gasoil),r2d(m.costoNetoGasoil+m.costoImpGasoil+m.costoCO2Gasoil),r2d(m.vtaNetoGasoil)]);
   });
   r1.push([]);
   const tP=d.totP;
-  r1.push(['TOTAL','',tP.ltsEuro+tP.ltsGasoil,tP.costoNetoEuro+tP.costoNetoGasoil,tP.costoImpEuro+tP.costoImpGasoil,tP.costoCO2Euro+tP.costoCO2Gasoil,(tP.costoNetoEuro+tP.costoNetoGasoil)+(tP.costoImpEuro+tP.costoImpGasoil)+(tP.costoCO2Euro+tP.costoCO2Gasoil),tP.vtaNetoEuro+tP.vtaNetoGasoil]);
+  r1.push(['TOTAL','',r2d(tP.ltsEuro+tP.ltsGasoil),r2d(tP.costoNetoEuro+tP.costoNetoGasoil),r2d(tP.costoImpEuro+tP.costoImpGasoil),r2d(tP.costoCO2Euro+tP.costoCO2Gasoil),r2d((tP.costoNetoEuro+tP.costoNetoGasoil)+(tP.costoImpEuro+tP.costoImpGasoil)+(tP.costoCO2Euro+tP.costoCO2Gasoil)),r2d(tP.vtaNetoEuro+tP.vtaNetoGasoil)]);
   const ws1=XLSX.utils.aoa_to_sheet([h1,...r1]);
   ws1['!cols']=h1.map(h=>({wch:Math.max(h.length+2,16)}));
   XLSX.utils.book_append_sheet(wb,ws1,'Valoriz. PETROSAR');
@@ -2081,12 +2082,12 @@ function exportValorizacion(){
   const r2=[];
   d.allKeys.forEach(k=>{
     const m=d.mesEESS[k]; if(!m) return;
-    if(m.ltsEuro>0) r2.push([mesNom(k),'Euro Diesel',m.ltsEuro,m.costoNetoEuro,m.costoImpEuro,m.costoCO2Euro,m.costoNetoEuro+m.costoImpEuro+m.costoCO2Euro]);
-    if(m.ltsGasoil>0) r2.push([mesNom(k),'Gasoil',m.ltsGasoil,m.costoNetoGasoil,m.costoImpGasoil,m.costoCO2Gasoil,m.costoNetoGasoil+m.costoImpGasoil+m.costoCO2Gasoil]);
+    if(m.ltsEuro>0) r2.push([mesNom(k),'Euro Diesel',r2d(m.ltsEuro),r2d(m.costoNetoEuro),r2d(m.costoImpEuro),r2d(m.costoCO2Euro),r2d(m.costoNetoEuro+m.costoImpEuro+m.costoCO2Euro)]);
+    if(m.ltsGasoil>0) r2.push([mesNom(k),'Gasoil',r2d(m.ltsGasoil),r2d(m.costoNetoGasoil),r2d(m.costoImpGasoil),r2d(m.costoCO2Gasoil),r2d(m.costoNetoGasoil+m.costoImpGasoil+m.costoCO2Gasoil)]);
   });
   r2.push([]);
   const tE=d.totE;
-  r2.push(['TOTAL','',tE.ltsEuro+tE.ltsGasoil,tE.costoNetoEuro+tE.costoNetoGasoil,tE.costoImpEuro+tE.costoImpGasoil,tE.costoCO2Euro+tE.costoCO2Gasoil,(tE.costoNetoEuro+tE.costoNetoGasoil)+(tE.costoImpEuro+tE.costoImpGasoil)+(tE.costoCO2Euro+tE.costoCO2Gasoil)]);
+  r2.push(['TOTAL','',r2d(tE.ltsEuro+tE.ltsGasoil),r2d(tE.costoNetoEuro+tE.costoNetoGasoil),r2d(tE.costoImpEuro+tE.costoImpGasoil),r2d(tE.costoCO2Euro+tE.costoCO2Gasoil),r2d((tE.costoNetoEuro+tE.costoNetoGasoil)+(tE.costoImpEuro+tE.costoImpGasoil)+(tE.costoCO2Euro+tE.costoCO2Gasoil))]);
   const ws2=XLSX.utils.aoa_to_sheet([h2,...r2]);
   ws2['!cols']=h2.map(h=>({wch:Math.max(h.length+2,16)}));
   XLSX.utils.book_append_sheet(wb,ws2,'Valoriz. EESS CD');
@@ -2097,11 +2098,11 @@ function exportValorizacion(){
   let totIngEuro=0,totIngGasoil=0,totLtsE=0,totLtsG=0,totCNE=0,totCNG=0,totVNE=0,totVNG=0;
   d.allKeys.forEach(k=>{
     const m=d.mesPetrosar[k]; if(!m) return;
-    if(m.ltsEuro>0){const ing=m.vtaNetoEuro-m.costoNetoEuro;r3.push([mesNom(k),'Euro Diesel',m.ltsEuro,m.costoNetoEuro,m.vtaNetoEuro,ing]);totIngEuro+=ing;totLtsE+=m.ltsEuro;totCNE+=m.costoNetoEuro;totVNE+=m.vtaNetoEuro;}
-    if(m.ltsGasoil>0){const ing=m.vtaNetoGasoil-m.costoNetoGasoil;r3.push([mesNom(k),'Gasoil',m.ltsGasoil,m.costoNetoGasoil,m.vtaNetoGasoil,ing]);totIngGasoil+=ing;totLtsG+=m.ltsGasoil;totCNG+=m.costoNetoGasoil;totVNG+=m.vtaNetoGasoil;}
+    if(m.ltsEuro>0){const ing=m.vtaNetoEuro-m.costoNetoEuro;r3.push([mesNom(k),'Euro Diesel',r2d(m.ltsEuro),r2d(m.costoNetoEuro),r2d(m.vtaNetoEuro),r2d(ing)]);totIngEuro+=ing;totLtsE+=m.ltsEuro;totCNE+=m.costoNetoEuro;totVNE+=m.vtaNetoEuro;}
+    if(m.ltsGasoil>0){const ing=m.vtaNetoGasoil-m.costoNetoGasoil;r3.push([mesNom(k),'Gasoil',r2d(m.ltsGasoil),r2d(m.costoNetoGasoil),r2d(m.vtaNetoGasoil),r2d(ing)]);totIngGasoil+=ing;totLtsG+=m.ltsGasoil;totCNG+=m.costoNetoGasoil;totVNG+=m.vtaNetoGasoil;}
   });
   r3.push([]);
-  r3.push(['TOTAL','',totLtsE+totLtsG,totCNE+totCNG,totVNE+totVNG,totIngEuro+totIngGasoil]);
+  r3.push(['TOTAL','',r2d(totLtsE+totLtsG),r2d(totCNE+totCNG),r2d(totVNE+totVNG),r2d(totIngEuro+totIngGasoil)]);
   const ws3=XLSX.utils.aoa_to_sheet([h3,...r3]);
   ws3['!cols']=h3.map(h=>({wch:Math.max(h.length+2,16)}));
   XLSX.utils.book_append_sheet(wb,ws3,'Ingreso ESCD x Vta');
@@ -2109,12 +2110,12 @@ function exportValorizacion(){
   // ── Hoja 4: Precios ──────────────────────────────────────────────────
   const h4=['Concepto','Euro Diesel','Gasoil'];
   const r4=[
-    ['Precio neto costo ($/lts)',d.pEuro,d.pGasoil],
-    ['Imp. Interno ($/lts)',d.pImpEuro,d.pImpGasoil],
-    ['CO2 ($/lts)',d.pCO2Euro,d.pCO2Gasoil],
-    ['Total costo ($/lts)',d.pEuro+d.pImpEuro+d.pCO2Euro,d.pGasoil+d.pImpGasoil+d.pCO2Gasoil],
+    ['Precio neto costo ($/lts)',r2d(d.pEuro),r2d(d.pGasoil)],
+    ['Imp. Interno ($/lts)',r2d(d.pImpEuro),r2d(d.pImpGasoil)],
+    ['CO2 ($/lts)',r2d(d.pCO2Euro),r2d(d.pCO2Gasoil)],
+    ['Total costo ($/lts)',r2d(d.pEuro+d.pImpEuro+d.pCO2Euro),r2d(d.pGasoil+d.pImpGasoil+d.pCO2Gasoil)],
     [''],
-    ['Precio neto venta ($/lts)',d.pVtaEuro,d.pVtaGasoil],
+    ['Precio neto venta ($/lts)',r2d(d.pVtaEuro),r2d(d.pVtaGasoil)],
   ];
   const ws4=XLSX.utils.aoa_to_sheet([h4,...r4]);
   ws4['!cols']=[{wch:28},{wch:16},{wch:16}];
