@@ -683,6 +683,31 @@
     document.getElementById('g-mes').textContent = state.mesFiltro!=='todos' ? mesLabel(state.mesFiltro) : 'Todos los meses';
   }
 
+  function niceNumber(range, round){
+    const exponent = Math.floor(Math.log10(range));
+    const fraction = range / Math.pow(10, exponent);
+    let niceFraction;
+    if (round){
+      if (fraction < 1.5) niceFraction = 1;
+      else if (fraction < 3) niceFraction = 2;
+      else if (fraction < 7) niceFraction = 5;
+      else niceFraction = 10;
+    } else {
+      if (fraction <= 1) niceFraction = 1;
+      else if (fraction <= 2) niceFraction = 2;
+      else if (fraction <= 5) niceFraction = 5;
+      else niceFraction = 10;
+    }
+    return niceFraction * Math.pow(10, exponent);
+  }
+  function niceScale(maxV, maxTicks){
+    if (maxV <= 0) return { max: 1, step: 1 };
+    const range = niceNumber(maxV, false);
+    const step = niceNumber(range / (maxTicks - 1), true);
+    const max = Math.ceil(maxV / step) * step;
+    return { max, step };
+  }
+
   function renderChart(){
     const map = new Map();
     state.rows.forEach(r => {
@@ -702,7 +727,8 @@
     const gasoilVals = keys.map(k => map.get(k).gasoil);
     const totalVals = keys.map((k,i) => dieselVals[i] + gasoilVals[i]);
     const maxV = Math.max(...totalVals) || 1;
-    const yMax = maxV * 1.15;
+    const scale = niceScale(maxV, 5);
+    const yMax = scale.max;
 
     const W = Math.max(560, keys.length * 100), H = 320;
     const ML = 66, MR = 20, MT = 34, MB = 42;
@@ -710,10 +736,8 @@
     const x = i => ML + (keys.length===1 ? plotW/2 : (i/(keys.length-1))*plotW);
     const y = v => MT + plotH - (v/yMax)*plotH;
 
-    const gridLines = 4;
     let gridSvg = '';
-    for (let g=0; g<=gridLines; g++){
-      const v = yMax * (g/gridLines);
+    for (let v=0; v<=yMax + 0.001; v+=scale.step){
       const yy = y(v);
       gridSvg += '<line x1="'+ML+'" y1="'+yy.toFixed(1)+'" x2="'+(W-MR)+'" y2="'+yy.toFixed(1)+'" stroke="#DCE2E1" stroke-width="1"></line>';
       gridSvg += '<text x="'+(ML-8)+'" y="'+(yy+3).toFixed(1)+'" font-size="10" font-family="IBM Plex Mono, monospace" text-anchor="end" fill="#5C6B6E">'+Math.round(v).toLocaleString('es-AR')+'</text>';
@@ -723,14 +747,16 @@
     function lineFor(vals){
       return vals.map((v,i) => (i===0?'M':'L') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join(' ');
     }
-    function dotsFor(vals, color, above){
+    function dotsFor(vals, color, serieName){
       return vals.map((v,i) =>
-        '<circle cx="'+x(i).toFixed(1)+'" cy="'+y(v).toFixed(1)+'" r="4" fill="'+color+'" stroke="#fff" stroke-width="1.5"></circle>' +
-        '<text x="'+x(i).toFixed(1)+'" y="'+(y(v) + (above? -10 : 16)).toFixed(1)+'" font-size="10" font-family="IBM Plex Mono, monospace" text-anchor="middle" fill="'+color+'">'+Math.round(v).toLocaleString('es-AR')+'</text>'
+        '<circle class="chart-dot" cx="'+x(i).toFixed(1)+'" cy="'+y(v).toFixed(1)+'" r="5" fill="'+color+'" stroke="#fff" stroke-width="1.5" '
+        + 'data-serie="'+serieName+'" data-mes="'+mesLabel(keys[i])+'" data-valor="'+Math.round(v).toLocaleString('es-AR')+'" '
+        + 'style="cursor:pointer;"></circle>'
       ).join('');
     }
 
     container.innerHTML =
+      '<div style="position:relative;">' +
       '<div style="display:flex; gap:18px; align-items:center; margin-bottom:10px; font-size:12.5px; flex-wrap:wrap;">' +
         '<span style="display:flex; align-items:center; gap:6px;"><span style="width:12px; height:3px; background:#132226; display:inline-block;"></span>Total</span>' +
         '<span style="display:flex; align-items:center; gap:6px;"><span style="width:12px; height:3px; background:#2F8F4E; display:inline-block;"></span>Euro Diesel</span>' +
@@ -741,11 +767,36 @@
         '<path d="'+lineFor(totalVals)+'" fill="none" stroke="#132226" stroke-width="2.5"></path>' +
         '<path d="'+lineFor(dieselVals)+'" fill="none" stroke="#2F8F4E" stroke-width="2"></path>' +
         '<path d="'+lineFor(gasoilVals)+'" fill="none" stroke="#E8720C" stroke-width="2"></path>' +
-        dotsFor(totalVals, '#132226', true) +
-        dotsFor(dieselVals, '#2F8F4E', true) +
-        dotsFor(gasoilVals, '#E8720C', false) +
+        dotsFor(totalVals, '#132226', 'Total') +
+        dotsFor(dieselVals, '#2F8F4E', 'Euro Diesel') +
+        dotsFor(gasoilVals, '#E8720C', 'Gasoil') +
         labelsSvg +
-      '</svg>';
+      '</svg>' +
+      '<div id="chart-tooltip" style="position:absolute; display:none; pointer-events:none; background:#132226; color:#fff; '
+        + 'font-family:IBM Plex Mono, monospace; font-size:11.5px; padding:6px 10px; border-radius:5px; white-space:nowrap; '
+        + 'box-shadow:0 4px 10px rgba(0,0,0,.18); z-index:20;"></div>' +
+      '</div>';
+
+    const tooltip = document.getElementById('chart-tooltip');
+    const wrapper = container.querySelector('div');
+    container.querySelectorAll('.chart-dot').forEach(dot => {
+      dot.addEventListener('mouseenter', (e) => {
+        dot.setAttribute('r', '6.5');
+        tooltip.innerHTML = '<strong>'+dot.dataset.serie+'</strong> · '+dot.dataset.mes+'<br>'+dot.dataset.valor+' L';
+        tooltip.style.display = 'block';
+      });
+      dot.addEventListener('mousemove', (e) => {
+        const rect = wrapper.getBoundingClientRect();
+        const offsetX = e.clientX - rect.left;
+        const offsetY = e.clientY - rect.top;
+        tooltip.style.left = Math.min(offsetX + 14, rect.width - 130) + 'px';
+        tooltip.style.top = Math.max(offsetY - 40, 0) + 'px';
+      });
+      dot.addEventListener('mouseleave', () => {
+        dot.setAttribute('r', '5');
+        tooltip.style.display = 'none';
+      });
+    });
   }
 
   function renderGaugeResumenProveedorMensual(){
