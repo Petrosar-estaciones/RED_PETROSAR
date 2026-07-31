@@ -598,6 +598,7 @@ function parsarFuente(table,fuente,from,to,filtVeh=null){
         litros=parseFloat(lf.replace(/\./g,'').replace(',','.'))||0;
       }
     }
+    litros=Math.round(litros*100)/100;
     if(!litros)continue;
     const pat=fuente.iPatente>=0?norm(s(row,fuente.iPatente)):'';
     let int_=String(v(row,fuente.iInterno)||'').trim();
@@ -1664,19 +1665,18 @@ async function cargarValorizacion(){
         costoCO2Euro:0,costoCO2Gasoil:0,
         vtaNetoEuro:0,vtaNetoGasoil:0
       };
-      const lts=Math.round(d.litros*100)/100; // redondear litros a 2 dec antes de calcular
       if(d.prod==='GASOIL'){
-        meses[m].ltsGasoil+=lts;
-        meses[m].costoNetoGasoil+=lts*pGasoil;
-        meses[m].costoImpGasoil+=lts*pImpGasoil;
-        meses[m].costoCO2Gasoil+=lts*pCO2Gasoil;
-        if(calcVta) meses[m].vtaNetoGasoil+=lts*pVtaGasoil;
+        meses[m].ltsGasoil+=d.litros;
+        meses[m].costoNetoGasoil+=d.litros*pGasoil;
+        meses[m].costoImpGasoil+=d.litros*pImpGasoil;
+        meses[m].costoCO2Gasoil+=d.litros*pCO2Gasoil;
+        if(calcVta) meses[m].vtaNetoGasoil+=d.litros*pVtaGasoil;
       }else{
-        meses[m].ltsEuro+=lts;
-        meses[m].costoNetoEuro+=lts*pEuro;
-        meses[m].costoImpEuro+=lts*pImpEuro;
-        meses[m].costoCO2Euro+=lts*pCO2Euro;
-        if(calcVta) meses[m].vtaNetoEuro+=lts*pVtaEuro;
+        meses[m].ltsEuro+=d.litros;
+        meses[m].costoNetoEuro+=d.litros*pEuro;
+        meses[m].costoImpEuro+=d.litros*pImpEuro;
+        meses[m].costoCO2Euro+=d.litros*pCO2Euro;
+        if(calcVta) meses[m].vtaNetoEuro+=d.litros*pVtaEuro;
       }
     });
     return meses;
@@ -1919,17 +1919,16 @@ async function cargarIngreso(){
       costoTotalEuro:0,costoTotalGasoil:0,
       vtaNetoEuro:0,vtaNetoGasoil:0
     };
-    const lts=Math.round(d.litros*100)/100; // redondear litros a 2 dec antes de calcular
     if(d.prod==='GASOIL'){
-      meses[m].ltsGasoil+=lts;
-      meses[m].costoNetoGasoil+=lts*pGasoil;
-      meses[m].costoTotalGasoil+=lts*(pGasoil+pImpGasoil+pCO2Gasoil);
-      meses[m].vtaNetoGasoil+=lts*pVtaGasoil;
+      meses[m].ltsGasoil+=d.litros;
+      meses[m].costoNetoGasoil+=d.litros*pGasoil;
+      meses[m].costoTotalGasoil+=d.litros*(pGasoil+pImpGasoil+pCO2Gasoil);
+      meses[m].vtaNetoGasoil+=d.litros*pVtaGasoil;
     }else{
-      meses[m].ltsEuro+=lts;
-      meses[m].costoNetoEuro+=lts*pEuro;
-      meses[m].costoTotalEuro+=lts*(pEuro+pImpEuro+pCO2Euro);
-      meses[m].vtaNetoEuro+=lts*pVtaEuro;
+      meses[m].ltsEuro+=d.litros;
+      meses[m].costoNetoEuro+=d.litros*pEuro;
+      meses[m].costoTotalEuro+=d.litros*(pEuro+pImpEuro+pCO2Euro);
+      meses[m].vtaNetoEuro+=d.litros*pVtaEuro;
     }
   });
 
