@@ -1056,9 +1056,9 @@ async function buscarLinea(){
   document.getElementById('loadingVeh').style.display='none';
 
   // Renderizar como resumen de línea
-  const total=filtrados.reduce((s,d)=>s+d.litros,0);
-  const euro=filtrados.filter(d=>d.prod==='EURO').reduce((s,d)=>s+d.litros,0);
-  const gasoil=filtrados.filter(d=>d.prod==='GASOIL').reduce((s,d)=>s+d.litros,0);
+  const total=Math.round(filtrados.reduce((s,d)=>s+d.litros,0)*100)/100;
+  const euro=Math.round(filtrados.filter(d=>d.prod==='EURO').reduce((s,d)=>s+d.litros,0)*100)/100;
+  const gasoil=Math.round(filtrados.filter(d=>d.prod==='GASOIL').reduce((s,d)=>s+d.litros,0)*100)/100;
   const porVeh={};
   filtrados.forEach(d=>{
     const k=d.interno||d.receptorN||d.int;
@@ -1426,9 +1426,9 @@ function renderTotales(desp,errores,from,to){
     if(d.prod==='GASOIL')map[d.punto].gasoil+=d.litros;
     else map[d.punto].euro+=d.litros;
   });
-  const total=desp.reduce((s,d)=>s+d.litros,0);
-  const totalEuro=desp.filter(d=>d.prod==='EURO').reduce((s,d)=>s+d.litros,0);
-  const totalGasoil=desp.filter(d=>d.prod==='GASOIL').reduce((s,d)=>s+d.litros,0);
+  const total=Math.round(desp.reduce((s,d)=>s+d.litros,0)*100)/100;
+  const totalEuro=Math.round(desp.filter(d=>d.prod==='EURO').reduce((s,d)=>s+d.litros,0)*100)/100;
+  const totalGasoil=Math.round(desp.filter(d=>d.prod==='GASOIL').reduce((s,d)=>s+d.litros,0)*100)/100;
   const sectores=SECTOR_ORDER.filter(p=>map[p]);
 
   const ccLabel={'PETROSAR':'PETROSAR (flota propia)','EESS':'EESS CD (Estación Cerro Dragón)','TODOS':'Todos'}[ccActual];
