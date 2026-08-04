@@ -401,7 +401,7 @@
   }
 
   function renderChartEstaciones(){
-    const map = new Map(); // mesKey -> { CD, TP, VH, AG }
+    const map = new Map();
     state.rows.forEach(r => {
       if (!r.mesKey) return;
       const grupo = GRUPO_DE_ESTACION[r.estacion];
@@ -420,43 +420,59 @@
     grupos.forEach(g => { series[g] = keys.map(k => map.get(k)[g]); });
     const allVals = grupos.flatMap(g => series[g]);
     const maxV = Math.max(...allVals) || 1;
-    const yMax = maxV * 1.15;
 
-    const W = Math.max(560, keys.length * 100), H = 320;
-    const ML = 66, MR = 20, MT = 34, MB = 42;
+    // Eje Y en miles redondos
+    const rawMax = maxV * 1.15;
+    const step = rawMax > 150000 ? 50000 : rawMax > 50000 ? 25000 : rawMax > 10000 ? 5000 : 1000;
+    const yMax = Math.ceil(rawMax / step) * step;
+    const gridLines = Math.round(yMax / step);
+
+    const W = Math.max(560, keys.length * 110), H = 320;
+    const ML = 72, MR = 20, MT = 34, MB = 42;
     const plotW = W - ML - MR, plotH = H - MT - MB;
     const x = i => ML + (keys.length===1 ? plotW/2 : (i/(keys.length-1))*plotW);
     const y = v => MT + plotH - (v/yMax)*plotH;
 
-    const gridLines = 4;
+    // Grid y eje Y en miles
     let gridSvg = '';
     for (let g=0; g<=gridLines; g++){
-      const v = yMax * (g/gridLines);
+      const v = step * g;
       const yy = y(v);
+      const label = v >= 1000 ? Math.round(v/1000).toLocaleString('es-AR')+'k' : v;
       gridSvg += '<line x1="'+ML+'" y1="'+yy.toFixed(1)+'" x2="'+(W-MR)+'" y2="'+yy.toFixed(1)+'" stroke="#DCE2E1" stroke-width="1"></line>';
-      gridSvg += '<text x="'+(ML-8)+'" y="'+(yy+3).toFixed(1)+'" font-size="10" font-family="IBM Plex Mono, monospace" text-anchor="end" fill="#5C6B6E">'+Math.round(v).toLocaleString('es-AR')+'</text>';
+      gridSvg += '<text x="'+(ML-8)+'" y="'+(yy+3).toFixed(1)+'" font-size="10" font-family="IBM Plex Mono, monospace" text-anchor="end" fill="#5C6B6E">'+label+'</text>';
     }
+    // Etiqueta unidad eje Y
+    gridSvg += '<text x="'+ML+'" y="20" font-size="9" font-family="Inter, sans-serif" fill="#94a3b8" text-anchor="middle">lts</text>';
+
     const labelsSvg = keys.map((k,i) => '<text x="'+x(i).toFixed(1)+'" y="'+(H-16)+'" font-size="10.5" font-family="Inter, sans-serif" text-anchor="middle" fill="#5C6B6E">'+mesLabel(k)+'</text>').join('');
 
     function lineFor(vals){
       return vals.map((v,i) => (i===0?'M':'L') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join(' ');
     }
-    function dotsFor(vals, color){
-      return vals.map((v,i) =>
-        '<circle cx="'+x(i).toFixed(1)+'" cy="'+y(v).toFixed(1)+'" r="4" fill="'+color+'" stroke="#fff" stroke-width="1.5"></circle>' +
-        '<text x="'+x(i).toFixed(1)+'" y="'+(y(v)-10).toFixed(1)+'" font-size="10" font-family="IBM Plex Mono, monospace" text-anchor="middle" fill="'+color+'">'+Math.round(v).toLocaleString('es-AR')+'</text>'
-      ).join('');
+
+    // Puntos con tooltip al hover (sin etiquetas fijas)
+    function dotsFor(vals, color, grupo){
+      return vals.map((v,i) => {
+        const cx = x(i).toFixed(1), cy = y(v).toFixed(1);
+        const lbl = Math.round(v).toLocaleString('es-AR') + ' lts';
+        const mes = mesLabel(keys[i]);
+        return '<circle cx="'+cx+'" cy="'+cy+'" r="5" fill="'+color+'" stroke="#fff" stroke-width="2">' +
+          '<title>'+grupo+' · '+mes+': '+lbl+'</title>' +
+          '</circle>';
+      }).join('');
     }
 
-    const legendSvg = grupos.map(g => '<span style="display:flex; align-items:center; gap:6px;"><span style="width:12px; height:3px; background:'+GRUPO_COLOR[g]+'; display:inline-block;"></span>'+g+'</span>').join('');
-    const pathsSvg = grupos.map(g => '<path d="'+lineFor(series[g])+'" fill="none" stroke="'+GRUPO_COLOR[g]+'" stroke-width="2"></path>').join('');
-    const dotsSvg = grupos.map(g => dotsFor(series[g], GRUPO_COLOR[g])).join('');
+    const legendSvg = grupos.map(g => '<span style="display:flex; align-items:center; gap:6px;"><span style="width:12px; height:3px; background:'+GRUPO_COLOR[g]+'; display:inline-block; border-radius:2px;"></span>'+g+'</span>').join('');
+    const pathsSvg = grupos.map(g => '<path d="'+lineFor(series[g])+'" fill="none" stroke="'+GRUPO_COLOR[g]+'" stroke-width="2.5" stroke-linejoin="round"></path>').join('');
+    const dotsSvg = grupos.map(g => dotsFor(series[g], GRUPO_COLOR[g], g)).join('');
 
     container.innerHTML =
       '<div style="display:flex; gap:18px; align-items:center; margin-bottom:10px; font-size:12.5px; flex-wrap:wrap;">' + legendSvg + '</div>' +
       '<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-width:'+W+'px; display:block;">' +
         gridSvg + pathsSvg + dotsSvg + labelsSvg +
-      '</svg>';
+      '</svg>' +
+      '<div style="font-size:11px; color:#94a3b8; margin-top:6px;">Posicioná el cursor sobre un punto para ver el valor exacto</div>';
   }
 
   function renderAll(){ renderVentasMes(); renderResumen(); renderChartEstaciones(); renderSinClasificar(); }
