@@ -450,7 +450,7 @@
 
 <script>
 (function(){
-  const state = { scriptUrl: '', rows: [], mesFiltro: 'todos', anioFiltro: null, dirty: new Set(), timers: new Map() };
+  const state = { scriptUrl: 'https://script.google.com/macros/s/AKfycbzpAZZ61cyP2mOI4bsLM5RpUIBnYzkH_zzqz-lbL1GGtdIdDX0_BlYFJant4LRek6qpaA/exec', rows: [], mesFiltro: 'todos', anioFiltro: null, dirty: new Set(), timers: new Map() };
   const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
   const STORAGE_KEY = 'combex_compras_combustible_config';
 
@@ -1060,6 +1060,7 @@
   loadConfig();
   const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzpAZZ61cyP2mOI4bsLM5RpUIBnYzkH_zzqz-lbL1GGtdIdDX0_BlYFJant4LRek6qpaA/exec';
   const inputUrl = document.getElementById('input-script-url');
+  inputUrl.value = 'https://script.google.com/macros/s/AKfycbzpAZZ61cyP2mOI4bsLM5RpUIBnYzkH_zzqz-lbL1GGtdIdDX0_BlYFJant4LRek6qpaA/exec';
   if (!inputUrl.value) inputUrl.value = DEFAULT_SCRIPT_URL;
   state.scriptUrl = inputUrl.value;
   cargarDesdeSheet();
