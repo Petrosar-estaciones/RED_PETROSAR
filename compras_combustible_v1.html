@@ -1076,19 +1076,19 @@
           <thead>
             <tr>
               <th rowspan="2" style="text-align:left">Sector</th>
-              <th colspan="4" style="background:#1a5a8a;text-align:center">Euro Diesel</th>
-              <th colspan="4" style="background:#8a5a00;text-align:center">Gasoil</th>
+              <th colspan="4" style="background:#006633;text-align:center">Euro Diesel</th>
+              <th colspan="4" style="background:#f5a800;color:#000;text-align:center">Gasoil</th>
               <th rowspan="2" style="background:#b45309">Valorización Total ($)</th>
             </tr>
             <tr>
-              <th style="background:#1a5a8a;opacity:.85">Lts</th>
-              <th style="background:#1a5a8a;opacity:.85">Neto ($)</th>
-              <th style="background:#1a5a8a;opacity:.85">Imp.Int ($)</th>
-              <th style="background:#1a5a8a;opacity:.85">CO2 ($)</th>
-              <th style="background:#8a5a00;opacity:.85">Lts</th>
-              <th style="background:#8a5a00;opacity:.85">Neto ($)</th>
-              <th style="background:#8a5a00;opacity:.85">Imp.Int ($)</th>
-              <th style="background:#8a5a00;opacity:.85">CO2 ($)</th>
+              <th style="background:#007a3d">Lts</th>
+              <th style="background:#007a3d">Neto ($)</th>
+              <th style="background:#007a3d">Imp.Int ($)</th>
+              <th style="background:#007a3d">CO2 ($)</th>
+              <th style="background:#f5a800;color:#000">Lts</th>
+              <th style="background:#f5a800;color:#000">Neto ($)</th>
+              <th style="background:#f5a800;color:#000">Imp.Int ($)</th>
+              <th style="background:#f5a800;color:#000">CO2 ($)</th>
             </tr>
           </thead><tbody>`;
 
@@ -1098,38 +1098,39 @@
           const ltsE = filaEuro   ? (filaEuro.lts[i]   || 0) : 0;
           const ltsG = filaGasoil ? (filaGasoil.lts[i] || 0) : 0;
 
-          const netoE = Math.round(ltsE * netoEuro   * 100) / 100;
-          const impE  = Math.round(ltsE * impEuro    * 100) / 100;
-          const co2E  = Math.round(ltsE * co2Euro    * 100) / 100;
-          const netoG = Math.round(ltsG * netoGasoil * 100) / 100;
-          const impG  = Math.round(ltsG * impGasoil  * 100) / 100;
-          const co2G  = Math.round(ltsG * co2Gasoil  * 100) / 100;
-          const valT  = Math.round((netoE+impE+co2E+netoG+impG+co2G) * 100) / 100;
+          // Calcular sin redondear — solo redondear al mostrar
+          const netoE = ltsE * netoEuro;
+          const impE  = ltsE * impEuro;
+          const co2E  = ltsE * co2Euro;
+          const netoG = ltsG * netoGasoil;
+          const impG  = ltsG * impGasoil;
+          const co2G  = ltsG * co2Gasoil;
+          const valT  = netoE+impE+co2E+netoG+impG+co2G;
 
           totLtsE+=ltsE; totLtsG+=ltsG;
           totNetoE+=netoE; totImpE+=impE; totCO2E+=co2E;
           totNetoG+=netoG; totImpG+=impG; totCO2G+=co2G;
 
-          const d = (v) => v ? fmtPesos(v) : '—';
+          const r = v => Math.round(v*100)/100;
+          const d = (v) => v ? fmtPesos(r(v)) : '—';
           const l = (v) => v ? fmtLts(v) : '—';
 
           html += `<tr>
             <td style="text-align:left;font-weight:600">${punto}</td>
             <td>${l(ltsE)}</td><td>${d(netoE)}</td><td>${d(impE)}</td><td>${d(co2E)}</td>
             <td>${l(ltsG)}</td><td>${d(netoG)}</td><td>${d(impG)}</td><td>${d(co2G)}</td>
-            <td class="stock-val-total">${(ltsE||ltsG) ? fmtPesos(valT) : '—'}</td>
+            <td class="stock-val-total">${(ltsE||ltsG) ? fmtPesos(r(valT)) : '—'}</td>
           </tr>`;
         });
 
-        const totValE = Math.round((totNetoE+totImpE+totCO2E)*100)/100;
-        const totValG = Math.round((totNetoG+totImpG+totCO2G)*100)/100;
-        const totVal  = Math.round((totValE+totValG)*100)/100;
+        const rr = v => Math.round(v*100)/100;
+        const totVal = totNetoE+totImpE+totCO2E+totNetoG+totImpG+totCO2G;
 
         html += `</tbody><tfoot><tr>
           <td style="text-align:left">TOTAL</td>
-          <td>${fmtLts(totLtsE)}</td><td>${fmtPesos(Math.round(totNetoE*100)/100)}</td><td>${fmtPesos(Math.round(totImpE*100)/100)}</td><td>${fmtPesos(Math.round(totCO2E*100)/100)}</td>
-          <td>${fmtLts(totLtsG)}</td><td>${fmtPesos(Math.round(totNetoG*100)/100)}</td><td>${fmtPesos(Math.round(totImpG*100)/100)}</td><td>${fmtPesos(Math.round(totCO2G*100)/100)}</td>
-          <td class="stock-val-total">${fmtPesos(totVal)}</td>
+          <td>${fmtLts(totLtsE)}</td><td>${fmtPesos(rr(totNetoE))}</td><td>${fmtPesos(rr(totImpE))}</td><td>${fmtPesos(rr(totCO2E))}</td>
+          <td>${fmtLts(totLtsG)}</td><td>${fmtPesos(rr(totNetoG))}</td><td>${fmtPesos(rr(totImpG))}</td><td>${fmtPesos(rr(totCO2G))}</td>
+          <td class="stock-val-total">${fmtPesos(rr(totVal))}</td>
         </tr></tfoot></table></div>`;
       });
 
