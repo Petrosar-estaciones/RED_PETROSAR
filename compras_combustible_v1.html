@@ -4,7 +4,27 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Compras de combustible · PSGRUPO</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">
+  function exportarStock() {
+    const tbl = document.querySelector('#stock-contenido table');
+    if(!tbl){ alert('Primero cargá el stock.'); return; }
+
+    const wb = XLSX.utils.book_new();
+    // Leer tabla del DOM
+    const ws = XLSX.utils.table_to_sheet(tbl);
+    // Ajustar anchos
+    ws['!cols'] = [
+      {wch:20},{wch:12},{wch:18},{wch:18},{wch:18},
+      {wch:12},{wch:18},{wch:18},{wch:18},{wch:22}
+    ];
+    XLSX.utils.book_append_sheet(wb, ws, 'Stock por Punto');
+
+    // Determinar el mes para el nombre del archivo
+    const titulo = document.querySelector('#stock-contenido b');
+    const mes = titulo ? titulo.textContent.replace(/\s+/g,'-') : 'stock';
+    XLSX.writeFile(wb, `Stock_${mes}.xlsx`);
+  }
+</script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -258,6 +278,7 @@
       <div class="panel-head">
         <h2><span class="step-chip">7</span>Stock por Punto</h2>
         <button class="btn btn-dark" id="btn-actualizar-stock" onclick="cargarStock()" style="font-size:11px;padding:5px 14px">↻ Actualizar</button>
+        <button class="btn btn-dark" onclick="exportarStock()" style="font-size:11px;padding:5px 14px;background:var(--green)">⬇ Exportar Excel</button>
       </div>
       <div class="panel-body">
         <div id="stock-loading" class="hint" style="text-align:center;padding:20px">Cargando stock…</div>
