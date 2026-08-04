@@ -128,6 +128,21 @@
     .body{ padding:18px 12px 0; }
     table{ font-size:12px; }
   }
+
+  /* ── Panel Stock ── */
+  .stock-tbl { width:100%; border-collapse:collapse; font-size:13px; }
+  .stock-tbl th { background:var(--petrol); color:#fff; padding:9px 14px; font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap; }
+  .stock-tbl th:first-child, .stock-tbl th:nth-child(2) { text-align:left; }
+  .stock-tbl td { padding:9px 14px; border-bottom:1px solid var(--line); text-align:right; }
+  .stock-tbl td:first-child { text-align:left; font-family:var(--mono); font-size:12px; color:var(--ink-soft); }
+  .stock-tbl td:nth-child(2) { text-align:left; }
+  .stock-tbl tbody tr:hover { background:var(--petrol-soft); }
+  .stock-tbl tfoot td { font-weight:700; background:#f8fafc; border-top:2px solid var(--line-strong); }
+  .stock-prod-euro { display:inline-block; background:#e0f0ff; color:#1a5a8a; border-radius:4px; padding:1px 7px; font-size:10px; font-weight:700; }
+  .stock-prod-gasoil { display:inline-block; background:var(--amber-soft); color:#8a5a00; border-radius:4px; padding:1px 7px; font-size:10px; font-weight:700; }
+  .stock-val { color:var(--petrol); font-weight:600; }
+  .stock-empty { text-align:center; color:var(--ink-soft); padding:32px; font-size:13px; }
+  .stock-val-total { color:var(--amber); font-weight:700; font-size:14px; }
 </style>
 </head>
 <body>
@@ -238,6 +253,19 @@
       </div>
     </div>
 
+
+    <div class="panel" id="panel-stock">
+      <div class="panel-head">
+        <h2><span class="step-chip">7</span>Stock por Punto</h2>
+        <button class="btn btn-dark" id="btn-actualizar-stock" onclick="cargarStock()" style="font-size:11px;padding:5px 14px">↻ Actualizar</button>
+        <button class="btn btn-dark" onclick="exportarStock()" style="font-size:11px;padding:5px 14px;background:var(--green)">⬇ Exportar Excel</button>
+      </div>
+      <div class="panel-body">
+        <div id="stock-loading" class="hint" style="text-align:center;padding:20px">Cargando stock…</div>
+        <div id="stock-contenido" style="display:none;overflow-x:auto"></div>
+      </div>
+    </div>
+
     <div class="panel" id="panel-tabla" style="display:none;">
       <div class="panel-head">
         <h2><span class="step-chip">•</span>Completar litros y producto</h2>
@@ -264,7 +292,7 @@
 
 <script>
 (function(){
-  const state = { scriptUrl: '', rows: [], mesFiltro: 'todos', anioFiltro: null, dirty: new Set(), timers: new Map() };
+  const state = { scriptUrl: 'https://script.google.com/macros/s/AKfycbzmJmn0Aa_abliT8ooZQCtI-Nja3_xQb8WxXmRMudnxA_S4uOLg9z1sxvnQdR7KHYl5/exec', rows: [], mesFiltro: 'todos', anioFiltro: null, dirty: new Set(), timers: new Map() };
   const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
   const STORAGE_KEY = 'combex_compras_combustible_config';
 
@@ -342,7 +370,7 @@
   }
 
   function showPanels(){
-    ['panel-detalle','panel-mensual','panel-resumen','panel-proveedor','panel-chart','panel-export'].forEach(id => document.getElementById(id).style.display = '');
+    ['panel-detalle','panel-mensual','panel-resumen','panel-proveedor','panel-chart','panel-export','panel-stock'].forEach(id => document.getElementById(id).style.display = '');
   }
 
   // Panel de carga (edición) oculto por defecto — solo se muestra con el atajo de teclado Ctrl+Shift+E
@@ -407,6 +435,7 @@
 
       ingestRows(parsed);
       showPanels();
+    cargarStock();
       renderAll();
       setConnStatus('ok', 'Conectado. ' + parsed.length + ' filas cargadas.');
     }catch(e){
@@ -871,13 +900,340 @@
 
   // Arranca solo, con la URL fija del Web App — no hace falta que el usuario conecte nada a mano.
   loadConfig();
-  const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzpAZZ61cyP2mOI4bsLM5RpUIBnYzkH_zzqz-lbL1GGtdIdDX0_BlYFJant4LRek6qpaA/exec';
+  const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzmJmn0Aa_abliT8ooZQCtI-Nja3_xQb8WxXmRMudnxA_S4uOLg9z1sxvnQdR7KHYl5/exec';
   const inputUrl = document.getElementById('input-script-url');
+  inputUrl.value = 'https://script.google.com/macros/s/AKfycbzmJmn0Aa_abliT8ooZQCtI-Nja3_xQb8WxXmRMudnxA_S4uOLg9z1sxvnQdR7KHYl5/exec';
   if (!inputUrl.value) inputUrl.value = DEFAULT_SCRIPT_URL;
   state.scriptUrl = inputUrl.value;
   cargarDesdeSheet();
 
 })();
+
+  // ═══════════════════════════════════
+  // STOCK POR PUNTO
+  // ═══════════════════════════════════
+  const STOCK_SHEET_ID = '1tFcjTJiM4GKXvvZx0zsucqEusiaec0QEAlzm_g1wXPM';
+  const STOCK_GID = '1278419684';
+  const PRECIOS_SHEET_ID = '1MUMqZlrP5-oce4oqHMEL6VvcFdGaLL3MzUDqYX8KevY';
+  const PRECIOS_GID = '1112510098';
+
+  const PUNTOS = ['Planta Granel','Estación CD','Valle Hermoso','Tres Picos','Anticlinal Grande','Base CR','Resero'];
+
+  function fmtN2(n) {
+    if(!n && n!==0) return '0,00';
+    return n.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  }
+  function fmtLts(n) {
+    if(!n && n!==0) return '—';
+    return n.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  }
+  function fmtPesos(n) {
+    if(!n && n!==0) return '—';
+    return '$' + n.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  }
+
+  async function fetchGvizStock(sheetId, gid) {
+    const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&gid=${gid}`;
+    const resp = await fetch(url);
+    const txt = await resp.text();
+    const json = JSON.parse(txt.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/)[1]);
+    return json.table;
+  }
+
+  function parseGvizNum(cell) {
+    if(!cell || cell.v === null || cell.v === undefined) return null;
+    if(typeof cell.v === 'number') return cell.v;
+    const s = String(cell.f || cell.v).replace(/\./g,'').replace(',','.');
+    const n = parseFloat(s);
+    return isNaN(n) ? null : n;
+  }
+
+  async function cargarStock() {
+    document.getElementById('stock-loading').style.display = '';
+    document.getElementById('stock-contenido').style.display = 'none';
+    document.getElementById('stock-loading').textContent = 'Cargando stock…';
+
+    try {
+      const [tblStock, tblPrecios] = await Promise.all([
+        fetchGvizStock(STOCK_SHEET_ID, STOCK_GID),
+        fetchGvizStock(PRECIOS_SHEET_ID, PRECIOS_GID)
+      ]);
+
+      // ── Parsear precios ──
+      const precios = {};
+      tblPrecios.rows.forEach(row => {
+        if(!row.c[0] || row.c[0].v === null) return;
+        // Normalizar mesKey — puede venir como "2026-07", Date, o número
+        let mesKey = '';
+        const rv = row.c[0].v;
+        if(typeof rv === 'string' && rv.startsWith('Date(')) {
+          // Date(2026,2,1) → mes base 0 → 2026-03
+          const parts = rv.replace('Date(','').replace(')','').split(',').map(Number);
+          mesKey = `${parts[0]}-${String(parts[1]+1).padStart(2,'0')}`;
+        } else if(typeof rv === 'string') {
+          mesKey = rv.trim();
+        } else if(typeof rv === 'number') {
+          const dt = new Date(Math.round((rv - 25569) * 86400 * 1000));
+          mesKey = `${dt.getUTCFullYear()}-${String(dt.getUTCMonth()+1).padStart(2,'0')}`;
+        } else if(row.c[0].f) {
+          mesKey = String(row.c[0].f).trim();
+        }
+        if(!mesKey) return;
+        precios[mesKey] = {
+          euro:     parseGvizNum(row.c[1]),
+          gasoil:   parseGvizNum(row.c[2]),
+          impEuro:  parseGvizNum(row.c[3]),
+          impGasoil:parseGvizNum(row.c[4]),
+          co2Euro:  parseGvizNum(row.c[5]),
+          co2Gasoil:parseGvizNum(row.c[6]),
+        };
+      });
+      console.log('Precios keys:', Object.keys(precios));
+
+      // ── Parsear stock ──
+      // Cols: A=Mes(fecha), B=Producto, C..I = puntos
+      const filas = [];
+      tblStock.rows.forEach(row => {
+        if(!row.c[0] || row.c[0].v === null) return;
+        // Fecha: puede venir como Date o string
+        let mesKey = '';
+        const v = row.c[0].v;
+        let dt = null;
+        if(typeof v === 'string' && v.startsWith('Date(')) {
+          const parts = v.replace('Date(','').replace(')','').split(',').map(Number);
+          dt = new Date(parts[0], parts[1], parts[2]);
+        } else if(row.c[0].f) {
+          // Intentar parsear desde el formato formateado dd/mm/yyyy
+          const f = row.c[0].f;
+          const m = f.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+          if(m) dt = new Date(+m[3], +m[2]-1, +m[1]);
+        }
+        if(!dt) return;
+        const anio = dt.getFullYear();
+        const mes = String(dt.getMonth()+1).padStart(2,'0');
+        mesKey = `${anio}-${mes}`;
+        const mesLabel = dt.toLocaleString('es-AR', {month:'long', year:'numeric'});
+        const mesLabelCap = mesLabel.charAt(0).toUpperCase() + mesLabel.slice(1);
+
+        const prod = row.c[1] && row.c[1].v ? String(row.c[1].v).trim().toLowerCase() : '';
+        const esEuro = prod.includes('euro');
+        const esGasoil = prod.includes('gasoil');
+
+        const lts = PUNTOS.map((_,i) => parseGvizNum(row.c[i+2]));
+
+        // Precio del mes
+        const p = precios[mesKey] || {};
+        const precioLts = esEuro ? (p.euro||0) : (p.gasoil||0);
+        const impLts    = esEuro ? (p.impEuro||0) : (p.impGasoil||0);
+        const co2Lts    = esEuro ? (p.co2Euro||0) : (p.co2Gasoil||0);
+        const costoTotal = precioLts + impLts + co2Lts;
+
+        filas.push({ mesKey, mesLabel: mesLabelCap, prod, esEuro, esGasoil, lts, costoTotal });
+      });
+
+      if(!filas.length) {
+        document.getElementById('stock-loading').textContent = 'Sin datos de stock cargados.';
+        return;
+      }
+
+      // ── Agrupar por mes — solo mostrar el último ──
+      const mesesMap = {};
+      filas.forEach(f => {
+        if(!mesesMap[f.mesKey]) mesesMap[f.mesKey] = { label: f.mesLabel, filas: [] };
+        mesesMap[f.mesKey].filas.push(f);
+      });
+      const mesesOrden = Object.keys(mesesMap).sort();
+      // Solo el último mes con datos
+      const ultimoMes = mesesOrden[mesesOrden.length - 1];
+      const mesesMostrar = ultimoMes ? [ultimoMes] : [];
+
+      // ── Render tabla: filas=sectores, columnas=productos ──
+      let html = '';
+      mesesMostrar.forEach(mk => {
+        const mes = mesesMap[mk];
+        const filaEuro   = mes.filas.find(f => f.esEuro)   || null;
+        const filaGasoil = mes.filas.find(f => f.esGasoil) || null;
+        const p = precios[mk] || {};
+
+        // Precios por componente
+        const netoEuro    = p.euro     || 0;
+        const impEuro     = p.impEuro  || 0;
+        const co2Euro     = p.co2Euro  || 0;
+        const totalEuro   = netoEuro + impEuro + co2Euro;
+
+        const netoGasoil  = p.gasoil    || 0;
+        const impGasoil   = p.impGasoil || 0;
+        const co2Gasoil   = p.co2Gasoil || 0;
+        const totalGasoil = netoGasoil + impGasoil + co2Gasoil;
+
+        html += `<div style="margin-bottom:8px;font-size:12px;color:var(--ink-soft)">
+          <b style="color:var(--ink)">${mes.filas[0]?.mesLabel || mk}</b>
+          &nbsp;·&nbsp; Euro: $${fmtN2(netoEuro)} neto + $${fmtN2(impEuro)} imp + $${fmtN2(co2Euro)} CO2 = <b>$${fmtN2(totalEuro)}/lts</b>
+          &nbsp;·&nbsp; Gasoil: $${fmtN2(netoGasoil)} neto + $${fmtN2(impGasoil)} imp + $${fmtN2(co2Gasoil)} CO2 = <b>$${fmtN2(totalGasoil)}/lts</b>
+        </div>`;
+
+        // Encabezado
+        html += `<div style="overflow-x:auto"><table class="stock-tbl" style="margin-bottom:24px">
+          <thead>
+            <tr>
+              <th rowspan="2" style="text-align:left">Sector</th>
+              <th colspan="4" style="background:#006633;text-align:center">Euro Diesel</th>
+              <th colspan="4" style="background:#f5a800;color:#000;text-align:center">Gasoil</th>
+              <th rowspan="2" style="background:#b45309">Valorización Total ($)</th>
+            </tr>
+            <tr>
+              <th style="background:#007a3d">Lts</th>
+              <th style="background:#007a3d">Neto ($)</th>
+              <th style="background:#007a3d">Imp.Int ($)</th>
+              <th style="background:#007a3d">CO2 ($)</th>
+              <th style="background:#f5a800;color:#000">Lts</th>
+              <th style="background:#f5a800;color:#000">Neto ($)</th>
+              <th style="background:#f5a800;color:#000">Imp.Int ($)</th>
+              <th style="background:#f5a800;color:#000">CO2 ($)</th>
+            </tr>
+          </thead><tbody>`;
+
+        let totLtsE=0,totLtsG=0,totNetoE=0,totImpE=0,totCO2E=0,totNetoG=0,totImpG=0,totCO2G=0;
+
+        PUNTOS.forEach((punto, i) => {
+          const ltsE = filaEuro   ? (filaEuro.lts[i]   || 0) : 0;
+          const ltsG = filaGasoil ? (filaGasoil.lts[i] || 0) : 0;
+
+          // Calcular sin redondear — solo redondear al mostrar
+          const netoE = ltsE * netoEuro;
+          const impE  = ltsE * impEuro;
+          const co2E  = ltsE * co2Euro;
+          const netoG = ltsG * netoGasoil;
+          const impG  = ltsG * impGasoil;
+          const co2G  = ltsG * co2Gasoil;
+          const valT  = netoE+impE+co2E+netoG+impG+co2G;
+
+          totLtsE+=ltsE; totLtsG+=ltsG;
+          totNetoE+=netoE; totImpE+=impE; totCO2E+=co2E;
+          totNetoG+=netoG; totImpG+=impG; totCO2G+=co2G;
+
+          const r = v => Math.round(v*100)/100;
+          const d = (v) => v ? fmtPesos(r(v)) : '—';
+          const l = (v) => v ? fmtLts(v) : '—';
+
+          html += `<tr>
+            <td style="text-align:left;font-weight:600">${punto}</td>
+            <td>${l(ltsE)}</td><td>${d(netoE)}</td><td>${d(impE)}</td><td>${d(co2E)}</td>
+            <td>${l(ltsG)}</td><td>${d(netoG)}</td><td>${d(impG)}</td><td>${d(co2G)}</td>
+            <td class="stock-val-total">${(ltsE||ltsG) ? fmtPesos(r(valT)) : '—'}</td>
+          </tr>`;
+        });
+
+        const rr = v => Math.round(v*100)/100;
+        const totVal = totNetoE+totImpE+totCO2E+totNetoG+totImpG+totCO2G;
+
+        html += `</tbody><tfoot><tr>
+          <td style="text-align:left">TOTAL</td>
+          <td>${fmtLts(totLtsE)}</td><td>${fmtPesos(rr(totNetoE))}</td><td>${fmtPesos(rr(totImpE))}</td><td>${fmtPesos(rr(totCO2E))}</td>
+          <td>${fmtLts(totLtsG)}</td><td>${fmtPesos(rr(totNetoG))}</td><td>${fmtPesos(rr(totImpG))}</td><td>${fmtPesos(rr(totCO2G))}</td>
+          <td class="stock-val-total">${fmtPesos(rr(totVal))}</td>
+        </tr></tfoot></table></div>`;
+      });
+
+      // Guardar datos para export
+      if(mesesMostrar.length) {
+        const mk = mesesMostrar[0];
+        const mes = mesesMap[mk];
+        const filaEuroExp   = mes.filas.find(f => f.esEuro)   || null;
+        const filaGasoilExp = mes.filas.find(f => f.esGasoil) || null;
+        window._lastStockData = {
+          mesLabel: mes.filas[0]?.mesLabel || mk,
+          precios: precios[mk] || {},
+          puntos: PUNTOS.map((punto, i) => ({
+            punto,
+            ltsE: filaEuroExp   ? (filaEuroExp.lts[i]   || 0) : 0,
+            ltsG: filaGasoilExp ? (filaGasoilExp.lts[i] || 0) : 0,
+          }))
+        };
+      }
+
+      document.getElementById('stock-contenido').innerHTML = html;
+      document.getElementById('stock-loading').style.display = 'none';
+      document.getElementById('stock-contenido').style.display = '';
+
+    } catch(e) {
+      console.error('Stock error:', e);
+      document.getElementById('stock-loading').textContent = 'Error cargando stock: ' + e.message;
+    }
+  }
+
+
+
+
+  function exportarStock() {
+    if(!window._lastStockData){ alert('Primero cargá el stock.'); return; }
+    const { mesLabel, puntos, precios: p } = window._lastStockData;
+
+    const netoEuro=p.euro||0, impEuro=p.impEuro||0, co2Euro=p.co2Euro||0;
+    const netoGasoil=p.gasoil||0, impGasoil=p.impGasoil||0, co2Gasoil=p.co2Gasoil||0;
+
+    const wb = XLSX.utils.book_new();
+    const font = { name: 'Calibri', sz: 9 };
+    const numFmt = '#,##0.00';
+    const numFmtLts = '#,##0.00';
+
+    // Headers
+    const headers = [
+      ['Sector','Euro Diesel Lts','Neto Euro ($)','Imp.Int Euro ($)','CO2 Euro ($)',
+       'Gasoil Lts','Neto Gasoil ($)','Imp.Int Gasoil ($)','CO2 Gasoil ($)','Valorización Total ($)']
+    ];
+
+    const rows = puntos.map(({punto, ltsE, ltsG}) => {
+      const netoE = ltsE * netoEuro;
+      const impE  = ltsE * impEuro;
+      const co2E  = ltsE * co2Euro;
+      const netoG = ltsG * netoGasoil;
+      const impG  = ltsG * impGasoil;
+      const co2G  = ltsG * co2Gasoil;
+      const valT  = netoE+impE+co2E+netoG+impG+co2G;
+      return [punto, ltsE||0, netoE, impE, co2E, ltsG||0, netoG, impG, co2G, valT];
+    });
+
+    // Total row
+    const tot = puntos.reduce((acc, {ltsE, ltsG}) => {
+      acc.ltsE+=ltsE; acc.ltsG+=ltsG;
+      acc.netoE+=ltsE*netoEuro; acc.impE+=ltsE*impEuro; acc.co2E+=ltsE*co2Euro;
+      acc.netoG+=ltsG*netoGasoil; acc.impG+=ltsG*impGasoil; acc.co2G+=ltsG*co2Gasoil;
+      return acc;
+    }, {ltsE:0,ltsG:0,netoE:0,impE:0,co2E:0,netoG:0,impG:0,co2G:0});
+    rows.push(['TOTAL', tot.ltsE, tot.netoE, tot.impE, tot.co2E,
+                        tot.ltsG, tot.netoG, tot.impG, tot.co2G,
+                        tot.netoE+tot.impE+tot.co2E+tot.netoG+tot.impG+tot.co2G]);
+
+    const ws = XLSX.utils.aoa_to_sheet([...headers, ...rows]);
+
+    // Format all cells
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    for(let R=range.s.r; R<=range.e.r; R++){
+      for(let C=range.s.c; C<=range.e.c; C++){
+        const addr = XLSX.utils.encode_cell({r:R,c:C});
+        if(!ws[addr]) ws[addr] = {t:'z'};
+        if(!ws[addr].s) ws[addr].s = {};
+        ws[addr].s.font = font;
+        // Numeric cols (not first col, not header row)
+        if(R > 0 && C > 0 && typeof ws[addr].v === 'number'){
+          ws[addr].s.numFmt = numFmt;
+          ws[addr].z = numFmt;
+        }
+      }
+    }
+
+    ws['!cols'] = [
+      {wch:20},{wch:12},{wch:18},{wch:18},{wch:16},
+      {wch:12},{wch:18},{wch:18},{wch:16},{wch:22}
+    ];
+
+    // Title row above headers
+    XLSX.utils.sheet_add_aoa(ws, [[`Stock por Punto — ${mesLabel}`]], {origin:'A1'});
+    ws['!ref'] = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:rows.length+1, c:9}});
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Stock por Punto');
+    XLSX.writeFile(wb, `Stock_${mesLabel.replace(/\s+/g,'-')}.xlsx`);
+  }
+
 </script>
-</body>
-</html>
