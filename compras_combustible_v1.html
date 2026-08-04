@@ -955,20 +955,33 @@
       ]);
 
       // ── Parsear precios ──
-      // Cols: A=Mes(2026-03), B=Euro, C=Gasoil, D=ImpIntEuro, E=ImpIntGasoil, F=CO2Euro, G=CO2Gasoil, H=NetoVtaEuro, I=NetoVtaGasoil
       const precios = {};
       tblPrecios.rows.forEach(row => {
-        const mesRaw = row.c[0] && row.c[0].v ? String(row.c[0].v).trim() : '';
-        if(!mesRaw) return;
-        precios[mesRaw] = {
-          euro:  parseGvizNum(row.c[1]),
-          gasoil: parseGvizNum(row.c[2]),
-          impEuro: parseGvizNum(row.c[3]),
-          impGasoil: parseGvizNum(row.c[4]),
-          co2Euro: parseGvizNum(row.c[5]),
-          co2Gasoil: parseGvizNum(row.c[6]),
+        if(!row.c[0] || row.c[0].v === null) return;
+        // Normalizar mesKey — puede venir como "2026-07", Date, o número
+        let mesKey = '';
+        const rv = row.c[0].v;
+        if(typeof rv === 'string') {
+          // "2026-07" directo
+          mesKey = rv.trim();
+        } else if(typeof rv === 'number') {
+          // gviz a veces devuelve fecha como número de días desde 1899-12-30
+          const dt = new Date(Math.round((rv - 25569) * 86400 * 1000));
+          mesKey = `${dt.getUTCFullYear()}-${String(dt.getUTCMonth()+1).padStart(2,'0')}`;
+        } else if(row.c[0].f) {
+          mesKey = String(row.c[0].f).trim();
+        }
+        if(!mesKey) return;
+        precios[mesKey] = {
+          euro:     parseGvizNum(row.c[1]),
+          gasoil:   parseGvizNum(row.c[2]),
+          impEuro:  parseGvizNum(row.c[3]),
+          impGasoil:parseGvizNum(row.c[4]),
+          co2Euro:  parseGvizNum(row.c[5]),
+          co2Gasoil:parseGvizNum(row.c[6]),
         };
       });
+      console.log('Precios keys:', Object.keys(precios));
 
       // ── Parsear stock ──
       // Cols: A=Mes(fecha), B=Producto, C..I = puntos
@@ -1016,13 +1029,16 @@
         return;
       }
 
-      // ── Agrupar por mes ──
+      // ── Agrupar por mes — solo mostrar el último ──
       const mesesMap = {};
       filas.forEach(f => {
         if(!mesesMap[f.mesKey]) mesesMap[f.mesKey] = { label: f.mesLabel, filas: [] };
         mesesMap[f.mesKey].filas.push(f);
       });
       const mesesOrden = Object.keys(mesesMap).sort();
+      // Solo el último mes con datos
+      const ultimoMes = mesesOrden[mesesOrden.length - 1];
+      const mesesMostrar = ultimoMes ? [ultimoMes] : [];
 
       // ── Render tabla ──
       const thPuntos = PUNTOS.map(p => `<th>${p}</th>`).join('');
@@ -1031,7 +1047,7 @@
           <th>Mes</th><th>Producto</th>${thPuntos}<th>Valorización</th>
         </tr></thead><tbody>`;
 
-      mesesOrden.forEach(mk => {
+      mesesMostrar.forEach(mk => {
         const mes = mesesMap[mk];
         mes.filas.forEach(f => {
           const prodBadge = f.esEuro
