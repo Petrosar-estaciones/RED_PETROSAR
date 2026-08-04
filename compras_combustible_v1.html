@@ -450,7 +450,7 @@
 
 <script>
 (function(){
-  const state = { scriptUrl: 'https://script.google.com/macros/s/AKfycbzhgRBiE4vDOhoGK_Sv17Lkt2NpfvBRhLrudUhQAmFJX8PhJRWylWiCvthDg5EQMDBGNA/exec', rows: [], mesFiltro: 'todos', anioFiltro: null, dirty: new Set(), timers: new Map() };
+  const state = { scriptUrl: 'https://script.google.com/macros/s/AKfycbzmJmn0Aa_abliT8ooZQCtI-Nja3_xQb8WxXmRMudnxA_S4uOLg9z1sxvnQdR7KHYl5/exec', rows: [], mesFiltro: 'todos', anioFiltro: null, dirty: new Set(), timers: new Map() };
   const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
   const STORAGE_KEY = 'combex_compras_combustible_config';
 
@@ -1058,9 +1058,9 @@
 
   // Arranca solo, con la URL fija del Web App — no hace falta que el usuario conecte nada a mano.
   loadConfig();
-  const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzhgRBiE4vDOhoGK_Sv17Lkt2NpfvBRhLrudUhQAmFJX8PhJRWylWiCvthDg5EQMDBGNA/exec';
+  const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzmJmn0Aa_abliT8ooZQCtI-Nja3_xQb8WxXmRMudnxA_S4uOLg9z1sxvnQdR7KHYl5/exec';
   const inputUrl = document.getElementById('input-script-url');
-  inputUrl.value = 'https://script.google.com/macros/s/AKfycbzhgRBiE4vDOhoGK_Sv17Lkt2NpfvBRhLrudUhQAmFJX8PhJRWylWiCvthDg5EQMDBGNA/exec';
+  inputUrl.value = 'https://script.google.com/macros/s/AKfycbzmJmn0Aa_abliT8ooZQCtI-Nja3_xQb8WxXmRMudnxA_S4uOLg9z1sxvnQdR7KHYl5/exec';
   if (!inputUrl.value) inputUrl.value = DEFAULT_SCRIPT_URL;
   state.scriptUrl = inputUrl.value;
   cargarDesdeSheet();
