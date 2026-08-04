@@ -4,166 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Compras de combustible · PSGRUPO</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">
-  // ═══════════════════════════════════
-  // STOCK POR PUNTO
-  // ═══════════════════════════════════
-  const STOCK_SHEET_ID = '1tFcjTJiM4GKXvvZx0zsucqEusiaec0QEAlzm_g1wXPM';
-  const STOCK_GID = '1278419684';
-  const PRECIOS_SHEET_ID = '1MUMqZlrP5-oce4oqHMEL6VvcFdGaLL3MzUDqYX8KevY';
-  const PRECIOS_GID = '1112510098';
-
-  const PUNTOS = ['Planta Granel','Estación CD','Valle Hermoso','Tres Picos','Anticlinal Grande','Base CR','Resero'];
-
-  function fmtLts(n) {
-    if(!n && n!==0) return '—';
-    return n.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
-  }
-  function fmtPesos(n) {
-    if(!n && n!==0) return '—';
-    return '$' + n.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
-  }
-
-  async function fetchGvizStock(sheetId, gid) {
-    const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&gid=${gid}`;
-    const resp = await fetch(url);
-    const txt = await resp.text();
-    const json = JSON.parse(txt.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/)[1]);
-    return json.table;
-  }
-
-  function parseGvizNum(cell) {
-    if(!cell || cell.v === null || cell.v === undefined) return null;
-    if(typeof cell.v === 'number') return cell.v;
-    const s = String(cell.f || cell.v).replace(/\./g,'').replace(',','.');
-    const n = parseFloat(s);
-    return isNaN(n) ? null : n;
-  }
-
-  async function cargarStock() {
-    document.getElementById('stock-loading').style.display = '';
-    document.getElementById('stock-contenido').style.display = 'none';
-    document.getElementById('stock-loading').textContent = 'Cargando stock…';
-
-    try {
-      const [tblStock, tblPrecios] = await Promise.all([
-        fetchGvizStock(STOCK_SHEET_ID, STOCK_GID),
-        fetchGvizStock(PRECIOS_SHEET_ID, PRECIOS_GID)
-      ]);
-
-      // ── Parsear precios ──
-      // Cols: A=Mes(2026-03), B=Euro, C=Gasoil, D=ImpIntEuro, E=ImpIntGasoil, F=CO2Euro, G=CO2Gasoil, H=NetoVtaEuro, I=NetoVtaGasoil
-      const precios = {};
-      tblPrecios.rows.forEach(row => {
-        const mesRaw = row.c[0] && row.c[0].v ? String(row.c[0].v).trim() : '';
-        if(!mesRaw) return;
-        precios[mesRaw] = {
-          euro:  parseGvizNum(row.c[1]),
-          gasoil: parseGvizNum(row.c[2]),
-          impEuro: parseGvizNum(row.c[3]),
-          impGasoil: parseGvizNum(row.c[4]),
-          co2Euro: parseGvizNum(row.c[5]),
-          co2Gasoil: parseGvizNum(row.c[6]),
-        };
-      });
-
-      // ── Parsear stock ──
-      // Cols: A=Mes(fecha), B=Producto, C..I = puntos
-      const filas = [];
-      tblStock.rows.forEach(row => {
-        if(!row.c[0] || row.c[0].v === null) return;
-        // Fecha: puede venir como Date o string
-        let mesKey = '';
-        const v = row.c[0].v;
-        let dt = null;
-        if(typeof v === 'string' && v.startsWith('Date(')) {
-          const parts = v.replace('Date(','').replace(')','').split(',').map(Number);
-          dt = new Date(parts[0], parts[1], parts[2]);
-        } else if(row.c[0].f) {
-          // Intentar parsear desde el formato formateado dd/mm/yyyy
-          const f = row.c[0].f;
-          const m = f.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-          if(m) dt = new Date(+m[3], +m[2]-1, +m[1]);
-        }
-        if(!dt) return;
-        const anio = dt.getFullYear();
-        const mes = String(dt.getMonth()+1).padStart(2,'0');
-        mesKey = `${anio}-${mes}`;
-        const mesLabel = dt.toLocaleString('es-AR', {month:'long', year:'numeric'});
-        const mesLabelCap = mesLabel.charAt(0).toUpperCase() + mesLabel.slice(1);
-
-        const prod = row.c[1] && row.c[1].v ? String(row.c[1].v).trim().toLowerCase() : '';
-        const esEuro = prod.includes('euro');
-        const esGasoil = prod.includes('gasoil');
-
-        const lts = PUNTOS.map((_,i) => parseGvizNum(row.c[i+2]));
-
-        // Precio del mes
-        const p = precios[mesKey] || {};
-        const precioLts = esEuro ? (p.euro||0) : (p.gasoil||0);
-        const impLts    = esEuro ? (p.impEuro||0) : (p.impGasoil||0);
-        const co2Lts    = esEuro ? (p.co2Euro||0) : (p.co2Gasoil||0);
-        const costoTotal = precioLts + impLts + co2Lts;
-
-        filas.push({ mesKey, mesLabel: mesLabelCap, prod, esEuro, lts, costoTotal });
-      });
-
-      if(!filas.length) {
-        document.getElementById('stock-loading').textContent = 'Sin datos de stock cargados.';
-        return;
-      }
-
-      // ── Agrupar por mes ──
-      const mesesMap = {};
-      filas.forEach(f => {
-        if(!mesesMap[f.mesKey]) mesesMap[f.mesKey] = { label: f.mesLabel, filas: [] };
-        mesesMap[f.mesKey].filas.push(f);
-      });
-      const mesesOrden = Object.keys(mesesMap).sort();
-
-      // ── Render tabla ──
-      const thPuntos = PUNTOS.map(p => `<th>${p}</th>`).join('');
-      let html = `<table class="stock-tbl">
-        <thead><tr>
-          <th>Mes</th><th>Producto</th>${thPuntos}<th>Valorización</th>
-        </tr></thead><tbody>`;
-
-      mesesOrden.forEach(mk => {
-        const mes = mesesMap[mk];
-        mes.filas.forEach(f => {
-          const prodBadge = f.esEuro
-            ? '<span class="stock-prod-euro">Euro Diesel</span>'
-            : '<span class="stock-prod-gasoil">Gasoil</span>';
-
-          const tdLts = f.lts.map(v =>
-            `<td>${v !== null ? fmtLts(v) : '—'}</td>`
-          ).join('');
-
-          const totalLts = f.lts.reduce((s,v) => s + (v||0), 0);
-          const valTotal = Math.round(totalLts * f.costoTotal * 100) / 100;
-
-          html += `<tr>
-            <td>${f.mesLabel}</td>
-            <td>${prodBadge}</td>
-            ${tdLts}
-            <td class="stock-val">${fmtPesos(valTotal)}</td>
-          </tr>`;
-        });
-      });
-
-      html += '</tbody></table>';
-
-      document.getElementById('stock-contenido').innerHTML = html;
-      document.getElementById('stock-loading').style.display = 'none';
-      document.getElementById('stock-contenido').style.display = '';
-
-    } catch(e) {
-      console.error('Stock error:', e);
-      document.getElementById('stock-loading').textContent = 'Error cargando stock: ' + e.message;
-    }
-  }
-
-</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -1066,6 +907,165 @@
   cargarDesdeSheet();
 
 })();
+
+  // ═══════════════════════════════════
+  // STOCK POR PUNTO
+  // ═══════════════════════════════════
+  const STOCK_SHEET_ID = '1tFcjTJiM4GKXvvZx0zsucqEusiaec0QEAlzm_g1wXPM';
+  const STOCK_GID = '1278419684';
+  const PRECIOS_SHEET_ID = '1MUMqZlrP5-oce4oqHMEL6VvcFdGaLL3MzUDqYX8KevY';
+  const PRECIOS_GID = '1112510098';
+
+  const PUNTOS = ['Planta Granel','Estación CD','Valle Hermoso','Tres Picos','Anticlinal Grande','Base CR','Resero'];
+
+  function fmtLts(n) {
+    if(!n && n!==0) return '—';
+    return n.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  }
+  function fmtPesos(n) {
+    if(!n && n!==0) return '—';
+    return '$' + n.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  }
+
+  async function fetchGvizStock(sheetId, gid) {
+    const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&gid=${gid}`;
+    const resp = await fetch(url);
+    const txt = await resp.text();
+    const json = JSON.parse(txt.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/)[1]);
+    return json.table;
+  }
+
+  function parseGvizNum(cell) {
+    if(!cell || cell.v === null || cell.v === undefined) return null;
+    if(typeof cell.v === 'number') return cell.v;
+    const s = String(cell.f || cell.v).replace(/\./g,'').replace(',','.');
+    const n = parseFloat(s);
+    return isNaN(n) ? null : n;
+  }
+
+  async function cargarStock() {
+    document.getElementById('stock-loading').style.display = '';
+    document.getElementById('stock-contenido').style.display = 'none';
+    document.getElementById('stock-loading').textContent = 'Cargando stock…';
+
+    try {
+      const [tblStock, tblPrecios] = await Promise.all([
+        fetchGvizStock(STOCK_SHEET_ID, STOCK_GID),
+        fetchGvizStock(PRECIOS_SHEET_ID, PRECIOS_GID)
+      ]);
+
+      // ── Parsear precios ──
+      // Cols: A=Mes(2026-03), B=Euro, C=Gasoil, D=ImpIntEuro, E=ImpIntGasoil, F=CO2Euro, G=CO2Gasoil, H=NetoVtaEuro, I=NetoVtaGasoil
+      const precios = {};
+      tblPrecios.rows.forEach(row => {
+        const mesRaw = row.c[0] && row.c[0].v ? String(row.c[0].v).trim() : '';
+        if(!mesRaw) return;
+        precios[mesRaw] = {
+          euro:  parseGvizNum(row.c[1]),
+          gasoil: parseGvizNum(row.c[2]),
+          impEuro: parseGvizNum(row.c[3]),
+          impGasoil: parseGvizNum(row.c[4]),
+          co2Euro: parseGvizNum(row.c[5]),
+          co2Gasoil: parseGvizNum(row.c[6]),
+        };
+      });
+
+      // ── Parsear stock ──
+      // Cols: A=Mes(fecha), B=Producto, C..I = puntos
+      const filas = [];
+      tblStock.rows.forEach(row => {
+        if(!row.c[0] || row.c[0].v === null) return;
+        // Fecha: puede venir como Date o string
+        let mesKey = '';
+        const v = row.c[0].v;
+        let dt = null;
+        if(typeof v === 'string' && v.startsWith('Date(')) {
+          const parts = v.replace('Date(','').replace(')','').split(',').map(Number);
+          dt = new Date(parts[0], parts[1], parts[2]);
+        } else if(row.c[0].f) {
+          // Intentar parsear desde el formato formateado dd/mm/yyyy
+          const f = row.c[0].f;
+          const m = f.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+          if(m) dt = new Date(+m[3], +m[2]-1, +m[1]);
+        }
+        if(!dt) return;
+        const anio = dt.getFullYear();
+        const mes = String(dt.getMonth()+1).padStart(2,'0');
+        mesKey = `${anio}-${mes}`;
+        const mesLabel = dt.toLocaleString('es-AR', {month:'long', year:'numeric'});
+        const mesLabelCap = mesLabel.charAt(0).toUpperCase() + mesLabel.slice(1);
+
+        const prod = row.c[1] && row.c[1].v ? String(row.c[1].v).trim().toLowerCase() : '';
+        const esEuro = prod.includes('euro');
+        const esGasoil = prod.includes('gasoil');
+
+        const lts = PUNTOS.map((_,i) => parseGvizNum(row.c[i+2]));
+
+        // Precio del mes
+        const p = precios[mesKey] || {};
+        const precioLts = esEuro ? (p.euro||0) : (p.gasoil||0);
+        const impLts    = esEuro ? (p.impEuro||0) : (p.impGasoil||0);
+        const co2Lts    = esEuro ? (p.co2Euro||0) : (p.co2Gasoil||0);
+        const costoTotal = precioLts + impLts + co2Lts;
+
+        filas.push({ mesKey, mesLabel: mesLabelCap, prod, esEuro, lts, costoTotal });
+      });
+
+      if(!filas.length) {
+        document.getElementById('stock-loading').textContent = 'Sin datos de stock cargados.';
+        return;
+      }
+
+      // ── Agrupar por mes ──
+      const mesesMap = {};
+      filas.forEach(f => {
+        if(!mesesMap[f.mesKey]) mesesMap[f.mesKey] = { label: f.mesLabel, filas: [] };
+        mesesMap[f.mesKey].filas.push(f);
+      });
+      const mesesOrden = Object.keys(mesesMap).sort();
+
+      // ── Render tabla ──
+      const thPuntos = PUNTOS.map(p => `<th>${p}</th>`).join('');
+      let html = `<table class="stock-tbl">
+        <thead><tr>
+          <th>Mes</th><th>Producto</th>${thPuntos}<th>Valorización</th>
+        </tr></thead><tbody>`;
+
+      mesesOrden.forEach(mk => {
+        const mes = mesesMap[mk];
+        mes.filas.forEach(f => {
+          const prodBadge = f.esEuro
+            ? '<span class="stock-prod-euro">Euro Diesel</span>'
+            : '<span class="stock-prod-gasoil">Gasoil</span>';
+
+          const tdLts = f.lts.map(v =>
+            `<td>${v !== null ? fmtLts(v) : '—'}</td>`
+          ).join('');
+
+          const totalLts = f.lts.reduce((s,v) => s + (v||0), 0);
+          const valTotal = Math.round(totalLts * f.costoTotal * 100) / 100;
+
+          html += `<tr>
+            <td>${f.mesLabel}</td>
+            <td>${prodBadge}</td>
+            ${tdLts}
+            <td class="stock-val">${fmtPesos(valTotal)}</td>
+          </tr>`;
+        });
+      });
+
+      html += '</tbody></table>';
+
+      document.getElementById('stock-contenido').innerHTML = html;
+      document.getElementById('stock-loading').style.display = 'none';
+      document.getElementById('stock-contenido').style.display = '';
+
+    } catch(e) {
+      console.error('Stock error:', e);
+      document.getElementById('stock-loading').textContent = 'Error cargando stock: ' + e.message;
+    }
+  }
+
+
+
 </script>
-</body>
-</html>
