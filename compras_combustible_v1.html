@@ -961,11 +961,13 @@
         // Normalizar mesKey — puede venir como "2026-07", Date, o número
         let mesKey = '';
         const rv = row.c[0].v;
-        if(typeof rv === 'string') {
-          // "2026-07" directo
+        if(typeof rv === 'string' && rv.startsWith('Date(')) {
+          // Date(2026,2,1) → mes base 0 → 2026-03
+          const parts = rv.replace('Date(','').replace(')','').split(',').map(Number);
+          mesKey = `${parts[0]}-${String(parts[1]+1).padStart(2,'0')}`;
+        } else if(typeof rv === 'string') {
           mesKey = rv.trim();
         } else if(typeof rv === 'number') {
-          // gviz a veces devuelve fecha como número de días desde 1899-12-30
           const dt = new Date(Math.round((rv - 25569) * 86400 * 1000));
           mesKey = `${dt.getUTCFullYear()}-${String(dt.getUTCMonth()+1).padStart(2,'0')}`;
         } else if(row.c[0].f) {
