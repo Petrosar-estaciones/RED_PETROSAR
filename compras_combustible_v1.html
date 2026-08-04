@@ -1135,6 +1135,23 @@
         </tr></tfoot></table></div>`;
       });
 
+      // Guardar datos para export
+      if(mesesMostrar.length) {
+        const mk = mesesMostrar[0];
+        const mes = mesesMap[mk];
+        const filaEuroExp   = mes.filas.find(f => f.esEuro)   || null;
+        const filaGasoilExp = mes.filas.find(f => f.esGasoil) || null;
+        window._lastStockData = {
+          mesLabel: mes.filas[0]?.mesLabel || mk,
+          precios: precios[mk] || {},
+          puntos: PUNTOS.map((punto, i) => ({
+            punto,
+            ltsE: filaEuroExp   ? (filaEuroExp.lts[i]   || 0) : 0,
+            ltsG: filaGasoilExp ? (filaGasoilExp.lts[i] || 0) : 0,
+          }))
+        };
+      }
+
       document.getElementById('stock-contenido').innerHTML = html;
       document.getElementById('stock-loading').style.display = 'none';
       document.getElementById('stock-contenido').style.display = '';
@@ -1149,23 +1166,74 @@
 
 
   function exportarStock() {
-    const tbl = document.querySelector('#stock-contenido table');
-    if(!tbl){ alert('Primero cargá el stock.'); return; }
+    if(!window._lastStockData){ alert('Primero cargá el stock.'); return; }
+    const { mesLabel, puntos, precios: p } = window._lastStockData;
+
+    const netoEuro=p.euro||0, impEuro=p.impEuro||0, co2Euro=p.co2Euro||0;
+    const netoGasoil=p.gasoil||0, impGasoil=p.impGasoil||0, co2Gasoil=p.co2Gasoil||0;
 
     const wb = XLSX.utils.book_new();
-    // Leer tabla del DOM
-    const ws = XLSX.utils.table_to_sheet(tbl);
-    // Ajustar anchos
-    ws['!cols'] = [
-      {wch:20},{wch:12},{wch:18},{wch:18},{wch:18},
-      {wch:12},{wch:18},{wch:18},{wch:18},{wch:22}
-    ];
-    XLSX.utils.book_append_sheet(wb, ws, 'Stock por Punto');
+    const font = { name: 'Calibri', sz: 9 };
+    const numFmt = '#,##0.00';
+    const numFmtLts = '#,##0.00';
 
-    // Determinar el mes para el nombre del archivo
-    const titulo = document.querySelector('#stock-contenido b');
-    const mes = titulo ? titulo.textContent.replace(/\s+/g,'-') : 'stock';
-    XLSX.writeFile(wb, `Stock_${mes}.xlsx`);
+    // Headers
+    const headers = [
+      ['Sector','Euro Diesel Lts','Neto Euro ($)','Imp.Int Euro ($)','CO2 Euro ($)',
+       'Gasoil Lts','Neto Gasoil ($)','Imp.Int Gasoil ($)','CO2 Gasoil ($)','Valorización Total ($)']
+    ];
+
+    const rows = puntos.map(({punto, ltsE, ltsG}) => {
+      const netoE = ltsE * netoEuro;
+      const impE  = ltsE * impEuro;
+      const co2E  = ltsE * co2Euro;
+      const netoG = ltsG * netoGasoil;
+      const impG  = ltsG * impGasoil;
+      const co2G  = ltsG * co2Gasoil;
+      const valT  = netoE+impE+co2E+netoG+impG+co2G;
+      return [punto, ltsE||0, netoE, impE, co2E, ltsG||0, netoG, impG, co2G, valT];
+    });
+
+    // Total row
+    const tot = puntos.reduce((acc, {ltsE, ltsG}) => {
+      acc.ltsE+=ltsE; acc.ltsG+=ltsG;
+      acc.netoE+=ltsE*netoEuro; acc.impE+=ltsE*impEuro; acc.co2E+=ltsE*co2Euro;
+      acc.netoG+=ltsG*netoGasoil; acc.impG+=ltsG*impGasoil; acc.co2G+=ltsG*co2Gasoil;
+      return acc;
+    }, {ltsE:0,ltsG:0,netoE:0,impE:0,co2E:0,netoG:0,impG:0,co2G:0});
+    rows.push(['TOTAL', tot.ltsE, tot.netoE, tot.impE, tot.co2E,
+                        tot.ltsG, tot.netoG, tot.impG, tot.co2G,
+                        tot.netoE+tot.impE+tot.co2E+tot.netoG+tot.impG+tot.co2G]);
+
+    const ws = XLSX.utils.aoa_to_sheet([...headers, ...rows]);
+
+    // Format all cells
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    for(let R=range.s.r; R<=range.e.r; R++){
+      for(let C=range.s.c; C<=range.e.c; C++){
+        const addr = XLSX.utils.encode_cell({r:R,c:C});
+        if(!ws[addr]) ws[addr] = {t:'z'};
+        if(!ws[addr].s) ws[addr].s = {};
+        ws[addr].s.font = font;
+        // Numeric cols (not first col, not header row)
+        if(R > 0 && C > 0 && typeof ws[addr].v === 'number'){
+          ws[addr].s.numFmt = numFmt;
+          ws[addr].z = numFmt;
+        }
+      }
+    }
+
+    ws['!cols'] = [
+      {wch:20},{wch:12},{wch:18},{wch:18},{wch:16},
+      {wch:12},{wch:18},{wch:18},{wch:16},{wch:22}
+    ];
+
+    // Title row above headers
+    XLSX.utils.sheet_add_aoa(ws, [[`Stock por Punto — ${mesLabel}`]], {origin:'A1'});
+    ws['!ref'] = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:rows.length+1, c:9}});
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Stock por Punto');
+    XLSX.writeFile(wb, `Stock_${mesLabel.replace(/\s+/g,'-')}.xlsx`);
   }
 
 </script>
