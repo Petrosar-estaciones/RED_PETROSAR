@@ -1027,7 +1027,7 @@
         const co2Lts    = esEuro ? (p.co2Euro||0) : (p.co2Gasoil||0);
         const costoTotal = precioLts + impLts + co2Lts;
 
-        filas.push({ mesKey, mesLabel: mesLabelCap, prod, esEuro, lts, costoTotal });
+        filas.push({ mesKey, mesLabel: mesLabelCap, prod, esEuro, esGasoil, lts, costoTotal });
       });
 
       if(!filas.length) {
