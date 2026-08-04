@@ -918,6 +918,10 @@
 
   const PUNTOS = ['Planta Granel','Estación CD','Valle Hermoso','Tres Picos','Anticlinal Grande','Base CR','Resero'];
 
+  function fmtN2(n) {
+    if(!n && n!==0) return '0,00';
+    return n.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  }
   function fmtLts(n) {
     if(!n && n!==0) return '—';
     return n.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
@@ -1042,37 +1046,71 @@
       const ultimoMes = mesesOrden[mesesOrden.length - 1];
       const mesesMostrar = ultimoMes ? [ultimoMes] : [];
 
-      // ── Render tabla ──
-      const thPuntos = PUNTOS.map(p => `<th>${p}</th>`).join('');
-      let html = `<table class="stock-tbl">
-        <thead><tr>
-          <th>Mes</th><th>Producto</th>${thPuntos}<th>Valorización</th>
-        </tr></thead><tbody>`;
-
+      // ── Render tabla: filas=sectores, columnas=productos ──
+      let html = '';
       mesesMostrar.forEach(mk => {
         const mes = mesesMap[mk];
-        mes.filas.forEach(f => {
-          const prodBadge = f.esEuro
-            ? '<span class="stock-prod-euro">Euro Diesel</span>'
-            : '<span class="stock-prod-gasoil">Gasoil</span>';
+        const filaEuro   = mes.filas.find(f => f.esEuro)   || null;
+        const filaGasoil = mes.filas.find(f => f.esGasoil) || null;
+        const p = precios[mk] || {};
 
-          const tdLts = f.lts.map(v =>
-            `<td>${v !== null ? fmtLts(v) : '—'}</td>`
-          ).join('');
+        // Precios por componente
+        const netoEuro    = p.euro     || 0;
+        const impEuro     = p.impEuro  || 0;
+        const co2Euro     = p.co2Euro  || 0;
+        const totalEuro   = netoEuro + impEuro + co2Euro;
 
-          const totalLts = f.lts.reduce((s,v) => s + (v||0), 0);
-          const valTotal = Math.round(totalLts * f.costoTotal * 100) / 100;
+        const netoGasoil  = p.gasoil    || 0;
+        const impGasoil   = p.impGasoil || 0;
+        const co2Gasoil   = p.co2Gasoil || 0;
+        const totalGasoil = netoGasoil + impGasoil + co2Gasoil;
+
+        html += `<div style="margin-bottom:8px;font-size:12px;color:var(--ink-soft)">
+          <b style="color:var(--ink)">${mes.filas[0]?.mesLabel || mk}</b>
+          &nbsp;·&nbsp; Euro: $${fmtN2(netoEuro)} neto + $${fmtN2(impEuro)} imp + $${fmtN2(co2Euro)} CO2 = <b>$${fmtN2(totalEuro)}/lts</b>
+          &nbsp;·&nbsp; Gasoil: $${fmtN2(netoGasoil)} neto + $${fmtN2(impGasoil)} imp + $${fmtN2(co2Gasoil)} CO2 = <b>$${fmtN2(totalGasoil)}/lts</b>
+        </div>`;
+
+        // Encabezado
+        html += `<div style="overflow-x:auto"><table class="stock-tbl" style="margin-bottom:24px">
+          <thead><tr>
+            <th style="text-align:left">Sector</th>
+            <th>Euro Diesel (lts)</th><th>Neto Euro ($)</th>
+            <th>Gasoil (lts)</th><th>Neto Gasoil ($)</th>
+            <th style="background:#b45309">Valorización Total ($)</th>
+          </tr></thead><tbody>`;
+
+        let totLtsEuro=0, totLtsGasoil=0, totValEuro=0, totValGasoil=0;
+
+        PUNTOS.forEach((punto, i) => {
+          const ltsE = filaEuro   ? (filaEuro.lts[i]   || 0) : 0;
+          const ltsG = filaGasoil ? (filaGasoil.lts[i] || 0) : 0;
+          const valE = Math.round(ltsE * totalEuro   * 100) / 100;
+          const valG = Math.round(ltsG * totalGasoil * 100) / 100;
+          const valT = Math.round((valE + valG) * 100) / 100;
+          totLtsEuro   += ltsE; totLtsGasoil += ltsG;
+          totValEuro   += valE; totValGasoil += valG;
 
           html += `<tr>
-            <td>${f.mesLabel}</td>
-            <td>${prodBadge}</td>
-            ${tdLts}
-            <td class="stock-val">${fmtPesos(valTotal)}</td>
+            <td style="text-align:left;font-weight:600">${punto}</td>
+            <td>${ltsE ? fmtLts(ltsE) : '—'}</td>
+            <td>${ltsE ? fmtPesos(valE) : '—'}</td>
+            <td>${ltsG ? fmtLts(ltsG) : '—'}</td>
+            <td>${ltsG ? fmtPesos(valG) : '—'}</td>
+            <td class="stock-val-total">${(ltsE||ltsG) ? fmtPesos(valT) : '—'}</td>
           </tr>`;
         });
-      });
 
-      html += '</tbody></table>';
+        const totVal = Math.round((totValEuro + totValGasoil) * 100) / 100;
+        html += `</tbody><tfoot><tr>
+          <td style="text-align:left">TOTAL</td>
+          <td>${fmtLts(totLtsEuro)}</td>
+          <td>${fmtPesos(Math.round(totValEuro*100)/100)}</td>
+          <td>${fmtLts(totLtsGasoil)}</td>
+          <td>${fmtPesos(Math.round(totValGasoil*100)/100)}</td>
+          <td class="stock-val-total">${fmtPesos(totVal)}</td>
+        </tr></tfoot></table></div>`;
+      });
 
       document.getElementById('stock-contenido').innerHTML = html;
       document.getElementById('stock-loading').style.display = 'none';
