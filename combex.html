@@ -241,8 +241,10 @@ async function cargar() {
 
     // ── Facturación ──
     const factura = {}; // mesKey → { dom1, dom3, dom4 } → prod → lts
+    const mkSample = new Set();
     rowsFact.forEach(row => {
       const mk = parseMesKey(row['Fecha']);
+      mkSample.add(mk);
       if(!mk) return;
       meses.add(mk);
       const cod = String(row['Código']||'').trim();
@@ -259,6 +261,7 @@ async function cargar() {
       if(!factura[mk]) factura[mk] = {dom1:{},dom3:{},dom4:{}};
       factura[mk][dom][prod] = (factura[mk][dom][prod]||0) + lts;
     });
+    console.log('Meses factura detectados:', Array.from(mkSample).sort());
 
     // ── Consumo interno (flota) ──
     const interno = {}; // mesKey → { sector → { prod → lts } }
