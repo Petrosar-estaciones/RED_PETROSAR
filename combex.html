@@ -190,22 +190,22 @@ async function fetchFacturacion() {
 // ═══════════════════════════════════════════════════════
 // PARSEAR FECHA → mesKey YYYY-MM
 // ═══════════════════════════════════════════════════════
-function parseMesKey(fechaRaw) {
-  if(!fechaRaw) return null;
-  // Fecha viene como "2026-07-01T03:00:00.000Z" — usar la fecha local de Argentina (UTC-3)
-  // Extraer directamente la parte de fecha del string ISO sin convertir timezone
-  if(typeof fechaRaw === 'string' && fechaRaw.includes('T')) {
-    // Sumar 3 horas para compensar UTC-3 y extraer YYYY-MM
-    const d = new Date(new Date(fechaRaw).getTime() + 3*60*60*1000);
-    if(isNaN(d)) return null;
-    return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}`;
-  } else if(typeof fechaRaw === 'string' && fechaRaw.startsWith('Date(')) {
-    const p = fechaRaw.replace('Date(','').replace(')','').split(',').map(Number);
-    return `${p[0]}-${String(p[1]+1).padStart(2,'0')}`;
-  }
-  const d = new Date(fechaRaw);
-  if(isNaN(d)) return null;
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+// Parseo de fecha y código — copiado exactamente de resumen_facturacion_combustible
+function parseFechaUTC(v) { if(!v) return null; const d = new Date(v); return isNaN(d.getTime()) ? null : d; }
+function monthKeyOf(d) { if(!d) return ''; return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0'); }
+function normCodigo(v) {
+  const s = String(v == null ? '' : v).trim();
+  const m = s.match(/(\d+)\s*$/);
+  if(!m) return s;
+  return m[1].padStart(4,'0').slice(-4);
+}
+function parseNumLoose(v) {
+  if(v == null) return 0;
+  if(typeof v === 'number') return v;
+  const s = String(v).replace(/\s/g,'');
+  if(s.includes(',') && s.includes('.')) return parseFloat(s.replace(/\./g,'').replace(',','.')) || 0;
+  if(s.includes(',')) return parseFloat(s.replace(',','.')) || 0;
+  return parseFloat(s) || 0;
 }
 
 function mesLabel(mk) {
@@ -236,20 +236,20 @@ async function cargar() {
     const factura = {}; // mesKey → { dom1, dom3, dom4 } → prod → lts
     const mkSample = new Set();
     rowsFact.forEach(row => {
-      const mk = parseMesKey(row['Fecha']);
+      const fecha = parseFechaUTC(row['Fecha']);
+      const mk = monthKeyOf(fecha);
       mkSample.add(mk);
       if(!mk) return;
       meses.add(mk);
-      const cod = String(row['Código']||'').trim();
+      const cod = normCodigo(row['Código'] || row['Codigo'] || '');
       const prod = normProd(row['Producto']);
-      // Cantidad viene como número JS directo del Apps Script
-      const lts = typeof row['Cantidad']==='number' ? row['Cantidad'] : parseFloat(String(row['Cantidad']||0).replace(/[.]/g,'').replace(',','.')) || 0;
+      const lts = parseNumLoose(row['Cantidad']);
       if(!lts || lts < 0) return;
 
       let dom = null;
-      if(COD_DOM1.includes(cod)) dom = 'dom1';
-      else if(COD_DOM3.includes(cod)) dom = 'dom3';
-      else if(COD_DOM4.includes(cod)) dom = 'dom4';
+      if(['0010','0011','0005','0009'].includes(cod)) dom = 'dom1';
+      else if(['0007'].includes(cod)) dom = 'dom3';
+      else if(['0006'].includes(cod)) dom = 'dom4';
       if(!dom) return;
 
       if(!factura[mk]) factura[mk] = {dom1:{},dom3:{},dom4:{}};
