@@ -146,7 +146,7 @@ const SHEET_BASECR = '1A_0pcSuycTcTBcf8bAHXopHk_FrLSgcdbDSFbvZnLuQ';
 const SHEET_PLANTA = '1NWUzcMuA5JmUXW5p3MiWwes8M4nb5EBNoTssFBU0ndE';
 
 // Mapeo códigos facturación → domicilio
-const COD_DOM1 = ['00-0010','00-0011','00-0005','00-0009']; // CD + VH + Planta
+const COD_DOM1 = ['00-0010','00-0011','00-0005','00-0009','00-0008']; // CD + VH + Planta (0008 = Planta CD Gasoil)
 const COD_DOM3 = ['00-0007']; // AG
 const COD_DOM4 = ['00-0006']; // TP
 
@@ -247,7 +247,7 @@ async function cargar() {
       if(!lts) return;
 
       let dom = null;
-      if(['0010','0011','0005','0009'].includes(cod)) dom = 'dom1';
+      if(['0010','0011','0005','0009','0008'].includes(cod)) dom = 'dom1';
       else if(['0007'].includes(cod)) dom = 'dom3';
       else if(['0006'].includes(cod)) dom = 'dom4';
       if(!dom) return;
