@@ -192,15 +192,18 @@ async function fetchFacturacion() {
 // ═══════════════════════════════════════════════════════
 function parseMesKey(fechaRaw) {
   if(!fechaRaw) return null;
-  let d;
+  // Fecha viene como "2026-07-01T03:00:00.000Z" — usar la fecha local de Argentina (UTC-3)
+  // Extraer directamente la parte de fecha del string ISO sin convertir timezone
   if(typeof fechaRaw === 'string' && fechaRaw.includes('T')) {
-    d = new Date(fechaRaw);
+    // Sumar 3 horas para compensar UTC-3 y extraer YYYY-MM
+    const d = new Date(new Date(fechaRaw).getTime() + 3*60*60*1000);
+    if(isNaN(d)) return null;
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}`;
   } else if(typeof fechaRaw === 'string' && fechaRaw.startsWith('Date(')) {
     const p = fechaRaw.replace('Date(','').replace(')','').split(',').map(Number);
-    d = new Date(p[0], p[1], p[2]);
-  } else {
-    d = new Date(fechaRaw);
+    return `${p[0]}-${String(p[1]+1).padStart(2,'0')}`;
   }
+  const d = new Date(fechaRaw);
   if(isNaN(d)) return null;
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
 }
