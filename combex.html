@@ -244,7 +244,7 @@ async function cargar() {
       const cod = normCodigo(row['Código'] || row['Codigo'] || '');
       const prod = normProd(row['Producto']);
       const lts = parseNumLoose(row['Cantidad']);
-      if(!lts || lts < 0) return;
+      if(!lts) return;
 
       let dom = null;
       if(['0010','0011','0005','0009'].includes(cod)) dom = 'dom1';
