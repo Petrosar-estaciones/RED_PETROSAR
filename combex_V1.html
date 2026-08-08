@@ -74,6 +74,8 @@
   .badge-euro { background: #e0f0ff; color: #1a5a8a; border-radius: 4px; padding: 2px 7px; font-size: 10px; font-weight: 700; display: inline-block; }
   .badge-gasoil { background: #fff3cd; color: #7a5200; border-radius: 4px; padding: 2px 7px; font-size: 10px; font-weight: 700; display: inline-block; }
   .val-total { color: var(--orange); font-weight: 700; }
+  .row-res1104 td { background: #fff3e0; border-top: 2px dashed var(--orange); font-style: italic; }
+  .row-res1104 td:first-child { color: var(--orange); font-weight: 700; font-style: normal; text-transform: uppercase; font-size: 11px; letter-spacing: .04em; }
 
   /* ── Loading ── */
   .loading { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; padding: 40px 0; justify-content: center; }
@@ -379,12 +381,19 @@ function renderDatos() {
         <td class="val-total">${fmtN(f+i)}</td>
       </tr>`;
     });
+    const totLts = totFact+totInt;
+    const m3 = totLts/1000;
     html += `</tbody><tfoot><tr>
         <td>TOTAL</td>
         <td>${fmtN(totFact)}</td>
         <td>${fmtN(totInt)}</td>
-        <td class="val-total">${fmtN(totFact+totInt)}</td>
-      </tr></tfoot></table>`;
+        <td class="val-total">${fmtN(totLts)}</td>
+      </tr>
+      <tr class="row-res1104">
+        <td colspan="3">RES 1104 — Declarar (m³)</td>
+        <td class="val-total">${fmtN(m3)}</td>
+      </tr>
+      </tfoot></table>`;
     return html;
   }
 
