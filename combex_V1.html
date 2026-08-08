@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>COMBEX / RES 1104 — Petrosar</title>
+<style>
+  :root {
+    --dark:    #0d1b2a;
+    --petrol:  #0a3d52;
+    --orange:  #e55a00;
+    --green:   #006633;
+    --amber:   #f5a800;
+    --ink:     #1a2535;
+    --muted:   #6b7a8d;
+    --line:    #e8edf3;
+    --bg:      #f4f6f9;
+    --card:    #ffffff;
+    --r:       10px;
+    --mono:    'Courier New', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--ink); font-size: 14px; }
+
+  /* ── Header ── */
+  .header { background: var(--dark); color: #fff; padding: 0 28px; display: flex; align-items: center; justify-content: space-between; height: 56px; }
+  .header-brand { display: flex; align-items: center; gap: 14px; }
+  .logo { background: var(--orange); color: #fff; font-weight: 900; font-size: 13px; padding: 6px 10px; border-radius: 6px; letter-spacing: .5px; }
+  .header-title { font-size: 15px; font-weight: 600; }
+  .header-sub { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: .5px; }
+  .btn-refresh { background: none; border: 1px solid #ffffff30; color: #fff; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 6px; }
+  .btn-refresh:hover { background: #ffffff15; }
+
+  /* ── Layout ── */
+  .main { max-width: 1300px; margin: 0 auto; padding: 24px 20px; }
+
+  /* ── Filtro ── */
+  .filtro-bar { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+  .filtro-label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--muted); letter-spacing: .5px; }
+  .mes-select { padding: 8px 14px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; background: var(--card); color: var(--ink); cursor: pointer; }
+  .mes-select:focus { outline: 2px solid var(--orange); }
+
+  /* ── KPI cards ── */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .kpi-card { background: var(--card); border-radius: var(--r); padding: 18px 20px; box-shadow: 0 1px 3px #0001; border-left: 4px solid var(--line); }
+  .kpi-card.dom1 { border-left-color: var(--petrol); }
+  .kpi-card.dom3 { border-left-color: var(--green); }
+  .kpi-card.dom4 { border-left-color: var(--amber); }
+  .kpi-card.total { border-left-color: var(--orange); }
+  .kpi-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-bottom: 6px; }
+  .kpi-val { font-size: 26px; font-weight: 800; color: var(--ink); line-height: 1; }
+  .kpi-val.orange { color: var(--orange); }
+  .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  /* ── Tabla ── */
+  .section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+  .dom-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; }
+  .dom-badge.d1 { background: #e0f0ff; color: var(--petrol); }
+  .dom-badge.d3 { background: #e0ffe8; color: var(--green); }
+  .dom-badge.d4 { background: #fff8e0; color: #8a6200; }
+
+  .tbl-wrap { background: var(--card); border-radius: var(--r); box-shadow: 0 1px 3px #0001; overflow-x: auto; margin-bottom: 28px; }
+  .tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .tbl thead th { background: var(--dark); color: #fff; padding: 10px 16px; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+  .tbl thead th:first-child { text-align: left; }
+  .tbl thead tr.subhead th { background: #1a2e42; font-size: 10px; color: #94a3b8; padding: 6px 16px; }
+  .tbl tbody tr:hover { background: #f8fafc; }
+  .tbl tbody td { padding: 10px 16px; border-bottom: 1px solid var(--line); text-align: right; }
+  .tbl tbody td:first-child { text-align: left; font-weight: 600; }
+  .tbl tbody td.prod { text-align: left; }
+  .tbl tfoot td { padding: 10px 16px; font-weight: 700; background: #f8fafc; border-top: 2px solid var(--line); text-align: right; }
+  .tbl tfoot td:first-child { text-align: left; color: var(--dark); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+  .badge-euro { background: #e0f0ff; color: #1a5a8a; border-radius: 4px; padding: 2px 7px; font-size: 10px; font-weight: 700; display: inline-block; }
+  .badge-gasoil { background: #fff3cd; color: #7a5200; border-radius: 4px; padding: 2px 7px; font-size: 10px; font-weight: 700; display: inline-block; }
+  .val-total { color: var(--orange); font-weight: 700; }
+
+  /* ── Loading ── */
+  .loading { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; padding: 40px 0; justify-content: center; }
+  .spinner { width: 18px; height: 18px; border: 2px solid var(--line); border-top-color: var(--orange); border-radius: 50%; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .empty { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; }
+  .alert { background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 12px 16px; font-size: 12px; color: #7a5200; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-brand">
+    <div class="logo">PETROSAR</div>
+    <div>
+      <div class="header-title">COMBEX / RES 1104</div>
+      <div class="header-sub">Resumen mensual de ventas declaradas</div>
+    </div>
+  </div>
+  <button class="btn-refresh" onclick="cargar()">↻ Actualizar</button>
+</div>
+
+<div class="main">
+
+  <!-- Filtro -->
+  <div class="filtro-bar">
+    <span class="filtro-label">Período</span>
+    <select class="mes-select" id="sel-mes" onchange="renderDatos()">
+      <option value="">Cargando...</option>
+    </select>
+  </div>
+
+  <!-- Loading -->
+  <div id="loading" class="loading"><div class="spinner"></div>Cargando datos...</div>
+
+  <!-- Contenido -->
+  <div id="contenido" style="display:none">
+
+    <!-- KPIs -->
+    <div class="kpi-grid" id="kpi-grid"></div>
+
+    <!-- Tabla Domicilio 1 -->
+    <div class="section-title"><span class="dom-badge d1">Domicilio 1</span> Estación CD · Planta CD · Remota VH · Resero · Base CR</div>
+    <div class="tbl-wrap"><div id="tbl-dom1"></div></div>
+
+    <!-- Tabla Domicilio 3 -->
+    <div class="section-title"><span class="dom-badge d3">Domicilio 3</span> Anticlinal Grande</div>
+    <div class="tbl-wrap"><div id="tbl-dom3"></div></div>
+
+    <!-- Tabla Domicilio 4 -->
+    <div class="section-title"><span class="dom-badge d4">Domicilio 4</span> Tres Picos</div>
+    <div class="tbl-wrap"><div id="tbl-dom4"></div></div>
+
+    <!-- Tabla Total General -->
+    <div class="section-title"><span style="color:var(--orange);font-weight:700">TOTAL GENERAL</span></div>
+    <div class="tbl-wrap"><div id="tbl-total"></div></div>
+
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════
+const FACTURA_URL = 'https://script.google.com/macros/s/AKfycbxcnBWxjL--7DdJwKXxvAjZa52pmfSQ6WxG_ei3A5HVn6YpU74Pftf6TQaNdm3VjxSGjw/exec';
+
+const SHEET_EST  = '1418oEjkm9IVg6RsBIrygD42G2SaDa0yx0DmJtpZxBWE';
+const SHEET_DC   = '1CvPGNJGlv64Vs1PtEqdUrj9pntw7at0HPboS7YYnIf8';
+const SHEET_BASECR = '1A_0pcSuycTcTBcf8bAHXopHk_FrLSgcdbDSFbvZnLuQ';
+const SHEET_PLANTA = '1NWUzcMuA5JmUXW5p3MiWwes8M4nb5EBNoTssFBU0ndE';
+
+// Solapa "Consumo Interno" — misma planilla de facturación, se pega a mano el resumen del dashboard de flota
+const SHEET_CONSUMO_INTERNO = '1EtV7Yy6Wol_d28lsNIw6jCURb0iGodpCOT24_ntas7Y';
+const GID_CONSUMO_INTERNO = '2038781316';
+
+// Mapeo códigos facturación → domicilio
+const COD_DOM1 = ['00-0010','00-0011','00-0005','00-0009','00-0008']; // CD + VH + Planta (0008 = Planta CD Gasoil)
+const COD_DOM3 = ['00-0007']; // AG
+const COD_DOM4 = ['00-0006']; // TP
+
+// Sectores solo consumo interno (sin facturación) → van a Dom 1
+const SOLO_INTERNO = ['RESERO','BASE CR'];
+
+// Productos normalizados
+function normProd(p) {
+  if(!p) return 'OTRO';
+  const s = String(p).toUpperCase();
+  if(s.includes('EURO') || s.includes('GO INFINIA') || s.includes('DIESEL')) return 'EURO DIESEL';
+  if(s.includes('GASOIL') || s.includes('GO ')) return 'GASOIL';
+  if(s.includes('SUPER') || s.includes('NAFTA')) return 'NAFTA SUPER';
+  if(s.includes('INFINIA')) return 'NAFTA INFINIA';
+  if(s.includes('KEROSENE')) return 'KEROSENE';
+  return 'OTRO';
+}
+
+function fmtN(n) {
+  if(!n && n!==0) return '—';
+  return Math.round(n*100)/100 === 0 ? '0,00' :
+    (Math.round(n*100)/100).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+// ═══════════════════════════════════════════════════════
+// FETCH HELPERS
+// ═══════════════════════════════════════════════════════
+async function fetchGviz(id, gid) {
+  const url = `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:json&headers=1&gid=${gid}`;
+  const r = await fetch(url);
+  const t = await r.text();
+  return JSON.parse(t.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/)[1]).table;
+}
+
+async function fetchFacturacion() {
+  const r = await fetch(FACTURA_URL + '?_=' + Date.now());
+  const d = await r.json();
+  return d.rows || [];
+}
+
+// Consumo interno: se pega a mano en la solapa "Consumo Interno" de la planilla de facturación
+// (mismo resumen que ya muestra el dashboard de flota). AG → Dom 3, TP → Dom 4, el resto → Dom 1
+async function fetchInterno() {
+  const interno = {}; // mesKey → { dom1:{prod:lts}, dom3:{prod:lts}, dom4:{prod:lts} }
+
+  const MESES_ES = {
+    enero:1, febrero:2, marzo:3, abril:4, mayo:5, junio:6,
+    julio:7, agosto:8, septiembre:9, setiembre:9, octubre:10,
+    noviembre:11, diciembre:12
+  };
+  const ANIO = 2026; // la solapa no incluye año en el encabezado; ajustar si se agrega 2027
+
+  function acumular(mk, domKey, prod, lts) {
+    if(!mk || !lts) return;
+    if(!interno[mk]) interno[mk] = {dom1:{}, dom3:{}, dom4:{}};
+    interno[mk][domKey][prod] = (interno[mk][domKey][prod]||0) + lts;
+  }
+
+  try {
+    const t = await fetchGviz(SHEET_CONSUMO_INTERNO, GID_CONSUMO_INTERNO);
+    const cols = t.cols || [];
+    const iSector = cols.findIndex(c => /sector/i.test(c.label||''));
+    const iProducto = cols.findIndex(c => /producto/i.test(c.label||''));
+    const mesesCol = [];
+    cols.forEach((c,i) => {
+      const label = String(c.label||'').trim().toLowerCase();
+      if(MESES_ES[label]) mesesCol.push({idx:i, mes:MESES_ES[label]});
+    });
+
+    (t.rows||[]).forEach(row => {
+      const c = row.c || [];
+      const sector = String((iSector>=0 && c[iSector]) ? (c[iSector].v||'') : '').trim().toUpperCase();
+      if(!sector) return;
+      const prod = normProd(iProducto>=0 && c[iProducto] ? c[iProducto].v : '');
+      const domKey = sector==='AG' ? 'dom3' : sector==='TP' ? 'dom4' : 'dom1';
+      mesesCol.forEach(({idx,mes}) => {
+        const cell = c[idx];
+        if(!cell || cell.v===null || cell.v===undefined || cell.v==='') return;
+        const lts = typeof cell.v === 'number' ? cell.v : parseNumLoose(cell.v);
+        if(!lts) return;
+        const mk = ANIO + '-' + String(mes).padStart(2,'0');
+        acumular(mk, domKey, prod, lts);
+      });
+    });
+  } catch(e) { console.error('Error cargando Consumo Interno:', e); }
+
+  return interno;
+}
+
+// ═══════════════════════════════════════════════════════
+// PARSEAR FECHA → mesKey YYYY-MM
+// ═══════════════════════════════════════════════════════
+// Parseo de fecha y código — copiado exactamente de resumen_facturacion_combustible
+function parseFechaUTC(v) { if(!v) return null; const d = new Date(v); return isNaN(d.getTime()) ? null : d; }
+function monthKeyOf(d) { if(!d) return ''; return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0'); }
+function normCodigo(v) {
+  const s = String(v == null ? '' : v).trim();
+  const m = s.match(/(\d+)\s*$/);
+  if(!m) return s;
+  return m[1].padStart(4,'0').slice(-4);
+}
+function parseNumLoose(v) {
+  if(v == null) return 0;
+  if(typeof v === 'number') return v;
+  const s = String(v).replace(/\s/g,'');
+  if(s.includes(',') && s.includes('.')) return parseFloat(s.replace(/\./g,'').replace(',','.')) || 0;
+  if(s.includes(',')) return parseFloat(s.replace(',','.')) || 0;
+  return parseFloat(s) || 0;
+}
+
+function mesLabel(mk) {
+  const [y,m] = mk.split('-').map(Number);
+  const s = new Date(y,m-1,1).toLocaleString('es-AR',{month:'long',year:'numeric'});
+  return s.charAt(0).toUpperCase()+s.slice(1);
+}
+
+// ═══════════════════════════════════════════════════════
+// ESTADO GLOBAL
+// ═══════════════════════════════════════════════════════
+let _datos = null; // { meses: Set, factura: {mesKey: {dom1:{prod:lts}, dom3:{}, dom4:{}}}, interno: {mesKey: {dom1:{prod:lts}, dom3:{}, dom4:{}}} }
+
+// ═══════════════════════════════════════════════════════
+// CARGAR DATOS
+// ═══════════════════════════════════════════════════════
+async function cargar() {
+  document.getElementById('loading').style.display = 'flex';
+  document.getElementById('contenido').style.display = 'none';
+
+  try {
+    // Fetch facturación + consumo interno (solapa Consumo Interno) en paralelo
+    const [rowsFact, interno] = await Promise.all([
+      fetchFacturacion(),
+      fetchInterno()
+    ]);
+
+    const meses = new Set();
+    Object.keys(interno).forEach(mk => meses.add(mk));
+
+    // ── Facturación ──
+    const factura = {}; // mesKey → { dom1, dom3, dom4 } → prod → lts
+    const mkSample = new Set();
+    rowsFact.forEach(row => {
+      const fecha = parseFechaUTC(row['Fecha']);
+      const mk = monthKeyOf(fecha);
+      mkSample.add(mk);
+      if(!mk) return;
+      meses.add(mk);
+      const cod = normCodigo(row['Código'] || row['Codigo'] || '');
+      const prod = normProd(row['Producto']);
+      const lts = parseNumLoose(row['Cantidad']);
+      if(!lts) return;
+
+      let dom = null;
+      if(['0010','0011','0005','0009','0008'].includes(cod)) dom = 'dom1';
+      else if(['0007'].includes(cod)) dom = 'dom3';
+      else if(['0006'].includes(cod)) dom = 'dom4';
+      if(!dom) return;
+
+      if(!factura[mk]) factura[mk] = {dom1:{},dom3:{},dom4:{}};
+      factura[mk][dom][prod] = (factura[mk][dom][prod]||0) + lts;
+    });
+    console.log('Meses factura detectados:', Array.from(mkSample).sort());
+
+    _datos = { meses, factura, interno };
+
+    // Poblar selector
+    const sel = document.getElementById('sel-mes');
+    const mesOrden = Array.from(meses).sort().reverse();
+    sel.innerHTML = mesOrden.map(mk =>
+      `<option value="${mk}">${mesLabel(mk)}</option>`
+    ).join('');
+
+    renderDatos();
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('contenido').style.display = '';
+
+  } catch(e) {
+    console.error(e);
+    document.getElementById('loading').innerHTML =
+      `<div style="color:#c00">Error cargando datos: ${e.message}</div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════
+function renderDatos() {
+  const mk = document.getElementById('sel-mes').value;
+  if(!mk || !_datos) return;
+
+  const fact = (_datos.factura[mk]||{dom1:{},dom3:{},dom4:{}});
+  const interno = (_datos.interno[mk]||{dom1:{},dom3:{},dom4:{}}); // Consumo Interno del mes, por domicilio
+
+  // Cada domicilio = Facturado + Cons. Interno (AG → Dom 3, TP → Dom 4, resto → Dom 1)
+
+  const PRODS = ['EURO DIESEL','GASOIL','NAFTA SUPER','NAFTA INFINIA','KEROSENE'];
+
+  function buildTblDom(domKey) {
+    const internoDom = interno[domKey] || {};
+    const prodSet = new Set();
+    Object.keys(fact[domKey]||{}).forEach(p => prodSet.add(p));
+    Object.keys(internoDom).forEach(p => prodSet.add(p));
+    const prods = PRODS.filter(p => prodSet.has(p));
+    if(!prods.length) return '<div class="empty">Sin datos para este período</div>';
+
+    let html = `<table class="tbl"><thead>
+      <tr>
+        <th style="text-align:left">Producto</th>
+        <th>Facturado (lts)</th><th>Cons. Interno (lts)</th><th>Total (lts)</th>
+      </tr></thead><tbody>`;
+
+    let totFact=0, totInt=0;
+    prods.forEach(prod => {
+      const f = fact[domKey]?.[prod] || 0;
+      const i = internoDom[prod] || 0;
+      totFact+=f; totInt+=i;
+      const badge = prod==='EURO DIESEL'
+        ? `<span class="badge-euro">Euro Diesel</span>`
+        : prod==='GASOIL'
+        ? `<span class="badge-gasoil">Gasoil</span>`
+        : prod;
+      html += `<tr>
+        <td class="prod">${badge}</td>
+        <td>${fmtN(f)}</td>
+        <td>${fmtN(i)}</td>
+        <td class="val-total">${fmtN(f+i)}</td>
+      </tr>`;
+    });
+    html += `</tbody><tfoot><tr>
+        <td>TOTAL</td>
+        <td>${fmtN(totFact)}</td>
+        <td>${fmtN(totInt)}</td>
+        <td class="val-total">${fmtN(totFact+totInt)}</td>
+      </tr></tfoot></table>`;
+    return html;
+  }
+
+  document.getElementById('tbl-dom1').innerHTML = buildTblDom('dom1');
+  document.getElementById('tbl-dom3').innerHTML = buildTblDom('dom3');
+  document.getElementById('tbl-dom4').innerHTML = buildTblDom('dom4');
+
+  // Total general
+  function sumDom(domKey) {
+    const f = Object.values(fact[domKey]||{}).reduce((s,v)=>s+v,0);
+    const i = Object.values(interno[domKey]||{}).reduce((s,v)=>s+v,0);
+    return {f, i, t:f+i};
+  }
+
+  const d1 = sumDom('dom1');
+  const d3 = sumDom('dom3');
+  const d4 = sumDom('dom4');
+  const totT = d1.t+d3.t+d4.t;
+
+  document.getElementById('tbl-total').innerHTML = `<table class="tbl"><thead>
+    <tr><th style="text-align:left">Domicilio</th><th>Facturado (lts)</th><th>Cons. Interno (lts)</th><th>Total (lts)</th></tr>
+  </thead><tbody>
+    <tr><td><span class="dom-badge d1">Dom. 1</span></td><td>${fmtN(d1.f)}</td><td>${fmtN(d1.i)}</td><td class="val-total">${fmtN(d1.t)}</td></tr>
+    <tr><td><span class="dom-badge d3">Dom. 3 — AG</span></td><td>${fmtN(d3.f)}</td><td>${fmtN(d3.i)}</td><td class="val-total">${fmtN(d3.t)}</td></tr>
+    <tr><td><span class="dom-badge d4">Dom. 4 — TP</span></td><td>${fmtN(d4.f)}</td><td>${fmtN(d4.i)}</td><td class="val-total">${fmtN(d4.t)}</td></tr>
+  </tbody><tfoot><tr>
+    <td>TOTAL GENERAL</td><td>${fmtN(d1.f+d3.f+d4.f)}</td><td>${fmtN(d1.i+d3.i+d4.i)}</td><td class="val-total">${fmtN(totT)}</td>
+  </tr></tfoot></table>`;
+
+  // KPIs
+  document.getElementById('kpi-grid').innerHTML = `
+    <div class="kpi-card dom1">
+      <div class="kpi-label">Domicilio 1</div>
+      <div class="kpi-val">${fmtN(d1.t)}</div>
+      <div class="kpi-sub">lts · fact. ${fmtN(d1.f)} + interno ${fmtN(d1.i)}</div>
+    </div>
+    <div class="kpi-card dom3">
+      <div class="kpi-label">Domicilio 3 — AG</div>
+      <div class="kpi-val">${fmtN(d3.t)}</div>
+      <div class="kpi-sub">lts · fact. ${fmtN(d3.f)} + interno ${fmtN(d3.i)}</div>
+    </div>
+    <div class="kpi-card dom4">
+      <div class="kpi-label">Domicilio 4 — TP</div>
+      <div class="kpi-val">${fmtN(d4.t)}</div>
+      <div class="kpi-sub">lts · fact. ${fmtN(d4.f)} + interno ${fmtN(d4.i)}</div>
+    </div>
+    <div class="kpi-card total">
+      <div class="kpi-label">Total General</div>
+      <div class="kpi-val orange">${fmtN(totT)}</div>
+      <div class="kpi-sub">lts · ${mesLabel(mk)}</div>
+    </div>`;
+}
+
+// Iniciar
+cargar();
+</script>
+</body>
+</html>
