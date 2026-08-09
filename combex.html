@@ -145,6 +145,10 @@ const SHEET_DC   = '1CvPGNJGlv64Vs1PtEqdUrj9pntw7at0HPboS7YYnIf8';
 const SHEET_BASECR = '1A_0pcSuycTcTBcf8bAHXopHk_FrLSgcdbDSFbvZnLuQ';
 const SHEET_PLANTA = '1NWUzcMuA5JmUXW5p3MiWwes8M4nb5EBNoTssFBU0ndE';
 
+// Solapa "Consumo Interno" — misma planilla de facturación, se pega a mano el resumen del dashboard de flota
+const SHEET_CONSUMO_INTERNO = '1EtV7Yy6Wol_d28lsNIw6jCURb0iGodpCOT24_ntas7Y';
+const GID_CONSUMO_INTERNO = '2038781316';
+
 // Mapeo códigos facturación → domicilio
 const COD_DOM1 = ['00-0010','00-0011','00-0005','00-0009','00-0008']; // CD + VH + Planta (0008 = Planta CD Gasoil)
 const COD_DOM3 = ['00-0007']; // AG
@@ -187,71 +191,51 @@ async function fetchFacturacion() {
   return d.rows || [];
 }
 
-// Parseo de fecha proveniente de gviz (Resero / Base CR) — igual al usado en flota_petrosar
-function parseGvizDate(v, f) {
-  const tryStr = s => {
-    if(!s) return null;
-    let m = s.match(/Date\((\d+),(\d+),(\d+)/);
-    if(m) return new Date(+m[1], +m[2], +m[3]);
-    m = s.match(/(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
-    if(m) return new Date(+m[1], +m[2]-1, +m[3]);
-    m = s.match(/(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
-    if(m) return new Date(+m[3], +m[2]-1, +m[1]);
-    return null;
-  };
-  if(v !== null && v !== undefined) {
-    const r = tryStr(String(v));
-    if(r && !isNaN(r)) return r;
-    if(typeof v === 'number') return new Date(v);
-  }
-  if(f) {
-    const r = tryStr(f);
-    if(r && !isNaN(r)) return r;
-  }
-  return null;
-}
-
-// Consumo interno: Resero y Base CR no se facturan pero sí consumen stock → van a Domicilio 1
+// Consumo interno: se pega a mano en la solapa "Consumo Interno" de la planilla de facturación
+// (mismo resumen que ya muestra el dashboard de flota). AG → Dom 3, TP → Dom 4, el resto → Dom 1
 async function fetchInterno() {
-  const interno = {}; // mesKey → { prod: litros }
+  const interno = {}; // mesKey → { dom1:{prod:lts}, dom3:{prod:lts}, dom4:{prod:lts} }
 
-  function acumular(mk, prod, lts) {
+  const MESES_ES = {
+    enero:1, febrero:2, marzo:3, abril:4, mayo:5, junio:6,
+    julio:7, agosto:8, septiembre:9, setiembre:9, octubre:10,
+    noviembre:11, diciembre:12
+  };
+  const ANIO = 2026; // la solapa no incluye año en el encabezado; ajustar si se agrega 2027
+
+  function acumular(mk, domKey, prod, lts) {
     if(!mk || !lts) return;
-    if(!interno[mk]) interno[mk] = {};
-    interno[mk][prod] = (interno[mk][prod]||0) + lts;
+    if(!interno[mk]) interno[mk] = {dom1:{}, dom3:{}, dom4:{}};
+    interno[mk][domKey][prod] = (interno[mk][domKey][prod]||0) + lts;
   }
 
-  // RESERO — sheet estaciones (SHEET_EST), solapa "Resero" (gid 1798585939)
-  // Col C = Fecha (2), Col O = Producto (14), Col R = Litros (17)
   try {
-    const t = await fetchGviz(SHEET_EST, '1798585939');
-    (t.rows||[]).forEach(row => {
-      const c = row.c || [];
-      const fc = c[2];
-      const fecha = fc ? parseGvizDate(fc.v, fc.f) : null;
-      const mk = monthKeyOf(fecha);
-      if(!mk) return;
-      const prod = normProd(c[14] ? c[14].v : '');
-      const lts = c[17] && typeof c[17].v === 'number' ? c[17].v : parseNumLoose(c[17] ? c[17].v : 0);
-      acumular(mk, prod, lts);
+    const t = await fetchGviz(SHEET_CONSUMO_INTERNO, GID_CONSUMO_INTERNO);
+    const cols = t.cols || [];
+    const iSector = cols.findIndex(c => /sector/i.test(c.label||''));
+    const iProducto = cols.findIndex(c => /producto/i.test(c.label||''));
+    const mesesCol = [];
+    cols.forEach((c,i) => {
+      const label = String(c.label||'').trim().toLowerCase();
+      if(MESES_ES[label]) mesesCol.push({idx:i, mes:MESES_ES[label]});
     });
-  } catch(e) { console.error('Error cargando RESERO (consumo interno):', e); }
 
-  // BASE CR — sheet propio (SHEET_BASECR)
-  // Col A = Fecha (0), Col F = Producto (5), Col E = Litros (4)
-  try {
-    const t = await fetchGviz(SHEET_BASECR, '0');
     (t.rows||[]).forEach(row => {
       const c = row.c || [];
-      const fc = c[0];
-      const fecha = fc ? parseGvizDate(fc.v, fc.f) : null;
-      const mk = monthKeyOf(fecha);
-      if(!mk) return;
-      const prod = normProd(c[5] ? c[5].v : '');
-      const lts = c[4] && typeof c[4].v === 'number' ? c[4].v : parseNumLoose(c[4] ? c[4].v : 0);
-      acumular(mk, prod, lts);
+      const sector = String((iSector>=0 && c[iSector]) ? (c[iSector].v||'') : '').trim().toUpperCase();
+      if(!sector) return;
+      const prod = normProd(iProducto>=0 && c[iProducto] ? c[iProducto].v : '');
+      const domKey = sector==='AG' ? 'dom3' : sector==='TP' ? 'dom4' : 'dom1';
+      mesesCol.forEach(({idx,mes}) => {
+        const cell = c[idx];
+        if(!cell || cell.v===null || cell.v===undefined || cell.v==='') return;
+        const lts = typeof cell.v === 'number' ? cell.v : parseNumLoose(cell.v);
+        if(!lts) return;
+        const mk = ANIO + '-' + String(mes).padStart(2,'0');
+        acumular(mk, domKey, prod, lts);
+      });
     });
-  } catch(e) { console.error('Error cargando BASE CR (consumo interno):', e); }
+  } catch(e) { console.error('Error cargando Consumo Interno:', e); }
 
   return interno;
 }
@@ -286,7 +270,7 @@ function mesLabel(mk) {
 // ═══════════════════════════════════════════════════════
 // ESTADO GLOBAL
 // ═══════════════════════════════════════════════════════
-let _datos = null; // { meses: Set, factura: {mesKey: {dom1:{prod:lts}, dom3:{}, dom4:{}}}, interno: {mesKey: {sector:lts}} }
+let _datos = null; // { meses: Set, factura: {mesKey: {dom1:{prod:lts}, dom3:{}, dom4:{}}}, interno: {mesKey: {dom1:{prod:lts}, dom3:{}, dom4:{}}} }
 
 // ═══════════════════════════════════════════════════════
 // CARGAR DATOS
@@ -296,7 +280,7 @@ async function cargar() {
   document.getElementById('contenido').style.display = 'none';
 
   try {
-    // Fetch facturación + consumo interno (Resero / Base CR) en paralelo
+    // Fetch facturación + consumo interno (solapa Consumo Interno) en paralelo
     const [rowsFact, interno] = await Promise.all([
       fetchFacturacion(),
       fetchInterno()
@@ -358,82 +342,69 @@ function renderDatos() {
   if(!mk || !_datos) return;
 
   const fact = (_datos.factura[mk]||{dom1:{},dom3:{},dom4:{}});
-  const interno = (_datos.interno[mk]||{}); // Resero + Base CR del mes — solo aplica a dom1
+  const interno = (_datos.interno[mk]||{dom1:{},dom3:{},dom4:{}}); // Consumo Interno del mes, por domicilio
 
-  // Domicilio 1 = Facturado (Estación CD + Planta CD + Remota VH) + Cons. Interno (Resero + Base CR)
-  // Domicilio 3 y 4 no tienen consumo interno, solo facturado
+  // Cada domicilio = Facturado + Cons. Interno (AG → Dom 3, TP → Dom 4, resto → Dom 1)
 
   const PRODS = ['EURO DIESEL','GASOIL','NAFTA SUPER','NAFTA INFINIA','KEROSENE'];
 
-  function buildTblDom(domKey, conInterno) {
+  function buildTblDom(domKey) {
+    const internoDom = interno[domKey] || {};
     const prodSet = new Set();
     Object.keys(fact[domKey]||{}).forEach(p => prodSet.add(p));
-    if(conInterno) Object.keys(interno).forEach(p => prodSet.add(p));
+    Object.keys(internoDom).forEach(p => prodSet.add(p));
     const prods = PRODS.filter(p => prodSet.has(p));
     if(!prods.length) return '<div class="empty">Sin datos para este período</div>';
 
-    const cols = conInterno
-      ? `<th>Facturado (lts)</th><th>Cons. Interno (lts)</th><th>Total (lts)</th>`
-      : `<th>Facturado (lts)</th>`;
     let html = `<table class="tbl"><thead>
       <tr>
         <th style="text-align:left">Producto</th>
-        ${cols}
+        <th>Facturado (lts)</th><th>Consumo (lts)</th><th>RES 1104 (m³)</th>
       </tr></thead><tbody>`;
 
     let totFact=0, totInt=0;
     prods.forEach(prod => {
       const f = fact[domKey]?.[prod] || 0;
-      totFact+=f;
+      const i = internoDom[prod] || 0;
+      totFact+=f; totInt+=i;
       const badge = prod==='EURO DIESEL'
         ? `<span class="badge-euro">Euro Diesel</span>`
         : prod==='GASOIL'
         ? `<span class="badge-gasoil">Gasoil</span>`
         : prod;
-      if(conInterno) {
-        const i = interno[prod] || 0;
-        totInt+=i;
-        html += `<tr>
-          <td class="prod">${badge}</td>
-          <td>${fmtN(f)}</td>
-          <td>${fmtN(i)}</td>
-          <td class="val-total">${fmtN(f+i)}</td>
-        </tr>`;
-      } else {
-        html += `<tr>
-          <td class="prod">${badge}</td>
-          <td>${fmtN(f)}</td>
-        </tr>`;
-      }
+      html += `<tr>
+        <td class="prod">${badge}</td>
+        <td>${fmtN(f)}</td>
+        <td>${fmtN(i)}</td>
+        <td class="val-total">${fmtN((f+i)/1000)}</td>
+      </tr>`;
     });
-    html += conInterno
-      ? `</tbody><tfoot><tr>
-          <td>TOTAL</td>
-          <td>${fmtN(totFact)}</td>
-          <td>${fmtN(totInt)}</td>
-          <td class="val-total">${fmtN(totFact+totInt)}</td>
-        </tr></tfoot></table>`
-      : `</tbody><tfoot><tr>
-          <td>TOTAL</td>
-          <td class="val-total">${fmtN(totFact)}</td>
-        </tr></tfoot></table>`;
+    const totLts = totFact+totInt;
+    const m3 = totLts/1000;
+    html += `</tbody><tfoot><tr>
+        <td>TOTAL</td>
+        <td>${fmtN(totFact)}</td>
+        <td>${fmtN(totInt)}</td>
+        <td class="val-total">${fmtN(m3)}</td>
+      </tr>
+      </tfoot></table>`;
     return html;
   }
 
-  document.getElementById('tbl-dom1').innerHTML = buildTblDom('dom1', true);
-  document.getElementById('tbl-dom3').innerHTML = buildTblDom('dom3', false);
-  document.getElementById('tbl-dom4').innerHTML = buildTblDom('dom4', false);
+  document.getElementById('tbl-dom1').innerHTML = buildTblDom('dom1');
+  document.getElementById('tbl-dom3').innerHTML = buildTblDom('dom3');
+  document.getElementById('tbl-dom4').innerHTML = buildTblDom('dom4');
 
   // Total general
-  function sumDom(domKey, conInterno) {
+  function sumDom(domKey) {
     const f = Object.values(fact[domKey]||{}).reduce((s,v)=>s+v,0);
-    const i = conInterno ? Object.values(interno).reduce((s,v)=>s+v,0) : 0;
+    const i = Object.values(interno[domKey]||{}).reduce((s,v)=>s+v,0);
     return {f, i, t:f+i};
   }
 
-  const d1 = sumDom('dom1', true);
-  const d3 = sumDom('dom3', false);
-  const d4 = sumDom('dom4', false);
+  const d1 = sumDom('dom1');
+  const d3 = sumDom('dom3');
+  const d4 = sumDom('dom4');
   const totT = d1.t+d3.t+d4.t;
 
   document.getElementById('tbl-total').innerHTML = `<table class="tbl"><thead>
@@ -456,12 +427,12 @@ function renderDatos() {
     <div class="kpi-card dom3">
       <div class="kpi-label">Domicilio 3 — AG</div>
       <div class="kpi-val">${fmtN(d3.t)}</div>
-      <div class="kpi-sub">lts facturados</div>
+      <div class="kpi-sub">lts · fact. ${fmtN(d3.f)} + interno ${fmtN(d3.i)}</div>
     </div>
     <div class="kpi-card dom4">
       <div class="kpi-label">Domicilio 4 — TP</div>
       <div class="kpi-val">${fmtN(d4.t)}</div>
-      <div class="kpi-sub">lts facturados</div>
+      <div class="kpi-sub">lts · fact. ${fmtN(d4.f)} + interno ${fmtN(d4.i)}</div>
     </div>
     <div class="kpi-card total">
       <div class="kpi-label">Total General</div>
