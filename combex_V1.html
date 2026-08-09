@@ -74,8 +74,6 @@
   .badge-euro { background: #e0f0ff; color: #1a5a8a; border-radius: 4px; padding: 2px 7px; font-size: 10px; font-weight: 700; display: inline-block; }
   .badge-gasoil { background: #fff3cd; color: #7a5200; border-radius: 4px; padding: 2px 7px; font-size: 10px; font-weight: 700; display: inline-block; }
   .val-total { color: var(--orange); font-weight: 700; }
-  .row-res1104 td { background: #fff3e0; border-top: 2px dashed var(--orange); font-style: italic; }
-  .row-res1104 td:first-child { color: var(--orange); font-weight: 700; font-style: normal; text-transform: uppercase; font-size: 11px; letter-spacing: .04em; }
 
   /* ── Loading ── */
   .loading { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; padding: 40px 0; justify-content: center; }
@@ -361,7 +359,7 @@ function renderDatos() {
     let html = `<table class="tbl"><thead>
       <tr>
         <th style="text-align:left">Producto</th>
-        <th>Facturado (lts)</th><th>Cons. Interno (lts)</th><th>Total (lts)</th>
+        <th>Facturado (lts)</th><th>Consumo (lts)</th><th>RES 1104 (m³)</th>
       </tr></thead><tbody>`;
 
     let totFact=0, totInt=0;
@@ -378,7 +376,7 @@ function renderDatos() {
         <td class="prod">${badge}</td>
         <td>${fmtN(f)}</td>
         <td>${fmtN(i)}</td>
-        <td class="val-total">${fmtN(f+i)}</td>
+        <td class="val-total">${fmtN((f+i)/1000)}</td>
       </tr>`;
     });
     const totLts = totFact+totInt;
@@ -387,10 +385,6 @@ function renderDatos() {
         <td>TOTAL</td>
         <td>${fmtN(totFact)}</td>
         <td>${fmtN(totInt)}</td>
-        <td class="val-total">${fmtN(totLts)}</td>
-      </tr>
-      <tr class="row-res1104">
-        <td colspan="3">RES 1104 — Declarar (m³)</td>
         <td class="val-total">${fmtN(m3)}</td>
       </tr>
       </tfoot></table>`;
