@@ -359,7 +359,7 @@ function renderDatos() {
     let html = `<table class="tbl"><thead>
       <tr>
         <th style="text-align:left">Producto</th>
-        <th>Facturado (lts)</th><th>Consumo (lts)</th><th>RES 1104 (m³)</th>
+        <th>Facturado (lts)</th><th>Consumo (lts)</th><th>Total (lts)</th><th>RES 1104 (m³)</th>
       </tr></thead><tbody>`;
 
     let totFact=0, totInt=0;
@@ -376,7 +376,8 @@ function renderDatos() {
         <td class="prod">${badge}</td>
         <td>${fmtN(f)}</td>
         <td>${fmtN(i)}</td>
-        <td class="val-total">${fmtN((f+i)/1000)}</td>
+        <td class="val-total">${fmtN(f+i)}</td>
+        <td>${fmtN((f+i)/1000)}</td>
       </tr>`;
     });
     const totLts = totFact+totInt;
@@ -385,7 +386,8 @@ function renderDatos() {
         <td>TOTAL</td>
         <td>${fmtN(totFact)}</td>
         <td>${fmtN(totInt)}</td>
-        <td class="val-total">${fmtN(m3)}</td>
+        <td class="val-total">${fmtN(totLts)}</td>
+        <td>${fmtN(m3)}</td>
       </tr>
       </tfoot></table>`;
     return html;
