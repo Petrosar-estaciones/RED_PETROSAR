@@ -396,7 +396,7 @@
 // FUENTES — índices fijos por columna
 // ═══════════════════════════════════
 const SHEET_EST = '1418oEjkm9IVg6RsBIrygD42G2SaDa0yx0DmJtpZxBWE';
-const EESS_INTERNOS = [1009, 836, 742, 794]; // internos EESS CD
+const EESS_INTERNOS = [1009, 836, 742, 794, 1131]; // internos EESS CD
 
 // Producto normalizado
 function normProd(s) {
@@ -430,7 +430,7 @@ const FUENTES = {
   DEBOCD: { nombre:'EESS CD', id:SHEET_EST, ref:'1093517494',
     iFecha:1, iLitros:5, iProducto:4, iPatente:-1, iInterno:7,
     filtroCliente:false, filtroClienteCol:2, filtroClienteVal:'03007',
-    filtroInternos:[1009,836,742,794],
+    filtroInternos:[1009,836,742,794,1131],
     headerRows:0, punto:'EESS CD' },
 
   // RESERO: gid=1798585939
@@ -460,7 +460,7 @@ const FUENTES = {
   BASECR: { nombre:'BASE CR', id:'1A_0pcSuycTcTBcf8bAHXopHk_FrLSgcdbDSFbvZnLuQ', ref:'0',
     iFecha:0, iLitros:4, iProducto:5, iPatente:2, iInterno:1,
     filtroCliente:false, headerRows:0, punto:'BASE CR',
-    excluirInternos:[836,742,794] },
+    excluirInternos:[836,742,794,1131] },
 
   // PLANTA: gid=1688777748, B=Fecha(1) G=Receptor(6) L+M+N=litros
   // Filtro: col G contiene "INT 742", "INT 794" o "INT 836"
