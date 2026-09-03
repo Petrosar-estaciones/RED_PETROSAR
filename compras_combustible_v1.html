@@ -257,6 +257,7 @@
     <div class="panel" id="panel-stock">
       <div class="panel-head">
         <h2><span class="step-chip">7</span>Stock por Punto</h2>
+        <select id="stock-mes-select" onchange="renderStockMes(this.value)" style="display:none;font-family:var(--mono);font-size:12px;padding:5px 10px;border:1px solid var(--line-strong);border-radius:6px;background:#fff;color:var(--ink)"></select>
         <button class="btn btn-dark" id="btn-actualizar-stock" onclick="cargarStock()" style="font-size:11px;padding:5px 14px">↻ Actualizar</button>
         <button class="btn btn-dark" onclick="exportarStock()" style="font-size:11px;padding:5px 14px;background:var(--green)">⬇ Exportar Excel</button>
       </div>
@@ -912,7 +913,7 @@
   // ═══════════════════════════════════
   // STOCK POR PUNTO
   // ═══════════════════════════════════
-  const STOCK_SHEET_ID = '1tFcjTJiM4GKXvvZx0zsucqEusiaec0QEAlzm_g1wXPM';
+  const STOCK_SHEET_ID = '1xzhaTAgZ_p_DugIczgZCMFyguItpFK-VU1LDVGlAylw';
   const STOCK_GID = '1278419684';
   const PRECIOS_SHEET_ID = '1MUMqZlrP5-oce4oqHMEL6VvcFdGaLL3MzUDqYX8KevY';
   const PRECIOS_GID = '1112510098';
@@ -1043,13 +1044,41 @@
         mesesMap[f.mesKey].filas.push(f);
       });
       const mesesOrden = Object.keys(mesesMap).sort();
-      // Solo el último mes con datos
       const ultimoMes = mesesOrden[mesesOrden.length - 1];
-      const mesesMostrar = ultimoMes ? [ultimoMes] : [];
+
+      // Guardar para uso del selector
+      window._stockMesesMap = mesesMap;
+      window._stockPrecios = precios;
+
+      // Poblar el <select> de meses (más reciente primero)
+      const sel = document.getElementById('stock-mes-select');
+      sel.innerHTML = mesesOrden.slice().reverse().map(mk =>
+        `<option value="${mk}">${mesesMap[mk].filas[0]?.mesLabel || mk}</option>`
+      ).join('');
+      sel.value = ultimoMes;
+      sel.style.display = mesesOrden.length > 1 ? '' : 'none';
+
+      document.getElementById('stock-loading').style.display = 'none';
+      document.getElementById('stock-contenido').style.display = '';
+
+      if (ultimoMes) renderStockMes(ultimoMes);
+
+    } catch(e) {
+      console.error('Stock error:', e);
+      document.getElementById('stock-loading').textContent = 'Error cargando stock: ' + e.message;
+    }
+  }
+
+  function renderStockMes(mk) {
+    const mesesMap = window._stockMesesMap;
+    const precios = window._stockPrecios;
+    if (!mesesMap || !mesesMap[mk]) return;
+
+    document.getElementById('stock-mes-select').value = mk;
 
       // ── Render tabla: filas=sectores, columnas=productos ──
       let html = '';
-      mesesMostrar.forEach(mk => {
+      {
         const mes = mesesMap[mk];
         const filaEuro   = mes.filas.find(f => f.esEuro)   || null;
         const filaGasoil = mes.filas.find(f => f.esGasoil) || null;
@@ -1133,14 +1162,10 @@
           <td>${fmtLts(totLtsG)}</td><td>${fmtPesos(rr(totNetoG))}</td><td>${fmtPesos(rr(totImpG))}</td><td>${fmtPesos(rr(totCO2G))}</td>
           <td class="stock-val-total">${fmtPesos(rr(totVal))}</td>
         </tr></tfoot></table></div>`;
-      });
 
-      // Guardar datos para export
-      if(mesesMostrar.length) {
-        const mk = mesesMostrar[0];
-        const mes = mesesMap[mk];
-        const filaEuroExp   = mes.filas.find(f => f.esEuro)   || null;
-        const filaGasoilExp = mes.filas.find(f => f.esGasoil) || null;
+        // Guardar datos para export
+        const filaEuroExp   = filaEuro;
+        const filaGasoilExp = filaGasoil;
         window._lastStockData = {
           mesLabel: mes.filas[0]?.mesLabel || mk,
           precios: precios[mk] || {},
@@ -1153,13 +1178,6 @@
       }
 
       document.getElementById('stock-contenido').innerHTML = html;
-      document.getElementById('stock-loading').style.display = 'none';
-      document.getElementById('stock-contenido').style.display = '';
-
-    } catch(e) {
-      console.error('Stock error:', e);
-      document.getElementById('stock-loading').textContent = 'Error cargando stock: ' + e.message;
-    }
   }
 
 
