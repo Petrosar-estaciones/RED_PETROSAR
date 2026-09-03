@@ -987,6 +987,8 @@
           impGasoil:parseGvizNum(row.c[4]),
           co2Euro:  parseGvizNum(row.c[5]),
           co2Gasoil:parseGvizNum(row.c[6]),
+          valorEuro:   parseGvizNum(row.c[9]),  // Columna J — precio computable Euro Diesel ($/L)
+          valorGasoil: parseGvizNum(row.c[10]), // Columna K — precio computable Gasoil ($/L)
         };
       });
       console.log('Precios keys:', Object.keys(precios));
@@ -1084,15 +1086,15 @@
         const filaGasoil = mes.filas.find(f => f.esGasoil) || null;
         const p = precios[mk] || {};
 
-        // Precios por componente
-        const netoEuro    = p.euro     || 0;
-        const impEuro     = p.impEuro  || 0;
-        const co2Euro     = p.co2Euro  || 0;
+        // Neto ahora sale de columnas J/K (costo sobre empleados); Imp.Int y CO2 se mantienen igual
+        const netoEuro    = p.valorEuro   || 0;
+        const impEuro     = p.impEuro     || 0;
+        const co2Euro     = p.co2Euro     || 0;
         const totalEuro   = netoEuro + impEuro + co2Euro;
 
-        const netoGasoil  = p.gasoil    || 0;
-        const impGasoil   = p.impGasoil || 0;
-        const co2Gasoil   = p.co2Gasoil || 0;
+        const netoGasoil  = p.valorGasoil || 0;
+        const impGasoil   = p.impGasoil   || 0;
+        const co2Gasoil   = p.co2Gasoil   || 0;
         const totalGasoil = netoGasoil + impGasoil + co2Gasoil;
 
         html += `<div style="margin-bottom:8px;font-size:12px;color:var(--ink-soft)">
@@ -1123,44 +1125,43 @@
           </thead><tbody>`;
 
         let totLtsE=0,totLtsG=0,totNetoE=0,totImpE=0,totCO2E=0,totNetoG=0,totImpG=0,totCO2G=0;
+        const r = v => Math.round(v*100)/100;
 
         PUNTOS.forEach((punto, i) => {
           const ltsE = filaEuro   ? (filaEuro.lts[i]   || 0) : 0;
           const ltsG = filaGasoil ? (filaGasoil.lts[i] || 0) : 0;
 
-          // Calcular sin redondear — solo redondear al mostrar
-          const netoE = ltsE * netoEuro;
-          const impE  = ltsE * impEuro;
-          const co2E  = ltsE * co2Euro;
-          const netoG = ltsG * netoGasoil;
-          const impG  = ltsG * impGasoil;
-          const co2G  = ltsG * co2Gasoil;
-          const valT  = netoE+impE+co2E+netoG+impG+co2G;
+          // Cada multiplicación redondeada a 2 dígitos
+          const netoE = r(ltsE * netoEuro);
+          const impE  = r(ltsE * impEuro);
+          const co2E  = r(ltsE * co2Euro);
+          const netoG = r(ltsG * netoGasoil);
+          const impG  = r(ltsG * impGasoil);
+          const co2G  = r(ltsG * co2Gasoil);
+          const valT  = r(netoE+impE+co2E+netoG+impG+co2G);
 
           totLtsE+=ltsE; totLtsG+=ltsG;
           totNetoE+=netoE; totImpE+=impE; totCO2E+=co2E;
           totNetoG+=netoG; totImpG+=impG; totCO2G+=co2G;
 
-          const r = v => Math.round(v*100)/100;
-          const d = (v) => v ? fmtPesos(r(v)) : '—';
+          const d = (v) => v ? fmtPesos(v) : '—';
           const l = (v) => v ? fmtLts(v) : '—';
 
           html += `<tr>
             <td style="text-align:left;font-weight:600">${punto}</td>
             <td>${l(ltsE)}</td><td>${d(netoE)}</td><td>${d(impE)}</td><td>${d(co2E)}</td>
             <td>${l(ltsG)}</td><td>${d(netoG)}</td><td>${d(impG)}</td><td>${d(co2G)}</td>
-            <td class="stock-val-total">${(ltsE||ltsG) ? fmtPesos(r(valT)) : '—'}</td>
+            <td class="stock-val-total">${(ltsE||ltsG) ? fmtPesos(valT) : '—'}</td>
           </tr>`;
         });
 
-        const rr = v => Math.round(v*100)/100;
-        const totVal = totNetoE+totImpE+totCO2E+totNetoG+totImpG+totCO2G;
+        const totVal = r(totNetoE+totImpE+totCO2E+totNetoG+totImpG+totCO2G);
 
         html += `</tbody><tfoot><tr>
           <td style="text-align:left">TOTAL</td>
-          <td>${fmtLts(totLtsE)}</td><td>${fmtPesos(rr(totNetoE))}</td><td>${fmtPesos(rr(totImpE))}</td><td>${fmtPesos(rr(totCO2E))}</td>
-          <td>${fmtLts(totLtsG)}</td><td>${fmtPesos(rr(totNetoG))}</td><td>${fmtPesos(rr(totImpG))}</td><td>${fmtPesos(rr(totCO2G))}</td>
-          <td class="stock-val-total">${fmtPesos(rr(totVal))}</td>
+          <td>${fmtLts(totLtsE)}</td><td>${fmtPesos(r(totNetoE))}</td><td>${fmtPesos(r(totImpE))}</td><td>${fmtPesos(r(totCO2E))}</td>
+          <td>${fmtLts(totLtsG)}</td><td>${fmtPesos(r(totNetoG))}</td><td>${fmtPesos(r(totImpG))}</td><td>${fmtPesos(r(totCO2G))}</td>
+          <td class="stock-val-total">${fmtPesos(totVal)}</td>
         </tr></tfoot></table></div>`;
 
         // Guardar datos para export
@@ -1187,13 +1188,13 @@
     if(!window._lastStockData){ alert('Primero cargá el stock.'); return; }
     const { mesLabel, puntos, precios: p } = window._lastStockData;
 
-    const netoEuro=p.euro||0, impEuro=p.impEuro||0, co2Euro=p.co2Euro||0;
-    const netoGasoil=p.gasoil||0, impGasoil=p.impGasoil||0, co2Gasoil=p.co2Gasoil||0;
+    const netoEuro=p.valorEuro||0, impEuro=p.impEuro||0, co2Euro=p.co2Euro||0;
+    const netoGasoil=p.valorGasoil||0, impGasoil=p.impGasoil||0, co2Gasoil=p.co2Gasoil||0;
+    const r = v => Math.round(v*100)/100;
 
     const wb = XLSX.utils.book_new();
     const font = { name: 'Calibri', sz: 9 };
     const numFmt = '#,##0.00';
-    const numFmtLts = '#,##0.00';
 
     // Headers
     const headers = [
@@ -1202,26 +1203,26 @@
     ];
 
     const rows = puntos.map(({punto, ltsE, ltsG}) => {
-      const netoE = ltsE * netoEuro;
-      const impE  = ltsE * impEuro;
-      const co2E  = ltsE * co2Euro;
-      const netoG = ltsG * netoGasoil;
-      const impG  = ltsG * impGasoil;
-      const co2G  = ltsG * co2Gasoil;
-      const valT  = netoE+impE+co2E+netoG+impG+co2G;
+      const netoE = r(ltsE * netoEuro);
+      const impE  = r(ltsE * impEuro);
+      const co2E  = r(ltsE * co2Euro);
+      const netoG = r(ltsG * netoGasoil);
+      const impG  = r(ltsG * impGasoil);
+      const co2G  = r(ltsG * co2Gasoil);
+      const valT  = r(netoE+impE+co2E+netoG+impG+co2G);
       return [punto, ltsE||0, netoE, impE, co2E, ltsG||0, netoG, impG, co2G, valT];
     });
 
     // Total row
     const tot = puntos.reduce((acc, {ltsE, ltsG}) => {
       acc.ltsE+=ltsE; acc.ltsG+=ltsG;
-      acc.netoE+=ltsE*netoEuro; acc.impE+=ltsE*impEuro; acc.co2E+=ltsE*co2Euro;
-      acc.netoG+=ltsG*netoGasoil; acc.impG+=ltsG*impGasoil; acc.co2G+=ltsG*co2Gasoil;
+      acc.netoE+=r(ltsE*netoEuro); acc.impE+=r(ltsE*impEuro); acc.co2E+=r(ltsE*co2Euro);
+      acc.netoG+=r(ltsG*netoGasoil); acc.impG+=r(ltsG*impGasoil); acc.co2G+=r(ltsG*co2Gasoil);
       return acc;
     }, {ltsE:0,ltsG:0,netoE:0,impE:0,co2E:0,netoG:0,impG:0,co2G:0});
-    rows.push(['TOTAL', tot.ltsE, tot.netoE, tot.impE, tot.co2E,
-                        tot.ltsG, tot.netoG, tot.impG, tot.co2G,
-                        tot.netoE+tot.impE+tot.co2E+tot.netoG+tot.impG+tot.co2G]);
+    rows.push(['TOTAL', tot.ltsE, r(tot.netoE), r(tot.impE), r(tot.co2E),
+                        tot.ltsG, r(tot.netoG), r(tot.impG), r(tot.co2G),
+                        r(tot.netoE+tot.impE+tot.co2E+tot.netoG+tot.impG+tot.co2G)]);
 
     const ws = XLSX.utils.aoa_to_sheet([...headers, ...rows]);
 
@@ -1255,3 +1256,5 @@
   }
 
 </script>
+</body>
+</html>
