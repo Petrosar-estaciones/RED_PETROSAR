@@ -307,10 +307,37 @@ async function gasPost(payload){
   await fetch(GAS_URL_PLANTA,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify(payload)});
 }
 
-async function fetchPlantaGranel(stockInicial){
+// Compara la fecha de una fila (Date o string "YYYY-MM-DD"/"DD/MM/YYYY") contra un
+// "desde" ("YYYY-MM-DD"). Sin "desde", o sin fecha parseable en la fila, no filtra
+// (mismo criterio que el backend de Estaciones, para consistencia).
+function _parseFechaLocal(val){
+  if(!val) return null;
+  if(val instanceof Date) return val;
+  const s=String(val).trim();
+  let m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return new Date(+m[1],+m[2]-1,+m[3]);
+  m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if(m) return new Date(+m[3],+m[2]-1,+m[1]);
+  return null;
+}
+function _pasaDesdeLocal(fechaRaw,desdeStr){
+  if(!desdeStr) return true;
+  const f=_parseFechaLocal(fechaRaw), d=_parseFechaLocal(desdeStr);
+  if(!f||isNaN(f)||!d||isNaN(d)) return true;
+  return f.getTime()>=d.getTime();
+}
+
+async function fetchPlantaGranel(stockInicial, fechaCorte){
   const res=await fetch(GAS_URL_PLANTA+"?action=getAll&nocache="+Date.now());
   if(!res.ok) throw new Error("HTTP "+res.status);
-  const rows=await res.json();
+  let rows=await res.json();
+
+  // Si hay fecha de corte para Planta Granel, ignoramos todo movimiento anterior:
+  // el stockInicial ya representa el litraje real medido en esa fecha, así que
+  // solo sumamos/restamos lo que pasó desde ahí en adelante.
+  if(fechaCorte){
+    rows=rows.filter(row=>row&&row[0]&&_pasaDesdeLocal(row[1],fechaCorte));
+  }
 
   const initTk1=(stockInicial?.PLANTAGRANEL?.tk1)||0;
   const initTk2=(stockInicial?.PLANTAGRANEL?.tk2)||0;
@@ -849,7 +876,7 @@ function App(){
     if(!silencioso) showToast("Actualizando...","ok",1500);
     // Planta
     setPlantaLoading(true);
-    fetchPlantaGranel(si)
+    fetchPlantaGranel(si, fechaCorte.PLANTAGRANEL)
       .then(d=>{ setPlantaData(d); setIngresos(prev=>[...prev.filter(i=>!i.auto),...(d.ingresosAuto||[])]); })
       .catch(()=>{}).finally(()=>setPlantaLoading(false));
     // Base CR
@@ -1073,7 +1100,7 @@ function App(){
   // Sincronizar Planta Granel manualmente
   const handleSyncPlanta=()=>{
     setPlantaLoading(true);
-    fetchPlantaGranel(stockInicial)
+    fetchPlantaGranel(stockInicial, fechaCorte.PLANTAGRANEL)
       .then(d=>{
         setPlantaData(d);
         setIngresos(prev=>[
@@ -1731,7 +1758,7 @@ function App(){
                     <span style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2,color:"#1e293b"}}>{cfg.nombre}</span>
                     <span style={{background:`${cfg.color}18`,color:cfg.color,fontSize:9,padding:"2px 7px",borderRadius:3,fontFamily:"'DM Mono'",marginLeft:4}}>{cfg.sistema}</span>
                   </div>
-                  {EST_SHEET_ID[estId]&&(
+                  {(EST_SHEET_ID[estId]||estId==="PLANTAGRANEL")&&(
                     <div style={{padding:"12px 20px",borderBottom:"1px solid #f1f5f9",background:"#fffbeb"}}>
                       <label style={{fontFamily:"'DM Mono'",fontSize:10,color:"#92400e",letterSpacing:1.5,textTransform:"uppercase",display:"block",marginBottom:6}}>Fecha de corte (despachos se cuentan desde acá)</label>
                       <input
@@ -1760,24 +1787,23 @@ function App(){
                             <span style={{fontFamily:"'DM Mono'",fontSize:11,color:c}}>{pct.toFixed(0)}%</span>
                           </div>
                           <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                            {estId==="PLANTAGRANEL"?(
-                              <div style={{flex:1,background:"#f8fafc",border:`1px solid ${cfg.color}22`,borderRadius:6,color:cfg.color,padding:"9px 12px",fontSize:14,fontFamily:"'DM Mono'",fontWeight:500}}>
-                                {fmt(plantaData?.stockVivo?.[tk.id]||val)} L — desde Sheets
-                              </div>
-                            ):(
-                              <input
-                                type="number"
-                                placeholder="0"
-                                value={val||""}
-                                onChange={e=>{
-                                  const v=parseFloat(e.target.value)||0;
-                                  setStockInicial(p=>({...p,[estId]:{...p[estId],[tk.id]:v}}));
-                                }}
-                                style={{flex:1,background:"#f8fafc",border:`1.5px solid ${cfg.color}44`,borderRadius:6,color:"#1e293b",padding:"9px 12px",fontSize:14,fontFamily:"'DM Mono'",fontWeight:500}}
-                              />
-                            )}
+                            <input
+                              type="number"
+                              placeholder="0"
+                              value={val||""}
+                              onChange={e=>{
+                                const v=parseFloat(e.target.value)||0;
+                                setStockInicial(p=>({...p,[estId]:{...p[estId],[tk.id]:v}}));
+                              }}
+                              style={{flex:1,background:"#f8fafc",border:`1.5px solid ${cfg.color}44`,borderRadius:6,color:"#1e293b",padding:"9px 12px",fontSize:14,fontFamily:"'DM Mono'",fontWeight:500}}
+                            />
                             <span style={{fontSize:11,color:"#94a3b8",whiteSpace:"nowrap"}}>/ {(tk.cap/1000).toFixed(0)}k L</span>
                           </div>
+                          {estId==="PLANTAGRANEL"&&!fechaCorte.PLANTAGRANEL&&(
+                            <div style={{marginTop:6,fontSize:10,color:"#94a3b8",fontFamily:"'DM Mono'"}}>
+                              Sin fecha de corte configurada arriba, este número se suma al histórico completo de movimientos — para que sea el punto de partida real, primero cargá la fecha de corte. Stock actual calculado: {fmt(plantaData?.stockVivo?.[tk.id]||0)} L.
+                            </div>
+                          )}
                           <div style={{height:4,background:"#f1f5f9",borderRadius:2,marginTop:8}}>
                             <div style={{width:`${pct}%`,height:"100%",background:c,borderRadius:2,transition:"width .4s"}}/>
                           </div>
