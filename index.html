@@ -469,6 +469,11 @@ async function fetchPlantaGranel(stockInicial, fechaCorte){
     .filter(d=>esMesActual(d.fecha));
 
   const despachoExternoMes=despExternosMes.reduce((a,d)=>a+d.litros,0);
+  // Días distintos con movimiento en el mes (para calcular consumo/día sobre días reales
+  // de actividad, no días de calendario — Planta no trabaja sábados/domingos).
+  const _diasSetPlantaMes={};
+  despExternosMes.forEach(d=>{ if(d.fecha) _diasSetPlantaMes[String(d.fecha).slice(0,10)]=true; });
+  const diasConMovimientoMes=Object.keys(_diasSetPlantaMes).length;
 
   // Top clientes externos del mes actual (excluye entregas a puntos propios)
   const mapaClientes={};
@@ -488,6 +493,7 @@ async function fetchPlantaGranel(stockInicial, fechaCorte){
     total:despachos.filter(d=>!["RTO","FAC"].includes(d.ref)).reduce((a,d)=>a+d.litros,0),
     despachoExterno,
     despachoExternoMes,
+    diasConMovimientoMes,
     topClientesPlanta,
     ingresosAuto,
     diagIngresos,
@@ -615,7 +621,7 @@ function TankBar({nombre,stock,cap,color,idx=0,alarma=0,producto=""}){
   return <TankGauge nombre={nombre} stock={stock} cap={cap} color={color} idx={idx} alarma={alarma} producto={producto}/>;
 }
 
-function EstacionCard({est,data,ingresos,stockInicial,onUpload,uploading,idx,plantaData,onSyncPlanta,plantaLoading,alarmas,baseCRData,onSyncBaseCR,baseCRLoading,onSyncEst,estLoading,clientesData,reseroMes,baseCRMes}){
+function EstacionCard({est,data,ingresos,stockInicial,onUpload,uploading,idx,plantaData,onSyncPlanta,plantaLoading,alarmas,baseCRData,onSyncBaseCR,baseCRLoading,onSyncEst,estLoading,clientesData,reseroMes,reseroDias,baseCRMes}){
   const cfg=ESTACIONES_CONFIG[est];
   const fileRef=useRef();
 
@@ -645,9 +651,20 @@ function EstacionCard({est,data,ingresos,stockInicial,onUpload,uploading,idx,pla
     : est==="ESTACIONCD" ? (clientesData?.CD_total||0)
     : (data?.total)||0;
 
-  // Consumo diario del mes actual (días transcurridos en el mes)
+  // Días CON MOVIMIENTO en el mes (no días de calendario — evita que fines de semana
+  // sin actividad inflen el consumo/día y la autonomía calculada)
+  const diasConMovimiento=est==="PLANTAGRANEL" ? plantaData?.diasConMovimientoMes
+    : est==="RESERO" ? reseroDias
+    : est==="ANTICLINAL" ? clientesData?.AG_dias
+    : est==="TRESPICOS" ? clientesData?.TP_dias
+    : est==="VALLE" ? clientesData?.VH_dias
+    : est==="ESTACIONCD" ? clientesData?.CD_dias
+    : null;
+
+  // Consumo diario del mes actual — sobre días reales con despachos si los tenemos;
+  // si no (ej. Base CR, que todavía no reporta esto), caemos a días transcurridos del mes.
   const hoy=new Date();
-  const diasMes=hoy.getDate(); // días transcurridos en el mes actual
+  const diasMes=(diasConMovimiento&&diasConMovimiento>0)?diasConMovimiento:hoy.getDate();
   const consumoDiario=diasMes>0?totalDesp/diasMes:0;
 
   // Días de autonomía
@@ -695,7 +712,7 @@ function EstacionCard({est,data,ingresos,stockInicial,onUpload,uploading,idx,pla
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:1,borderTop:"1px solid #f1f5f9",background:"#f8fafc"}}>
         {[
           ["DESPACHOS",fmt(totalDesp)+" L","mes actual"],
-          ["CONSUMO/DÍA",fmt(consumoDiario)+" L","estimado"],
+          ["CONSUMO/DÍA",fmt(consumoDiario)+" L",diasConMovimiento?`sobre ${diasConMovimiento} días c/mov.`:"estimado"],
           ["AUTONOMÍA",autonomia>90?"90+ d":autonomia+" d","aprox"],
         ].map(([label,val,sub])=>(
           <div key={label} style={{background:"#fff",padding:"10px 14px",textAlign:"center",border:"1px solid #f1f5f9"}}>
@@ -838,15 +855,16 @@ function App(){
     RESERO:{tk1:8400},
     VALLE:{tk1:30400,tk2:7250},
     PLANTAGRANEL:{tk1:26000,tk2:24000,tk3:8100},
-    ESTACIONCD:{tk1:11528,tk2:15041,tk3:14138},
+    ESTACIONCD:{tk1:9600,tk2:6600,tk3:2100},
     BASECR:{tk1:0},
   });
-  const [fechaCorte,setFechaCorte]=useState({TRESPICOS:"2026-09-01"});
+  const [fechaCorte,setFechaCorte]=useState({TRESPICOS:"2026-09-01",ESTACIONCD:"2026-09-01"});
   const [plantaData,setPlantaData]=useState(null);
   const [plantaLoading,setPlantaLoading]=useState(false);
   const [baseCRData,setBaseCRData]=useState(null);
   const [baseCRMes,setBaseCRMes]=useState(0);
   const [reseroMes,setReseroMes]=useState(0);
+  const [reseroDias,setReseroDias]=useState(0);
   const [baseCRLoading,setBaseCRLoading]=useState(false);
   const [estLoading,setEstLoading]=useState({});
   const [uploading,setUploading]=useState({});
@@ -1060,7 +1078,7 @@ function App(){
   useEffect(()=>{
     if(!mesSeleccionado) return;
     fetch(GAS_URL_ESTACIONES+"?action=getDespachos&estacion=RESERO&mes="+mesSeleccionado+"&nocache="+Date.now())
-      .then(r=>r.json()).then(d=>setReseroMes(d.total||0)).catch(()=>{});
+      .then(r=>r.json()).then(d=>{ setReseroMes(d.total||0); setReseroDias(d.dias||0); }).catch(()=>{});
     fetchBaseCRMes(mesSeleccionado).then(v=>setBaseCRMes(v)).catch(()=>{});
   },[mesSeleccionado]);
 
@@ -1360,7 +1378,7 @@ function App(){
             {/* Cards de estaciones */}
             <div className="est-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:16}}>
               {["PLANTAGRANEL","ESTACIONCD","VALLE","TRESPICOS","ANTICLINAL","BASECR","RESERO"].map((estId,i)=>(
-                <EstacionCard key={estId} est={estId} data={estId==="PLANTAGRANEL"?plantaData:dataPorEst[estId]} ingresos={ingresos} stockInicial={stockInicial} onUpload={handleUpload} uploading={uploading[estId]} idx={i} plantaData={plantaData} onSyncPlanta={handleSyncPlanta} plantaLoading={plantaLoading} alarmas={alarmas} baseCRData={baseCRData} onSyncBaseCR={handleSyncBaseCR} baseCRLoading={baseCRLoading} onSyncEst={handleSyncEst} estLoading={estLoading} clientesData={clientesData} reseroMes={reseroMes} baseCRMes={baseCRMes}/>
+                <EstacionCard key={estId} est={estId} data={estId==="PLANTAGRANEL"?plantaData:dataPorEst[estId]} ingresos={ingresos} stockInicial={stockInicial} onUpload={handleUpload} uploading={uploading[estId]} idx={i} plantaData={plantaData} onSyncPlanta={handleSyncPlanta} plantaLoading={plantaLoading} alarmas={alarmas} baseCRData={baseCRData} onSyncBaseCR={handleSyncBaseCR} baseCRLoading={baseCRLoading} onSyncEst={handleSyncEst} estLoading={estLoading} clientesData={clientesData} reseroMes={reseroMes} reseroDias={reseroDias} baseCRMes={baseCRMes}/>
               ))}
             </div>
           </div>
