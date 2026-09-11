@@ -834,14 +834,14 @@ function App(){
   const [alarmas,setAlarmas]=useState({});
   const [stockInicial,setStockInicial]=useState({
     ANTICLINAL:{tk1:3933,tk2:14759},
-    TRESPICOS:{tk1:12176,tk2:2537,tk3:10306},
+    TRESPICOS:{tk1:11000,tk2:4800,tk3:2600},
     RESERO:{tk1:8400},
     VALLE:{tk1:30400,tk2:7250},
     PLANTAGRANEL:{tk1:26000,tk2:24000,tk3:8100},
     ESTACIONCD:{tk1:11528,tk2:15041,tk3:14138},
     BASECR:{tk1:0},
   });
-  const [fechaCorte,setFechaCorte]=useState({});
+  const [fechaCorte,setFechaCorte]=useState({TRESPICOS:"2026-09-01"});
   const [plantaData,setPlantaData]=useState(null);
   const [plantaLoading,setPlantaLoading]=useState(false);
   const [baseCRData,setBaseCRData]=useState(null);
