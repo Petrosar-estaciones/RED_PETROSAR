@@ -301,10 +301,22 @@ async function fetchBaseCRMes(mes){
 async function gasGet(action){
   const res=await fetch(GAS_URL_PLANTA+"?action="+action+"&nocache="+Date.now());
   if(!res.ok) throw new Error("HTTP "+res.status);
-  return res.json();
+  const text=await res.text();
+  try{ return JSON.parse(text); }
+  catch(e){ throw new Error("Respuesta no es JSON (¿action='"+action+"' no existe en el backend?): "+text.slice(0,120)); }
 }
 async function gasPost(payload){
-  await fetch(GAS_URL_PLANTA,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify(payload)});
+  const res=await fetch(GAS_URL_PLANTA,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify(payload)});
+  if(!res.ok) throw new Error("HTTP "+res.status);
+  const text=await res.text();
+  try{
+    const data=JSON.parse(text);
+    if(data && data.error) throw new Error(data.error);
+    return data;
+  }catch(e){
+    if(e.message && e.message.startsWith("Unexpected")) throw new Error("Respuesta no es JSON (¿doPost existe en el backend?): "+text.slice(0,120));
+    throw e;
+  }
 }
 
 // Compara la fecha de una fila (Date o string "YYYY-MM-DD"/"DD/MM/YYYY") contra un
@@ -1019,6 +1031,7 @@ function App(){
 
   // Cargar config de estaciones desde Sheets al inicio
   const [configLoaded,setConfigLoaded]=useState(false);
+  const [configStatus,setConfigStatus]=useState({carga:null,guardado:null}); // {ok,msg,hora}
   useEffect(()=>{
     gasGet("getEstConfig")
       .then(cfg=>{
@@ -1027,8 +1040,11 @@ function App(){
         }
         if(cfg && cfg.alarmas) setAlarmas(cfg.alarmas);
         if(cfg && cfg.fechaCorte) setFechaCorte(cfg.fechaCorte);
+        setConfigStatus(p=>({...p,carga:{ok:true,msg:"Config cargada OK",hora:new Date().toLocaleTimeString("es-AR")}}));
       })
-      .catch(()=>{})
+      .catch(err=>{
+        setConfigStatus(p=>({...p,carga:{ok:false,msg:err.message,hora:new Date().toLocaleTimeString("es-AR")}}));
+      })
       .finally(()=>setConfigLoaded(true)); // recién ahora es seguro dejar que el auto-guardado actúe
   },[]);
 
@@ -1056,7 +1072,9 @@ function App(){
     if(!configLoaded) return;
     clearTimeout(saveEstConfigTimer.current);
     saveEstConfigTimer.current=setTimeout(()=>{
-      gasPost({action:"saveEstConfig",stockInicial,alarmas,fechaCorte}).catch(()=>{});
+      gasPost({action:"saveEstConfig",stockInicial,alarmas,fechaCorte})
+        .then(()=>setConfigStatus(p=>({...p,guardado:{ok:true,msg:"Guardado OK",hora:new Date().toLocaleTimeString("es-AR")}})))
+        .catch(err=>setConfigStatus(p=>({...p,guardado:{ok:false,msg:err.message,hora:new Date().toLocaleTimeString("es-AR")}})));
     },1500); // espera 1.5s después del último cambio
   },[stockInicial,alarmas,fechaCorte,configLoaded]);
 
@@ -1751,8 +1769,16 @@ function App(){
         {tab==="config"&&configVisible&&(
           <div>
             <div style={{fontFamily:"'Bebas Neue'",fontSize:22,letterSpacing:2,color:"#1e293b",marginBottom:8}}>Stock Inicial por Estación</div>
-            <div style={{fontSize:12,color:"#64748b",marginBottom:24,fontFamily:"'DM Mono'"}}>
+            <div style={{fontSize:12,color:"#64748b",marginBottom:12,fontFamily:"'DM Mono'"}}>
               Cargá los litros que tiene cada tanque al momento de inicio. La app descuenta los despachos automáticamente.
+            </div>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:20}}>
+              <div style={{fontFamily:"'DM Mono'",fontSize:11,padding:"6px 12px",borderRadius:6,background:configStatus.carga?(configStatus.carga.ok?"#f0fdf4":"#fef2f2"):"#f8fafc",color:configStatus.carga?(configStatus.carga.ok?"#16a34a":"#dc2626"):"#94a3b8",border:`1px solid ${configStatus.carga?(configStatus.carga.ok?"#86efac":"#fca5a5"):"#e2e8f0"}`}}>
+                {configStatus.carga?`${configStatus.carga.ok?"✓":"✗"} Carga (${configStatus.carga.hora}): ${configStatus.carga.msg}`:"Cargando config..."}
+              </div>
+              <div style={{fontFamily:"'DM Mono'",fontSize:11,padding:"6px 12px",borderRadius:6,background:configStatus.guardado?(configStatus.guardado.ok?"#f0fdf4":"#fef2f2"):"#f8fafc",color:configStatus.guardado?(configStatus.guardado.ok?"#16a34a":"#dc2626"):"#94a3b8",border:`1px solid ${configStatus.guardado?(configStatus.guardado.ok?"#86efac":"#fca5a5"):"#e2e8f0"}`}}>
+                {configStatus.guardado?`${configStatus.guardado.ok?"✓":"✗"} Guardado (${configStatus.guardado.hora}): ${configStatus.guardado.msg}`:"Sin guardados todavía"}
+              </div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:16}}>
               {Object.entries(ESTACIONES_CONFIG).map(([estId,cfg])=>(
