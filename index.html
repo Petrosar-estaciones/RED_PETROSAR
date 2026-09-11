@@ -342,14 +342,7 @@ function _pasaDesdeLocal(fechaRaw,desdeStr){
 async function fetchPlantaGranel(stockInicial, fechaCorte){
   const res=await fetch(GAS_URL_PLANTA+"?action=getAll&nocache="+Date.now());
   if(!res.ok) throw new Error("HTTP "+res.status);
-  let rows=await res.json();
-
-  // Si hay fecha de corte para Planta Granel, ignoramos todo movimiento anterior:
-  // el stockInicial ya representa el litraje real medido en esa fecha, así que
-  // solo sumamos/restamos lo que pasó desde ahí en adelante.
-  if(fechaCorte){
-    rows=rows.filter(row=>row&&row[0]&&_pasaDesdeLocal(row[1],fechaCorte));
-  }
+  const rows=await res.json();
 
   const initTk1=(stockInicial?.PLANTAGRANEL?.tk1)||0;
   const initTk2=(stockInicial?.PLANTAGRANEL?.tk2)||0;
@@ -375,10 +368,17 @@ async function fetchPlantaGranel(stockInicial, fechaCorte){
     const destino=String(row[7]||"").toUpperCase();
     const fecha=String(row[1]||"");
 
-    if(esIngreso){ tk1+=v1; tk2+=v2; tk3+=v3; }
-    else {
-      tk1-=v1; tk2-=v2; tk3-=v3;
-      // Detectar a qué estación fue el despacho y acumularlo como ingreso
+    // Stock propio de Planta: solo cuenta movimientos desde SU fecha de corte (si tiene una configurada).
+    if(_pasaDesdeLocal(fecha, fechaCorte?.PLANTAGRANEL)){
+      if(esIngreso){ tk1+=v1; tk2+=v2; tk3+=v3; }
+      else { tk1-=v1; tk2-=v2; tk3-=v3; }
+    }
+
+    if(!esIngreso){
+      // Detectar a qué estación fue el despacho y acumularlo como ingreso — pero
+      // filtrado por la fecha de corte de ESA estación destino (no la de Planta):
+      // si el envío es anterior al corte de esa estación, ya quedó absorbido en el
+      // Stock Inicial que se cargó ahí, y sumarlo de nuevo lo duplicaría.
       if(total>0){
         // row[18] = distribucion JSON {"tk1":5000,"tk2":5000} o vacío
         let distribucion=null;
@@ -386,39 +386,39 @@ async function fetchPlantaGranel(stockInicial, fechaCorte){
         Object.entries(ESTACIONES_CONFIG).forEach(([estId,cfg])=>{
           if(estId==="PLANTAGRANEL") return;
           const match=cfg.destinos.some(d=>destino.trim()===d.toUpperCase().trim());
-          if(match){
-            if(!ingresosAutoEst[estId]) ingresosAutoEst[estId]={};
-            if(!diagIngresos[estId]) diagIngresos[estId]={matches:0,litros:0,inconsistencias:[]};
-            diagIngresos[estId].matches++;
-            diagIngresos[estId].litros+=total;
-            const sumaDist=distribucion?Object.values(distribucion).reduce((a,b)=>a+(parseFloat(b)||0),0):0;
-            let distribucionFinal=null;
-            if(distribucion&&sumaDist>0){
-              if(Math.abs(sumaDist-total)>0.5){
-                // La distribución cargada no coincide con el total real despachado: se reescala
-                // proporcionalmente para conservar el reparto entre tanques, pero ajustada al total real
-                // (verificado contra el tanque de Planta) — no se descarta ni se vuelca todo a un tanque.
-                diagIngresos[estId].inconsistencias.push({fecha,comp:String(row[3]||""),total:Math.round(total*100)/100,sumaDistribucion:Math.round(sumaDist*100)/100});
-                const factor=total/sumaDist;
-                distribucionFinal={};
-                Object.entries(distribucion).forEach(([tkId,lts])=>{ distribucionFinal[tkId]=(parseFloat(lts)||0)*factor; });
-              } else {
-                distribucionFinal=distribucion;
-              }
-            }
-            if(distribucionFinal){
-              // Distribuir por tanque según JSON guardado (ya validado/ajustado contra el total real)
-              Object.entries(distribucionFinal).forEach(([tkId,lts])=>{
-                const tkValido=cfg.tanques.find(t=>t.id===tkId);
-                if(tkValido&&lts>0){
-                  ingresosAutoEst[estId][tkId]=(ingresosAutoEst[estId][tkId]||0)+(parseFloat(lts)||0);
-                }
-              });
+          if(!match) return;
+          if(!_pasaDesdeLocal(fecha, fechaCorte?.[estId])) return; // anterior al corte de esa estación: ya absorbido
+          if(!ingresosAutoEst[estId]) ingresosAutoEst[estId]={};
+          if(!diagIngresos[estId]) diagIngresos[estId]={matches:0,litros:0,inconsistencias:[]};
+          diagIngresos[estId].matches++;
+          diagIngresos[estId].litros+=total;
+          const sumaDist=distribucion?Object.values(distribucion).reduce((a,b)=>a+(parseFloat(b)||0),0):0;
+          let distribucionFinal=null;
+          if(distribucion&&sumaDist>0){
+            if(Math.abs(sumaDist-total)>0.5){
+              // La distribución cargada no coincide con el total real despachado: se reescala
+              // proporcionalmente para conservar el reparto entre tanques, pero ajustada al total real
+              // (verificado contra el tanque de Planta) — no se descarta ni se vuelca todo a un tanque.
+              diagIngresos[estId].inconsistencias.push({fecha,comp:String(row[3]||""),total:Math.round(total*100)/100,sumaDistribucion:Math.round(sumaDist*100)/100});
+              const factor=total/sumaDist;
+              distribucionFinal={};
+              Object.entries(distribucion).forEach(([tkId,lts])=>{ distribucionFinal[tkId]=(parseFloat(lts)||0)*factor; });
             } else {
-              // Sin distribución cargada: todo al primer tanque, usando el total real
-              const tkDest=cfg.tanques[0].id;
-              ingresosAutoEst[estId][tkDest]=(ingresosAutoEst[estId][tkDest]||0)+total;
+              distribucionFinal=distribucion;
             }
+          }
+          if(distribucionFinal){
+            // Distribuir por tanque según JSON guardado (ya validado/ajustado contra el total real)
+            Object.entries(distribucionFinal).forEach(([tkId,lts])=>{
+              const tkValido=cfg.tanques.find(t=>t.id===tkId);
+              if(tkValido&&lts>0){
+                ingresosAutoEst[estId][tkId]=(ingresosAutoEst[estId][tkId]||0)+(parseFloat(lts)||0);
+              }
+            });
+          } else {
+            // Sin distribución cargada: todo al primer tanque, usando el total real
+            const tkDest=cfg.tanques[0].id;
+            ingresosAutoEst[estId][tkDest]=(ingresosAutoEst[estId][tkDest]||0)+total;
           }
         });
       }
@@ -888,7 +888,7 @@ function App(){
     if(!silencioso) showToast("Actualizando...","ok",1500);
     // Planta
     setPlantaLoading(true);
-    fetchPlantaGranel(si, fechaCorte.PLANTAGRANEL)
+    fetchPlantaGranel(si, fechaCorte)
       .then(d=>{ setPlantaData(d); setIngresos(prev=>[...prev.filter(i=>!i.auto),...(d.ingresosAuto||[])]); })
       .catch(()=>{}).finally(()=>setPlantaLoading(false));
     // Base CR
@@ -1123,7 +1123,7 @@ function App(){
   // Sincronizar Planta Granel manualmente
   const handleSyncPlanta=()=>{
     setPlantaLoading(true);
-    fetchPlantaGranel(stockInicial, fechaCorte.PLANTAGRANEL)
+    fetchPlantaGranel(stockInicial, fechaCorte)
       .then(d=>{
         setPlantaData(d);
         setIngresos(prev=>[
