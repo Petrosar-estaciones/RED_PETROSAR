@@ -396,6 +396,10 @@
 // FUENTES — índices fijos por columna
 // ═══════════════════════════════════
 const SHEET_EST = '1418oEjkm9IVg6RsBIrygD42G2SaDa0yx0DmJtpZxBWE';
+// Apps Script de Base CR (el mismo que usa planta_combustible_v2).
+// Se usa SOLO para leer Observaciones: gviz devuelve vacíos los textos de esa columna
+// porque la mayoría de las celdas son números (N° de vale), y así no se ve "Ingreso...".
+const GAS_URL_BASECR = 'https://script.google.com/macros/s/AKfycbxMs9CQYLVS1GhAiU_RViaYksMMSNuUKfo0fzYr1qcwGHslZPdevD_zIqIdm2o2eAl6/exec';
 const EESS_INTERNOS = [1009, 836, 742, 794, 1131]; // internos EESS CD
 
 // Producto normalizado
@@ -587,12 +591,14 @@ function parsarFuente(table,fuente,from,to,filtVeh=null){
     let reasignarEESS=false;
     if(fuente.reglaDesde){
       const intN=+v(row,fuente.iInterno);
-      if(fecha>=fuente.reglaDesde){
+      if(fecha>=fuente.reglaDesde && fuente._ingresos){
         // Desde 01/09/2026: reposiciones fuera, internos de estación → EESS CD
-        if(s(row,fuente.iObs).toUpperCase().includes(fuente.excluirObs)){skipFiltro++;continue;}
+        const obsGviz=s(row,fuente.iObs).toUpperCase().includes(fuente.excluirObs);
+        const obsGAS=fuente._ingresos.has(claveBaseCR(fecha,intN,v(row,fuente.iLitros)));
+        if(obsGviz||obsGAS){skipFiltro++;continue;}
         if(fuente.internosEESS.includes(intN)) reasignarEESS=true;
       } else {
-        // Meses cerrados: lógica anterior sin cambios (excluir internos de estación)
+        // Meses cerrados (o Apps Script sin respuesta): lógica anterior sin cambios
         if(fuente.internosEESS.includes(intN)){skipFiltro++;continue;}
       }
     }
@@ -665,11 +671,50 @@ async function fetchGvizCached(id, ref){
 }
 
 function limpiarCache(){
+  _ingresosBaseCR=null;
   Object.keys(_tableCache).forEach(k=>delete _tableCache[k]);
   cachedDespachos=null; cachedFrom=null; cachedTo=null;
 }
 
+// ── BASE CR: ingresos (reposiciones) leídos desde el Apps Script ──
+// Clave = fecha|interno|litros. Se arma con las filas cuya Observación contiene "INGRESO".
+function claveBaseCR(fecha,interno,litros){
+  let d=fecha;
+  if(!(d instanceof Date)){
+    const m=String(fecha||'').match(/(\d{4})-(\d{2})-(\d{2})/);
+    d=m?new Date(+m[1],+m[2]-1,+m[3]):null;
+  }
+  const ds=d&&!isNaN(d)?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`:'';
+  let l=litros;
+  if(typeof l==='string') l=parseFloat(l.replace(/\./g,'').replace(',','.'));
+  return `${ds}|${+interno||0}|${Math.round((+l||0)*100)}`;
+}
+let _ingresosBaseCR=null; // null = no cargado / falló
+async function cargarIngresosBaseCR(){
+  if(_ingresosBaseCR) return _ingresosBaseCR;
+  try{
+    const r=await fetch(GAS_URL_BASECR+'?action=getAll&nocache='+Date.now());
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const rows=await r.json();
+    const set=new Set();
+    for(const row of rows){
+      if(!row||!row[0]) continue;
+      if(!String(row[6]||'').toUpperCase().includes('INGRESO')) continue;
+      const fRaw=String(row[0]);
+      const fStr=fRaw.includes('T')?fRaw.slice(0,10):fRaw; // igual que planta_combustible_v2
+      set.add(claveBaseCR(fStr,row[1],row[4]));
+    }
+    console.log(`[BASE CR] ingresos detectados vía Apps Script: ${set.size}`);
+    _ingresosBaseCR=set;
+  }catch(e){
+    console.warn('[BASE CR] No se pudo leer el Apps Script — se usa la lógica anterior (excluir internos de estación)',e);
+    _ingresosBaseCR=null;
+  }
+  return _ingresosBaseCR;
+}
+
 async function consultarTodo(from,to,filtVeh=null){
+  FUENTES.BASECR._ingresos=await cargarIngresosBaseCR();
   const keys=Object.keys(FUENTES);
   // Usar cache de tablas para no re-descargar sheets ya consultados
   const results=await Promise.allSettled(
