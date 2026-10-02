@@ -455,12 +455,17 @@ const FUENTES = {
     filtroCliente:false, headerRows:0, punto:'CD',
     filtroProductoExcluir:'EURO + DIESEL VH' },
 
-  // BASE CR: A=Fecha(0) B=Interno(1) C=Patente(2) D=Chofer(3) E=Litros(4) F=Producto(5)
-  // Excluir internos 836/742/794
+  // BASE CR: A=Fecha(0) B=Interno(1) C=Patente(2) D=Chofer(3) E=Litros(4) F=Producto(5) G=Observaciones(6)
+  // Regla con fecha de corte (ver bloque BASE CR en parsarFuente):
+  //  - Antes de reglaDesde (hasta 31/08/2026, meses cerrados): se excluyen internosEESS, como siempre
+  //  - Desde reglaDesde (01/09/2026): se excluyen filas con "INGRESO" en Observaciones (reposiciones)
+  //    y las cargas de internosEESS se reasignan a EESS CD
   BASECR: { nombre:'BASE CR', id:'1A_0pcSuycTcTBcf8bAHXopHk_FrLSgcdbDSFbvZnLuQ', ref:'0',
     iFecha:0, iLitros:4, iProducto:5, iPatente:2, iInterno:1,
     filtroCliente:false, headerRows:0, punto:'BASE CR',
-    excluirInternos:[836,742,794,1131] },
+    iObs:6, excluirObs:'INGRESO',
+    internosEESS:[836,742,794,1131],
+    reglaDesde:new Date(2026,8,1) },
 
   // PLANTA: gid=1688777748, B=Fecha(1) G=Receptor(6) L+M+N=litros
   // Filtro: col G contiene "INT 742", "INT 794" o "INT 836"
@@ -578,6 +583,19 @@ function parsarFuente(table,fuente,from,to,filtVeh=null){
     }
     const fecha=parseFecha(row,fuente.iFecha);
     if(!inRange(fecha,from,to)){skipFecha++;continue;}
+    // BASE CR: regla con fecha de corte
+    let reasignarEESS=false;
+    if(fuente.reglaDesde){
+      const intN=+v(row,fuente.iInterno);
+      if(fecha>=fuente.reglaDesde){
+        // Desde 01/09/2026: reposiciones fuera, internos de estación → EESS CD
+        if(s(row,fuente.iObs).toUpperCase().includes(fuente.excluirObs)){skipFiltro++;continue;}
+        if(fuente.internosEESS.includes(intN)) reasignarEESS=true;
+      } else {
+        // Meses cerrados: lógica anterior sin cambios (excluir internos de estación)
+        if(fuente.internosEESS.includes(intN)){skipFiltro++;continue;}
+      }
+    }
     let litros=0;
     if(fuente.iLitrosMulti){
       litros=fuente.iLitrosMulti.reduce((s,i)=>s+(+v(row,i)||0),0);
@@ -609,6 +627,7 @@ function parsarFuente(table,fuente,from,to,filtVeh=null){
       // VHCD: producto VH → VH, resto → CD
       punto=prodRaw.toUpperCase().includes('VH')?'VH':'CD';
     }
+    if(reasignarEESS) punto='EESS CD';
     // Filtro vehículo
     if(filtVeh){
       const okP=pat&&pat===norm(filtVeh.Dominio);
