@@ -436,8 +436,8 @@
         </div>
       </div>
       <div id="loadingFlotaEdenred" class="loading" style="display:none"><div class="spinner" style="border-top-color:#1565c0"></div>Cargando consumos con Edenred...</div>
-      <div id="resFlotaEdenred"></div>
       <div id="resFlotaEdenredMensual"></div>
+      <div id="resFlotaEdenred"></div>
     </section>
   </div>
 
@@ -3211,8 +3211,8 @@ function renderFlotaEdenred() {
   const chart = `
     <div class="tbl-wrap fade" style="margin-bottom:16px">
       <div class="tbl-hdr" style="background:#e3f2fd;border-bottom:1px solid #90caf9">
-        <span class="tbl-title" style="color:#1565c0">📊 Historial de litros por mes</span>
-        <span class="tbl-count" style="border-color:#90caf9;color:#1565c0">${mesesDisp.length} meses · ${fmtL(granTotLts)} L</span>
+        <span class="tbl-title" style="color:#1565c0">📊 Litros por Mes y Producto</span>
+        <span class="tbl-count" style="border-color:#90caf9;color:#1565c0">${mesesDisp.length} meses · ${fmtL(granTotLts)} L total</span>
       </div>
       <div style="padding:20px 24px;overflow-x:auto">
         <div style="display:flex;gap:10px;align-items:flex-end;min-width:${mesesDisp.length*BAR_W}px">
@@ -3223,7 +3223,50 @@ function renderFlotaEdenred() {
       </div>
     </div>`;
 
-  // Tabla resumen: una fila por mes, una columna por producto (crece hacia abajo)
+  // Tabla resumen por producto x mes
+  const thMeses = mesesDisp.map(m=>`<th style="text-align:right;min-width:90px">${mesLabel(m)}<div style="font-weight:500;font-size:10px;color:#94a3b8;margin-top:1px">lts</div></th>`).join('');
+  const filas = prodsOrden.map(p => {
+    const bg = colProdBg[p]||'#f9f9f9';
+    const col = (colProd[p]||'#666');
+    const totProdLts = mesesDisp.reduce((s,m)=>s+(matrix[p][m]?.litros||0),0);
+    const pctP = granTotLts ? ((totProdLts/granTotLts)*100).toFixed(1)+'%' : '—';
+    const cells = mesesDisp.map(m => {
+      const lts = matrix[p][m]?.litros||0;
+      return `<td style="text-align:right;font-variant-numeric:tabular-nums">${lts===0?'<span style=\'color:#ccc\'>—</span>':fmtL(lts)}</td>`;
+    }).join('');
+    return `<tr>
+      <td><span style="background:${col};color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:4px">${p}</span></td>
+      ${cells}
+      <td style="text-align:right;font-weight:700;color:${col};background:${bg}">${fmtL(totProdLts)}</td>
+      <td style="text-align:right;font-size:11px;color:var(--muted)">${pctP}</td>
+    </tr>`;
+  }).join('');
+  const footCells = mesesDisp.map(m=>`<td style="text-align:right">${fmtL(totMesLts[m]||0)}</td>`).join('');
+
+  const tablaResumen = `<div class="tbl-wrap fade" style="margin-bottom:16px">
+    <div class="tbl-hdr" style="background:#e3f2fd;border-bottom:1px solid #90caf9">
+      <span class="tbl-title" style="color:#1565c0">📅 Resumen por Producto y Mes</span>
+      <span class="tbl-count" style="border-color:#90caf9;color:#1565c0">${mesesDisp.length} meses · ${prodsOrden.length} productos</span>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="dt" style="min-width:500px">
+        <thead><tr>
+          <th style="text-align:left">Producto</th>
+          ${thMeses}
+          <th style="text-align:right;background:#fff3e8;color:var(--orange)">Total lts</th>
+          <th style="text-align:right;color:var(--muted)">%</th>
+        </tr></thead>
+        <tbody>${filas}</tbody>
+        <tfoot><tr>
+          <td style="font-weight:700;text-align:left">TOTAL MES</td>
+          ${footCells}
+          <td style="font-weight:700;text-align:right;color:var(--orange)">${fmtL(granTotLts)}</td>
+          <td style="text-align:right">100%</td>
+        </tr></tfoot>
+      </table>
+    </div>
+  </div>`;
+
   const hoyC = new Date();
   const mesActualKey = hoyC.getFullYear() + '-' + String(hoyC.getMonth()+1).padStart(2,'0');
   const mesLargo = m => {
@@ -3231,57 +3274,11 @@ function renderFlotaEdenred() {
     const l = new Date(y,mo-1,1).toLocaleString('es-AR',{month:'long',year:'numeric'});
     return l.charAt(0).toUpperCase()+l.slice(1);
   };
-  const totMesPesos = {};
-  mesesDisp.forEach(m => { totMesPesos[m] = prodsOrden.reduce((s,p)=>s+(matrix[p][m]?.total||0),0); });
-  const granTotPesos = mesesDisp.reduce((s,m)=>s+totMesPesos[m],0);
-  const thProds = prodsOrden.map(p=>`<th class="num"><span style="color:${colProd[p]||'#666'}">●</span> ${p}</th>`).join('');
-  const filas = [...mesesDisp].reverse().map(m => {
-    const cells = prodsOrden.map(p => {
-      const lts = matrix[p][m]?.litros||0;
-      return `<td class="num">${lts===0?'<span style="color:#ccc">—</span>':fmtL(lts)}</td>`;
-    }).join('');
-    return `<tr class="${m===filtro?'sel':''}" onclick="document.getElementById('flotaEdenredMes').value='${m}';renderFlotaEdenred()" title="Ver el detalle de ${mesLargo(m)}">
-      <td style="font-weight:600">${mesLargo(m)}${m===mesActualKey?'<span class="ed-tag">en curso</span>':''}</td>
-      ${cells}
-      <td class="num" style="font-weight:700;color:#1565c0">${fmtL(totMesLts[m]||0)}</td>
-      <td class="num" style="font-weight:600;color:var(--orange)">${fmtP(totMesPesos[m]||0)}</td>
-    </tr>`;
-  }).join('');
-  const footCells = prodsOrden.map(p => {
-    const t = mesesDisp.reduce((s,m)=>s+(matrix[p][m]?.litros||0),0);
-    const pct = granTotLts ? ((t/granTotLts)*100).toFixed(1)+'%' : '—';
-    return `<td class="num">${fmtL(t)}<div style="font-size:10px;font-weight:500;color:var(--muted)">${pct}</div></td>`;
-  }).join('');
-
-  const tablaResumen = `<div class="tbl-wrap fade" style="margin-bottom:16px">
-    <div class="tbl-hdr" style="background:#e3f2fd;border-bottom:1px solid #90caf9">
-      <span class="tbl-title" style="color:#1565c0">📅 Litros por mes y producto</span>
-      <span style="font-size:11px;color:#1565c0">Clic en un mes para ver su detalle arriba</span>
-    </div>
-    <div style="overflow-x:auto">
-      <table class="dt ed-mtx">
-        <thead><tr>
-          <th>Mes</th>
-          ${thProds}
-          <th class="num" style="color:#1565c0">Total lts</th>
-          <th class="num" style="color:var(--orange)">Total $</th>
-        </tr></thead>
-        <tbody>${filas}</tbody>
-        <tfoot><tr>
-          <td style="text-align:left">TOTAL</td>
-          ${footCells}
-          <td class="num" style="color:#1565c0">${fmtL(granTotLts)}</td>
-          <td class="num">${fmtP(granTotPesos)}</td>
-        </tr></tfoot>
-      </table>
-    </div>
-  </div>`;
-
   const tituloPeriodo = `<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;color:#1565c0;margin:0 0 10px 2px">${filtro==='TODOS'?'Todos los meses':mesLargo(filtro)}${filtro===mesActualKey?'<span class="ed-tag">en curso</span>':''}</div>`;
 
   window._flotaEdenredExport = datos;
   document.getElementById('resFlotaEdenred').innerHTML = tituloPeriodo + kpis + resumenProd + resumenLinea;
-  document.getElementById('resFlotaEdenredMensual').innerHTML = chart + tablaResumen;
+  document.getElementById('resFlotaEdenredMensual').innerHTML = tablaResumen + chart;
 }
 
 function toggleFlotaVeh(i) {
