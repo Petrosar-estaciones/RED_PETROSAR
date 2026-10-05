@@ -186,7 +186,9 @@
   .ed-down{color:#c0392b;font-weight:600}
   /* lista de meses (compensación) */
   .ed-list{background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow-sm);margin-bottom:20px}
-  .ed-row{display:grid;grid-template-columns:170px 64px minmax(80px,1fr) 92px 170px;gap:14px;align-items:center;padding:11px 20px;border-bottom:1px solid var(--border);font-size:13px}
+  .ed-split{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(330px,1fr);gap:16px;align-items:start}
+  @media(max-width:900px){.ed-split{grid-template-columns:1fr}}
+  .ed-row{display:grid;grid-template-columns:1fr 96px 150px;gap:12px;align-items:center;padding:9px 18px;border-bottom:1px solid var(--border);font-size:13px}
   .ed-row.mes{cursor:pointer}
   .ed-row.mes:hover{background:#f8fafc}
   .ed-row.cols{font-size:11px;font-weight:600;color:var(--muted);background:var(--bg);padding-top:9px;padding-bottom:9px}
@@ -200,9 +202,9 @@
   .ed-fill.curso{background:repeating-linear-gradient(45deg,#94a3b8 0 5px,#cbd5e1 5px 10px)}
   .ed-var{text-align:right;font-size:12px}
   .ed-imp{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;color:#334155}
-  .ed-det{display:none;background:#fafbfc;border-bottom:1px solid var(--border);padding:4px 20px 8px 54px}
+  .ed-det{display:none;background:#fafbfc;border-bottom:1px solid var(--border);padding:4px 18px 8px 36px}
   .ed-det.open{display:block}
-  .ed-det-row{display:grid;grid-template-columns:200px 110px 1fr;gap:14px;padding:6px 0;font-size:12px;border-bottom:1px dotted var(--border)}
+  .ed-det-row{display:grid;grid-template-columns:1fr 80px 120px;gap:14px;padding:6px 0;font-size:12px;border-bottom:1px dotted var(--border)}
   .ed-det-row:last-child{border-bottom:none}
   .ed-det-row span:last-child{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
   /* tabla mes x producto (consumos) */
@@ -408,7 +410,6 @@
       <div class="ed-head">
         <div>
           <div class="ed-title">💳 Compensación Edenred</div>
-          <div class="ed-sub">Lo que cobramos de Edenred, por mes y por comprobante</div>
         </div>
         <div class="ed-ctrl">
           <select id="edenredAnio" onchange="cargarEdenred()">
@@ -1089,6 +1090,8 @@ function selValCC(cc){
   const TABS_VALIDAS=['totales','veh','valorizacion','ingreso','lineas','autorizaciones','edenred'];
   const hashTab=(location.hash||'').replace('#','').toLowerCase();
   const tabInicial=TABS_VALIDAS.includes(hashTab)?hashTab:'totales';
+  // Esperar a que termine de leerse todo el script: si no, al abrir con #edenred las variables de esa solapa todavía no existen y no carga nada
+  await new Promise(r=>setTimeout(r,0));
   await switchTab(tabInicial);
 })();
 
@@ -2894,7 +2897,7 @@ async function cargarEdenred() {
       <div class="kpi accent" style="background:#475569;border-color:#475569">
         <div class="kpi-lbl">Total cobrado ${anio}</div>
         <div class="kpi-val">${fmtARSDec(totalAnio)}</div>
-        <div class="kpi-unit">${cobros.length} comprobantes</div>
+        <div class="kpi-unit">${meses.length} meses con cobros</div>
       </div>
       <div class="kpi">
         <div class="kpi-lbl">Promedio mensual</div>
@@ -2914,76 +2917,64 @@ async function cargarEdenred() {
     </div>`;
 
   // ── Gráfico de barras por mes ──────────
-  const BAR_H = 170;
-  const BAR_W = Math.max(60, Math.floor(560 / Math.max(meses.length, 1)));
+  const BAR_H = 190;
   const bars = meses.map(m => {
     const pct = maxMes ? m.total / maxMes : 0;
     const barH = Math.max(4, Math.round(pct * BAR_H));
     const curso = esEnCurso(m);
     const fondo = curso ? 'repeating-linear-gradient(45deg,#94a3b8 0 5px,#cbd5e1 5px 10px)' : '#475569';
     return `
-      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:${BAR_W}px">
-        <div style="font-size:11px;font-weight:700;color:#475569;white-space:nowrap">${fmtM(m.total)}</div>
-        <div style="width:${Math.max(BAR_W-18,30)}px;height:${BAR_H}px;display:flex;align-items:flex-end;justify-content:center">
+      <div style="flex:1;min-width:40px;display:flex;flex-direction:column;align-items:center;gap:4px">
+        <div style="font-size:10px;font-weight:700;color:#475569;white-space:nowrap">${fmtM(m.total)}</div>
+        <div style="width:72%;height:${BAR_H}px;display:flex;align-items:flex-end">
           <div style="width:100%;height:${barH}px;background:${fondo};border-radius:4px 4px 0 0" title="${m.nombre}: ${fmtARSDec(m.total)}"></div>
         </div>
         <div style="font-size:11px;font-weight:600;color:var(--muted)">${m.nombre.slice(0,3)}</div>
-        <div style="font-size:10px;color:var(--muted)">${curso ? 'en curso' : m.cobros.length + ' RC'}</div>
+        <div style="font-size:10px;color:var(--muted);height:12px">${curso ? 'en curso' : ''}</div>
       </div>`;
   }).join('');
 
   const chart = `
-    <div class="tbl-wrap fade" style="margin-bottom:20px">
+    <div class="tbl-wrap fade" style="margin:0">
       <div class="tbl-hdr" style="background:#f1f5f9;border-bottom:1px solid #e2e8f0">
         <span class="tbl-title" style="color:#334155">Cobros por mes ${anio}</span>
-        <span style="font-size:11px;color:var(--muted)">Pasá el mouse sobre una barra para ver el importe exacto</span>
       </div>
-      <div style="padding:20px 24px;overflow-x:auto">
-        <div style="display:flex;gap:6px;align-items:flex-end;min-width:${meses.length*BAR_W}px">
-          ${bars}
-        </div>
+      <div style="padding:20px 18px 14px;overflow-x:auto">
+        <div style="display:flex;gap:4px;align-items:flex-end;min-width:${meses.length*40}px">${bars}</div>
         <div style="height:1px;background:var(--border);margin-top:4px"></div>
       </div>
     </div>`;
 
-  // ── Detalle por mes (lista desplegable) ──
+  // ── Detalle por mes: lista compacta (Mes · variación · importe) ──
   let filas = `
-    <div class="ed-row cols">
-      <span>Mes</span><span>Comprob.</span><span>Peso en el año</span><span style="text-align:right">vs mes ant.</span><span style="text-align:right">Importe</span>
-    </div>`;
+    <div class="ed-row cols"><span>Mes</span><span style="text-align:right">vs mes ant.</span><span style="text-align:right">Importe</span></div>`;
   meses.forEach((m, i) => {
     const curso = esEnCurso(m);
-    const pct = maxMes ? (m.total / maxMes) * 100 : 0;
     const variacion = curso ? '<span class="ed-tag">en curso</span>' : fmtVar(i > 0 ? varPct(m, meses[i-1]) : null);
     const det = [...m.cobros].sort((a,b)=>(a.fecha||0)-(b.fecha||0)).map(c => `
       <div class="ed-det-row"><span style="color:#334155">${c.comp}</span><span style="color:var(--muted)">${fmtFecha(c.fecha)}</span><span>${fmtARSDec(c.importe)}</span></div>`).join('');
     filas += `
       <div class="ed-row mes" id="ed-mes-${m.num}" onclick="toggleEdenredMes('mes-${m.num}')">
         <span class="ed-mes"><span class="ed-arrow">▸</span>${m.nombre}</span>
-        <span class="ed-n">${m.cobros.length} RC</span>
-        <div class="ed-track"><div class="ed-fill${curso ? ' curso' : ''}" style="width:${pct.toFixed(1)}%"></div></div>
         <span class="ed-var">${variacion}</span>
         <span class="ed-imp">${fmtARSDec(m.total)}</span>
       </div>
       <div class="ed-det" id="ed-det-${m.num}">${det}</div>`;
   });
   filas += `
-    <div class="ed-row tot">
-      <span>Total ${anio}</span><span class="ed-n">${cobros.length} RC</span><span></span><span></span>
-      <span class="ed-imp" style="font-size:15px">${fmtARSDec(totalAnio)}</span>
-    </div>`;
+    <div class="ed-row tot"><span>Total ${anio}</span><span></span><span class="ed-imp">${fmtARSDec(totalAnio)}</span></div>`;
 
   // (la clase tbl-wrap la usa cargarEdenred para no recargar el mismo año)
   const tabla = `
-    <div class="tbl-wrap fade" style="margin-bottom:0">
+    <div class="tbl-wrap fade" style="margin:0">
       <div class="tbl-hdr" style="background:#f1f5f9;border-bottom:1px solid #e2e8f0">
-        <span class="tbl-title" style="color:#334155">Comprobantes por mes ${anio}</span>
+        <span class="tbl-title" style="color:#334155">Detalle por mes</span>
         <span style="font-size:11px;color:var(--muted)">Clic en un mes para ver sus comprobantes</span>
       </div>
       <div class="ed-list" style="border:none;box-shadow:none;margin:0;border-radius:0">${filas}</div>
     </div>`;
 
-  document.getElementById('resEdenred').innerHTML = `<div class="fade">${kpis}${chart}${tabla}</div>`;
+  document.getElementById('resEdenred').innerHTML = `<div class="fade">${kpis}<div class="ed-split">${chart}${tabla}</div></div>`;
 }
 
 function toggleEdenredMes(id) {
