@@ -37,6 +37,44 @@
 const GAS_URL_PLANTA="https://script.google.com/macros/s/AKfycbxi0XUb_Bj_09iqf6qxwMhKcfeKRBU7Ct_UeVPr0SnggHWfLOe-w_-_rhQh-9AakpMw/exec";
 // Base CR — reemplazá con la URL del script de Base CR
 const GAS_URL_BASECR="https://script.google.com/macros/s/AKfycbxMs9CQYLVS1GhAiU_RViaYksMMSNuUKfo0fzYr1qcwGHslZPdevD_zIqIdm2o2eAl6/exec";
+// ── CIERRE MENSUAL BASE CR ─────────────────────────────────────────────────
+// Los meses cerrados se leen de la pestaña "CIERRES" del Sheet de Base CR
+// (A=Mes AAAA-MM, B=Fecha de cierre, C=Cerró). Solo la editora del Sheet puede cerrar.
+// Todo mes <= al último cerrado queda bloqueado: no se puede cargar, editar ni eliminar.
+// CIERRE_BASECR_MIN es el piso de seguridad si la pestaña no se puede leer.
+const BASECR_SHEET_ID="1A_0pcSuycTcTBcf8bAHXopHk_FrLSgcdbDSFbvZnLuQ";
+const CIERRES_TAB="CIERRES";
+// Internos de la estación (EESS CD) que la app de Flota excluye de Base CR — se muestran aparte para conciliar
+const INTERNOS_EESS_CR=["836","742","794","1131"];
+const CIERRE_BASECR_MIN="2026-09";
+let CIERRE_BASECR=CIERRE_BASECR_MIN;
+const mesCerradoCR=f=>!!f&&String(f).slice(0,7)<=CIERRE_BASECR;
+const minFechaCR=()=>{const[y,m]=CIERRE_BASECR.split("-").map(Number);const d=new Date(y,m,1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-01`;};
+const fmtMesCR=ym=>{const[y,m]=String(ym).split("-");return `${m}/${y}`;};
+const mesSiguiente=ym=>{const[y,m]=ym.split("-").map(Number);const d=new Date(y,m,1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;};
+// Lee la pestaña CIERRES vía gviz. Devuelve {ok, lista:[{mes,fecha,quien}], ultimo}
+async function cargarCierresCR(){
+  const url=`https://docs.google.com/spreadsheets/d/${BASECR_SHEET_ID}/gviz/tq?tqx=out:json&headers=1&sheet=${encodeURIComponent(CIERRES_TAB)}&nocache=${Date.now()}`;
+  const txt=await (await fetch(url)).text();
+  const j=JSON.parse(txt.slice(txt.indexOf("{"),txt.lastIndexOf("}")+1));
+  if(j.status==="error") throw new Error("Pestaña CIERRES no encontrada");
+  const cols=(j.table.cols||[]).map(c=>String(c.label||"").trim().toUpperCase());
+  // gviz devuelve la primera hoja si la pestaña no existe → exigir encabezado "MES"
+  if(cols[0]!=="MES") throw new Error("Pestaña CIERRES no encontrada (falta encabezado Mes)");
+  const aMes=c=>{
+    if(!c||c.v==null) return null;
+    const v=String(c.v);
+    let m=v.match(/^Date\((\d{4}),(\d{1,2})/); if(m) return `${m[1]}-${String(+m[2]+1).padStart(2,"0")}`;
+    m=v.match(/^(\d{4})[-\/](\d{1,2})/); if(m) return `${m[1]}-${m[2].padStart(2,"0")}`;
+    m=v.match(/^(\d{1,2})[-\/](\d{4})$/); if(m) return `${m[2]}-${m[1].padStart(2,"0")}`;
+    return null;
+  };
+  const lista=(j.table.rows||[]).map(r=>({mes:aMes(r.c[0]),fecha:(r.c[1]&&(r.c[1].f||r.c[1].v))||"",quien:(r.c[2]&&(r.c[2].f||r.c[2].v))||""})).filter(x=>x.mes);
+  const ultimo=[CIERRE_BASECR_MIN,...lista.map(x=>x.mes)].sort().pop();
+  CIERRE_BASECR=ultimo;
+  return {ok:true,lista,ultimo};
+}
+const cierresCRInicial=cargarCierresCR().catch(e=>({ok:false,lista:[],ultimo:CIERRE_BASECR,error:e.message}));
 // Sheet de Rodados — para cargar internos/patentes en tiempo real
 const RODADOS_SHEET_ID="1MUMqZlrP5-oce4oqHMEL6VvcFdGaLL3MzUDqYX8KevY";
 const RODADOS_GID="766085002";
@@ -282,7 +320,9 @@ function PlantaGranel({showToast}){
     // AUTO-SYNC BASE CR: si el receptor/destino es BASE CR y hay litros Euro (Tk2+Tk3)
     const esBaseCR = (payload.receptor||"").toUpperCase().includes("BASE CR") || (payload.destino||"").toUpperCase().includes("BASE CR");
     const litrosEuro = (parseFloat(payload.tk2)||0) + (parseFloat(payload.tk3)||0);
-    if(!editId && esBaseCR && litrosEuro > 0){
+    if(!editId && esBaseCR && litrosEuro > 0 && mesCerradoCR(payload.fecha)){
+      showToast(`✓ Planta OK — ingreso a Base CR NO registrado: ${fmtMesCR(payload.fecha.slice(0,7))} está cerrado`,"err",6000);
+    } else if(!editId && esBaseCR && litrosEuro > 0){
       try{
         const ingresoBaseCR = {
           action: "add",
@@ -641,6 +681,30 @@ function BaseCR({showToast}){
   const [fQ,setFQ]=useState("");
   const [editId,setEditId]=useState(null);
   const [syncing,setSyncing]=useState(false);
+  const [cierres,setCierres]=useState({ok:null,lista:[],ultimo:CIERRE_BASECR});
+  const [leyendoCierres,setLeyendoCierres]=useState(false);
+  useEffect(()=>{ cierresCRInicial.then(c=>setCierres(c)); },[]);
+  const releerCierres=()=>{
+    setLeyendoCierres(true);
+    cargarCierresCR()
+      .then(c=>{setCierres(c);showToast(`✓ Cierres actualizados — cerrado hasta ${fmtMesCR(c.ultimo)}`,"ok");})
+      .catch(e=>{setCierres(x=>({...x,ok:false,error:e.message}));showToast("No se pudo leer la pestaña CIERRES","err",5000);})
+      .finally(()=>setLeyendoCierres(false));
+  };
+  // Resumen por mes para la solapa Cierres
+  const meses=useMemo(()=>{
+    const map={};
+    movs.forEach(m=>{
+      const k=(m.fecha||"").slice(0,7); if(!/^\d{4}-\d{2}$/.test(k)) return;
+      if(!map[k]) map[k]={mes:k,regs:0,desp:0,ing:0,eess:0,eessDet:{}};
+      const lts=parseFloat(m.litros)||0;
+      const esIng=(m.observaciones||"").toLowerCase().includes("ingreso");
+      map[k].regs++; if(esIng) map[k].ing+=lts; else map[k].desp+=lts;
+      const intN=String(m.interno||"").trim();
+      if(!esIng&&INTERNOS_EESS_CR.includes(intN)){ map[k].eess+=lts; map[k].eessDet[intN]=(map[k].eessDet[intN]||0)+lts; }
+    });
+    return Object.values(map).sort((a,b)=>b.mes.localeCompare(a.mes));
+  },[movs]);
 
   const efCR=()=>({fecha:toDay(),interno:"",patente:"",chofer:"",litros:"",producto:"Euro",observaciones:""});
   const [form,setForm]=useState(efCR());
@@ -678,6 +742,13 @@ function BaseCR({showToast}){
     if(!form.fecha||!parseFloat(form.litros)){
       showToast("Completá la fecha y los litros.","err"); return;
     }
+    if(mesCerradoCR(form.fecha)){
+      showToast(`🔒 ${fmtMesCR(form.fecha.slice(0,7))} está cerrado. Solo se puede cargar desde ${minFechaCR().split("-").reverse().join("/")}.`,"err",5000); return;
+    }
+    if(editId){
+      const orig=movs.find(m=>m.id===editId);
+      if(orig&&mesCerradoCR(orig.fecha)){ showToast("🔒 Ese registro pertenece a un mes cerrado.","err",5000); return; }
+    }
     const id=editId||String(Date.now());
     // Base CR no usa distribucion — construir payload limpio
     const payload={fecha:form.fecha,interno:form.interno,patente:form.patente,chofer:form.chofer,litros:form.litros,producto:form.producto,observaciones:form.observaciones,id};
@@ -700,7 +771,7 @@ function BaseCR({showToast}){
   const pct=Math.min(100,Math.max(0,(stock/Math.max(stock+litrosTotales,1))*100));
   const colorStock=pct>60?P.green:pct>25?P.amber:P.red;
 
-  const TABS=[{k:"movs",label:"Cargas"},{k:"resumen",label:"Resumen"}];
+  const TABS=[{k:"movs",label:"Cargas"},{k:"resumen",label:"Resumen"},{k:"cierres",label:"🔒 Cierres"}];
 
   return(
     <div>
@@ -760,7 +831,11 @@ function BaseCR({showToast}){
               </div>
             </div>
             <div style={{padding:18,display:"grid",gap:11}}>
-              <div><label style={lbl}>Fecha</label><input style={inp} type="date" value={form.fecha} onChange={e=>setForm({...form,fecha:e.target.value})}/></div>
+              <div><label style={lbl}>Fecha</label><input style={mesCerradoCR(form.fecha)?{...inp,borderColor:P.red}:inp} type="date" min={minFechaCR()} value={form.fecha} onChange={e=>setForm({...form,fecha:e.target.value})}/>
+                {mesCerradoCR(form.fecha)
+                  ?<div style={{fontSize:11,color:P.red,fontWeight:700,marginTop:4}}>🔒 Mes cerrado — no se puede registrar</div>
+                  :<div style={{fontSize:10,color:P.inkL,marginTop:4}}>Cerrado hasta {fmtMesCR(cierres.ultimo)}</div>}
+              </div>
 
               {/* Interno con autocompletado de patente */}
               <div>
@@ -845,8 +920,10 @@ function BaseCR({showToast}){
                           <td style={{padding:"8px 13px",color:P.inkL,fontSize:12}}>{m.observaciones||"—"}</td>
                           <td style={{padding:"8px 13px"}}>
                             <div style={{display:"flex",gap:4}}>
+                              {mesCerradoCR(m.fecha)?<span title={"Mes cerrado ("+fmtMesCR(CIERRE_BASECR)+" o anterior)"} style={{fontSize:13,color:P.inkL,padding:"4px 9px"}}>🔒</span>:<>
                               <button className="ba" onClick={()=>{setForm({...m,distribucion:{}});setEditId(m.id);}} style={{background:"#e6f0ff",border:"none",borderRadius:4,color:P.blue,fontSize:12,padding:"4px 9px"}}>✏️</button>
                               <button className="ba" onClick={async()=>{ if(!window.confirm("¿Eliminar?"))return; setMovs(p=>p.filter(x=>x.id!==m.id)); if(!GAS_URL_BASECR.includes("REEMPLAZAR")){try{await gasPost(GAS_URL_BASECR,{action:"delete",fecha:m.fecha,litros:m.litros});showToast("✓ Eliminado","ok");}catch(e){}}}} style={{background:"#fff0ee",border:"none",borderRadius:4,color:P.red,fontSize:12,padding:"4px 9px"}}>🗑</button>
+                              </>}
                             </div>
                           </td>
                         </tr>
@@ -859,6 +936,74 @@ function BaseCR({showToast}){
           </div>
         </div>
       )}
+
+      {tab==="cierres"&&(()=>{
+        const proximo=mesSiguiente(cierres.ultimo);
+        const hoyMes=toDay().slice(0,7);
+        const th={padding:"9px 13px",textAlign:"left",fontFamily:"'Barlow Condensed'",fontSize:10,fontWeight:700,letterSpacing:2,color:P.teal,textTransform:"uppercase",borderBottom:`2px solid ${P.border}`,whiteSpace:"nowrap"};
+        const td={padding:"9px 13px",borderBottom:`1px solid ${P.border}`};
+        const infoCierre=mes=>cierres.lista.find(x=>x.mes===mes);
+        return(
+        <div style={{display:"grid",gap:14}}>
+          <div style={{background:P.card,border:`1px solid ${P.border}`,borderRadius:10,padding:"14px 18px",display:"flex",gap:16,alignItems:"center",flexWrap:"wrap"}}>
+            <div style={{flex:1,minWidth:220}}>
+              <div style={{fontFamily:"'Barlow Condensed'",fontSize:10,fontWeight:700,letterSpacing:2,color:P.inkL,textTransform:"uppercase"}}>Cerrado hasta</div>
+              <div style={{fontFamily:"'Barlow Condensed'",fontSize:28,fontWeight:900,color:P.ink}}>🔒 {fmtMesCR(cierres.ultimo)}</div>
+              <div style={{fontSize:12,color:P.inkL}}>Se puede cargar desde el {minFechaCR().split("-").reverse().join("/")}</div>
+            </div>
+            <a href={`https://docs.google.com/spreadsheets/d/${BASECR_SHEET_ID}/edit`} target="_blank" rel="noopener" style={{background:P.teal,color:"#fff",borderRadius:7,padding:"10px 16px",fontFamily:"'Barlow Condensed'",fontWeight:700,fontSize:12,letterSpacing:1.5,textTransform:"uppercase",textDecoration:"none"}}>Abrir planilla ↗</a>
+            <button onClick={releerCierres} disabled={leyendoCierres} style={{background:"transparent",border:`1px solid ${P.teal}`,borderRadius:7,color:P.teal,padding:"9px 14px",fontFamily:"'Barlow Condensed'",fontWeight:700,fontSize:12,letterSpacing:1.5,textTransform:"uppercase",cursor:"pointer"}}>{leyendoCierres?<span className="spin">⟳</span>:"↻"} Releer cierres</button>
+          </div>
+
+          {cierres.ok===false&&(
+            <div style={{background:"#fff0ee",border:`1px solid ${P.red}`,borderRadius:8,padding:"10px 16px",fontSize:12,color:P.red}}>
+              ⚠️ No se pudo leer la pestaña <b>{CIERRES_TAB}</b> ({cierres.error||"sin conexión"}). Se aplica el cierre mínimo {fmtMesCR(CIERRE_BASECR_MIN)}.
+            </div>
+          )}
+
+          <div style={{background:"#f0faf8",border:`1px solid ${P.teal}`,borderRadius:8,padding:"12px 16px",fontSize:12,color:P.ink,lineHeight:1.6}}>
+            <b>Para cerrar {fmtMesCR(proximo)}:</b> abrí la planilla → pestaña <b>{CIERRES_TAB}</b> → agregá una fila con <code style={{background:"#fff",padding:"1px 6px",borderRadius:3}}>{proximo}</code> en la columna Mes y la fecha de cierre. Después tocá <b>Releer cierres</b>. Quien tenga la app abierta la tiene que recargar para que tome el cierre.
+            {proximo>=hoyMes&&<div style={{color:P.inkL,marginTop:4}}>({fmtMesCR(proximo)} todavía está en curso.)</div>}
+          </div>
+
+          <div style={{background:P.card,border:`1px solid ${P.border}`,borderRadius:10,overflow:"hidden"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+              <thead><tr style={{background:"#f0faf8"}}>
+                <th style={th}>Mes</th><th style={th}>Estado</th>
+                <th style={{...th,textAlign:"right"}}>Registros</th>
+                <th style={{...th,textAlign:"right"}}>Despachos (L)</th>
+                <th style={{...th,textAlign:"right"}}>Ingresos (L)</th>
+                <th style={{...th,textAlign:"right"}} title="Despachos a internos 836, 742, 794 y 1131 (no son ingreso)">Internos estación (L)</th>
+                <th style={{...th,textAlign:"right"}} title="Despachos sin internos de estación — debería coincidir con Base CR en la app de Flota">Neto = Flota (L)</th>
+              </tr></thead>
+              <tbody>
+                {meses.length===0?(
+                  <tr><td colSpan={7} style={{...td,textAlign:"center",color:P.inkL,padding:30}}>Sin datos</td></tr>
+                ):meses.map(r=>{
+                  const cerrado=r.mes<=cierres.ultimo;
+                  const info=infoCierre(r.mes);
+                  return(
+                    <tr key={r.mes} style={{background:cerrado?"#f7f5f1":"#fff"}}>
+                      <td style={{...td,fontFamily:"'Barlow Condensed'",fontWeight:700,fontSize:15,color:P.ink}}>{fmtMesCR(r.mes)}</td>
+                      <td style={td}>{cerrado
+                        ?<span style={{color:P.inkM,fontWeight:700}}>🔒 Cerrado{info&&info.fecha?<span style={{fontWeight:400,color:P.inkL}}> · {info.fecha}{info.quien?" · "+info.quien:""}</span>:""}</span>
+                        :<span style={{color:P.green,fontWeight:700}}>🟢 Abierto{r.mes===hoyMes?" (en curso)":""}</span>}</td>
+                      <td style={{...td,textAlign:"right"}}>{fmt(r.regs)}</td>
+                      <td style={{...td,textAlign:"right",fontFamily:"'Barlow Condensed'",fontWeight:700,fontSize:15,color:P.accent}}>{fmt(Math.round(r.desp*100)/100)}</td>
+                      <td style={{...td,textAlign:"right",fontFamily:"'Barlow Condensed'",fontWeight:700,fontSize:15,color:P.green}}>{r.ing?fmt(Math.round(r.ing*100)/100):"—"}</td>
+                      <td style={{...td,textAlign:"right"}} title={Object.entries(r.eessDet).map(([i,l])=>`Int ${i}: ${fmt(Math.round(l*100)/100)} L`).join("\n")}>
+                        {r.eess?<><span style={{fontFamily:"'Barlow Condensed'",fontWeight:700,fontSize:15,color:P.blue}}>{fmt(Math.round(r.eess*100)/100)}</span>
+                          <div style={{fontSize:10,color:P.inkL}}>{Object.entries(r.eessDet).map(([i,l])=>`${i}: ${fmt(Math.round(l*100)/100)}`).join(" · ")}</div></>:"—"}
+                      </td>
+                      <td style={{...td,textAlign:"right",fontFamily:"'Barlow Condensed'",fontWeight:700,fontSize:15,color:P.ink}}>{fmt(Math.round((r.desp-r.eess)*100)/100)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>);
+      })()}
 
       {tab==="resumen"&&(
         <div>
