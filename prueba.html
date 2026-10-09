@@ -44,6 +44,8 @@ const GAS_URL_BASECR="https://script.google.com/macros/s/AKfycbxMs9CQYLVS1GhAiU_
 // CIERRE_BASECR_MIN es el piso de seguridad si la pestaña no se puede leer.
 const BASECR_SHEET_ID="1A_0pcSuycTcTBcf8bAHXopHk_FrLSgcdbDSFbvZnLuQ";
 const CIERRES_TAB="CIERRES";
+// Internos de la estación (EESS CD) que la app de Flota excluye de Base CR — se muestran aparte para conciliar
+const INTERNOS_EESS_CR=["836","742","794","1131"];
 const CIERRE_BASECR_MIN="2026-09";
 let CIERRE_BASECR=CIERRE_BASECR_MIN;
 const mesCerradoCR=f=>!!f&&String(f).slice(0,7)<=CIERRE_BASECR;
@@ -694,10 +696,12 @@ function BaseCR({showToast}){
     const map={};
     movs.forEach(m=>{
       const k=(m.fecha||"").slice(0,7); if(!/^\d{4}-\d{2}$/.test(k)) return;
-      if(!map[k]) map[k]={mes:k,regs:0,desp:0,ing:0};
+      if(!map[k]) map[k]={mes:k,regs:0,desp:0,ing:0,eess:0,eessDet:{}};
       const lts=parseFloat(m.litros)||0;
       const esIng=(m.observaciones||"").toLowerCase().includes("ingreso");
       map[k].regs++; if(esIng) map[k].ing+=lts; else map[k].desp+=lts;
+      const intN=String(m.interno||"").trim();
+      if(!esIng&&INTERNOS_EESS_CR.includes(intN)){ map[k].eess+=lts; map[k].eessDet[intN]=(map[k].eessDet[intN]||0)+lts; }
     });
     return Object.values(map).sort((a,b)=>b.mes.localeCompare(a.mes));
   },[movs]);
@@ -969,10 +973,12 @@ function BaseCR({showToast}){
                 <th style={{...th,textAlign:"right"}}>Registros</th>
                 <th style={{...th,textAlign:"right"}}>Despachos (L)</th>
                 <th style={{...th,textAlign:"right"}}>Ingresos (L)</th>
+                <th style={{...th,textAlign:"right"}} title="Despachos a internos 836, 742, 794 y 1131 (no son ingreso)">Internos estación (L)</th>
+                <th style={{...th,textAlign:"right"}} title="Despachos sin internos de estación — debería coincidir con Base CR en la app de Flota">Neto = Flota (L)</th>
               </tr></thead>
               <tbody>
                 {meses.length===0?(
-                  <tr><td colSpan={5} style={{...td,textAlign:"center",color:P.inkL,padding:30}}>Sin datos</td></tr>
+                  <tr><td colSpan={7} style={{...td,textAlign:"center",color:P.inkL,padding:30}}>Sin datos</td></tr>
                 ):meses.map(r=>{
                   const cerrado=r.mes<=cierres.ultimo;
                   const info=infoCierre(r.mes);
@@ -985,6 +991,11 @@ function BaseCR({showToast}){
                       <td style={{...td,textAlign:"right"}}>{fmt(r.regs)}</td>
                       <td style={{...td,textAlign:"right",fontFamily:"'Barlow Condensed'",fontWeight:700,fontSize:15,color:P.accent}}>{fmt(Math.round(r.desp*100)/100)}</td>
                       <td style={{...td,textAlign:"right",fontFamily:"'Barlow Condensed'",fontWeight:700,fontSize:15,color:P.green}}>{r.ing?fmt(Math.round(r.ing*100)/100):"—"}</td>
+                      <td style={{...td,textAlign:"right"}} title={Object.entries(r.eessDet).map(([i,l])=>`Int ${i}: ${fmt(Math.round(l*100)/100)} L`).join("\n")}>
+                        {r.eess?<><span style={{fontFamily:"'Barlow Condensed'",fontWeight:700,fontSize:15,color:P.blue}}>{fmt(Math.round(r.eess*100)/100)}</span>
+                          <div style={{fontSize:10,color:P.inkL}}>{Object.entries(r.eessDet).map(([i,l])=>`${i}: ${fmt(Math.round(l*100)/100)}`).join(" · ")}</div></>:"—"}
+                      </td>
+                      <td style={{...td,textAlign:"right",fontFamily:"'Barlow Condensed'",fontWeight:700,fontSize:15,color:P.ink}}>{fmt(Math.round((r.desp-r.eess)*100)/100)}</td>
                     </tr>
                   );
                 })}
