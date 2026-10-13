@@ -1307,4 +1307,679 @@ function App(){
                 :Math.max(0,cfg.tanques.reduce((a,tk)=>{
                   const base=(stockInicial?.[cfg.id]?.[tk.id])||0;
                   const ing=ingresos.filter(i=>i.estacion===cfg.id&&i.tanque===tk.id).reduce((s,b)=>s+b.litros,0);
-                  const desp=(data?.porTanqu
+                  const desp=(data?.porTanque?.[tk.id])||0;
+                  return a+Math.max(0,base+ing-desp);
+                },0));
+              const pct=totalCap>0?Math.min(100,(stock/totalCap)*100):0;
+              const c=pct>60?cfg.color:pct>25?"#d49010":"#e03030";
+              return(
+                <div key={cfg.id} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+                  <div style={{fontSize:8,color:"#94a3b8",letterSpacing:1,fontFamily:"'DM Mono'",textTransform:"uppercase"}}>{cfg.nombre.split(" ")[0]}</div>
+                  <div style={{width:40,height:3,background:"#e2e8f0",borderRadius:2}}>
+                    <div style={{width:`${pct}%`,height:"100%",background:c,borderRadius:2,transition:"width .8s"}}/>
+                  </div>
+                  <div style={{fontFamily:"'DM Mono'",fontSize:10,color:c,fontWeight:600}}>{fmt(stock)}</div>
+                </div>
+              );
+            })}
+
+            <div className="header-total" style={{width:1,height:30,background:"#e2e8f0",margin:"0 4px"}}/>
+            <div className="header-total">
+              <div style={{fontSize:8,color:"#94a3b8",letterSpacing:1,fontFamily:"'DM Mono'"}}>TOTAL RED</div>
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:18,color:"#e87030",letterSpacing:1,lineHeight:1}}>{fmt(totales.totalStock)} L</div>
+            </div>
+          </div>
+
+          {/* actions */}
+          <div className="header-actions" style={{display:"flex",gap:6,alignItems:"center",marginLeft:8,flexShrink:0}}>
+            {ultimaActualizacion&&(
+              <div style={{fontFamily:"'DM Mono'",fontSize:9,color:"#94a3b8",whiteSpace:"nowrap",marginRight:4}}>
+                ⏱ {ultimaActualizacion}
+              </div>
+            )}
+            <button onClick={()=>syncTodo(false)} style={{background:"#3a8fd4",border:"none",borderRadius:8,color:"#fff",fontFamily:"'DM Mono'",fontSize:10,letterSpacing:1,padding:"7px 10px",cursor:"pointer",textTransform:"uppercase",whiteSpace:"nowrap"}}>
+              ↻ Actualizar
+            </button>
+            <button onClick={()=>setModalIngreso(true)} style={{background:"#16a34a",border:"none",borderRadius:8,color:"#fff",fontFamily:"'DM Mono'",fontSize:10,letterSpacing:1,padding:"7px 10px",cursor:"pointer",textTransform:"uppercase",whiteSpace:"nowrap"}}>
+              + Ingreso
+            </button>
+          </div>
+
+          {/* tabs */}
+          <div className="header-tabs" style={{display:"flex",marginLeft:12,borderLeft:"1px solid #e2e8f0",paddingLeft:12,gap:2,flexShrink:0}}>
+            {[["dashboard","Dashboard"],["despachos","Despachos"],["propioclientes","Petrosar - Clientes"],["ingresos","Ingresos"],...(configVisible?[["config","Config"]]:[])].map(([k,label])=>(
+              <button key={k} onClick={()=>setTab(k)} style={k==="propioclientes"?{background:"#fbbf24",border:"none",borderRadius:6,color:"#dc2626",fontFamily:"'DM Mono'",fontSize:10,letterSpacing:.5,padding:"6px 10px",cursor:"pointer",textTransform:"uppercase",transition:"all .15s",fontWeight:700,whiteSpace:"nowrap",boxShadow:tab===k?"inset 0 0 0 2px #dc2626":"none"}:{background:tab===k?"#f1f5f9":"transparent",border:"none",borderRadius:6,color:tab===k?"#1e293b":"#94a3b8",fontFamily:"'DM Mono'",fontSize:10,letterSpacing:.5,padding:"6px 8px",cursor:"pointer",textTransform:"uppercase",transition:"all .15s",fontWeight:tab===k?600:400,whiteSpace:"nowrap"}}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* TABS MÓVIL — segunda fila, solo visible en celular */}
+      <div className="header-tabs-mobile" style={{display:"none",borderBottom:"1px solid #e2e8f0",background:"#fff",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
+        <div style={{display:"flex",minWidth:"max-content",padding:"0 8px"}}>
+          {[["dashboard","📊 Dashboard"],["despachos","📦 Despachos"],["propioclientes","💰 Petrosar - Clientes"],["ingresos","📥 Ingresos"],...(configVisible?[["config","⚙️ Config"]]:[])].map(([k,label])=>(
+            <button key={k} onClick={()=>setTab(k)} style={k==="propioclientes"?{
+              background:"#fbbf24",border:"none",borderRadius:6,margin:"6px 4px",
+              color:"#dc2626",fontFamily:"'DM Mono'",fontSize:11,fontWeight:700,
+              letterSpacing:.5,padding:"10px 14px",cursor:"pointer",textTransform:"uppercase",
+              whiteSpace:"nowrap",transition:"all .15s",boxShadow:tab===k?"inset 0 0 0 2px #dc2626":"none"
+            }:{
+              background:"transparent",border:"none",borderBottom:`2.5px solid ${tab===k?"#e87030":"transparent"}`,
+              color:tab===k?"#e87030":"#94a3b8",fontFamily:"'DM Mono'",fontSize:11,
+              letterSpacing:.5,padding:"10px 14px",cursor:"pointer",textTransform:"uppercase",
+              fontWeight:tab===k?700:400,whiteSpace:"nowrap",transition:"all .15s"
+            }}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* BODY */}
+      <div className="body-pad" style={{maxWidth:1400,margin:"0 auto",padding:"24px 20px"}}>
+
+        {/* ── DASHBOARD ── */}
+        {tab==="dashboard"&&(
+          <div>
+            {/* Resumen global */}
+            <div className="summary-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:12,marginBottom:28}}>
+              {[
+                {label:"Stock total red",val:fmt(totales.totalStock)+" L",sub:`${totales.pct.toFixed(0)}% capacidad`,color:"#e87030"},
+                {label:"Capacidad total",val:fmt(totales.totalCap)+" L",sub:"todas las estaciones",color:"#3a8fd4"},
+                {label:"Estaciones activas",val:(Object.keys(dataPorEst).length+(plantaData?1:0)+(baseCRData?1:0))+"/"+Object.keys(ESTACIONES_CONFIG).length,sub:"con datos",color:"#a060e0"},
+              ].map((item,i)=>(
+                <div key={item.label} className="fu" style={{animationDelay:`${i*0.07}s`,background:"#fff",border:"1px solid #e2e8f0",borderRadius:12,padding:"16px 20px",borderTop:`3px solid ${item.color}`}}>
+                  <div style={{fontSize:10,color:"#94a3b8",letterSpacing:1.5,fontFamily:"'DM Mono'",textTransform:"uppercase",marginBottom:8}}>{item.label}</div>
+                  <div style={{fontFamily:"'Bebas Neue'",fontSize:28,color:item.color,letterSpacing:1,lineHeight:1}}>{item.val}</div>
+                  <div style={{fontSize:11,color:"#cbd5e1",marginTop:4}}>{item.sub}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Cards de estaciones */}
+            <div className="est-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:16}}>
+              {["PLANTAGRANEL","ESTACIONCD","VALLE","TRESPICOS","ANTICLINAL","BASECR","RESERO"].map((estId,i)=>(
+                <EstacionCard key={estId} est={estId} data={estId==="PLANTAGRANEL"?plantaData:dataPorEst[estId]} ingresos={ingresos} stockInicial={stockInicial} onUpload={handleUpload} uploading={uploading[estId]} idx={i} plantaData={plantaData} onSyncPlanta={handleSyncPlanta} plantaLoading={plantaLoading} alarmas={alarmas} baseCRData={baseCRData} onSyncBaseCR={handleSyncBaseCR} baseCRLoading={baseCRLoading} onSyncEst={handleSyncEst} estLoading={estLoading} clientesData={clientesData} reseroMes={reseroMes} reseroDias={reseroDias} baseCRMes={baseCRMes}/>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── DESPACHOS ── */}
+        {tab==="despachos"&&(
+          <div>
+            {/* ── Encabezado ejecutivo ── */}
+            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:24,flexWrap:"wrap",gap:16}}>
+              <div>
+                <div style={{fontFamily:"'Bebas Neue'",fontSize:26,letterSpacing:3,color:"#1e293b",lineHeight:1}}>
+                  Despachos por Estación
+                </div>
+              </div>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <select
+                  value={mesSeleccionado}
+                  onChange={e=>fetchClientes(e.target.value)}
+                  style={{fontFamily:"'DM Mono'",fontSize:12,fontWeight:600,padding:"8px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",background:"#fff",color:"#1e293b",cursor:"pointer"}}>
+                  {(clientesData?.mesesDisponibles||[mesActual()]).map(m=>(
+                    <option key={m} value={m}>{mesLabel(m)}{m===mesActual()?" (actual)":""}</option>
+                  ))}
+                </select>
+                {loadingClientes&&<span className="spin" style={{fontSize:16,color:"#3a8fd4"}}>⟳</span>}
+              </div>
+            </div>
+
+            {loadingClientes&&(
+              <div style={{textAlign:"center",padding:60,color:"#94a3b8",fontFamily:"'DM Mono'",fontSize:12}}>
+                <span className="spin" style={{fontSize:22,display:"block",marginBottom:12}}>⟳</span>
+                Cargando datos de clientes...
+              </div>
+            )}
+
+            {!loadingClientes&&clientesData&&(()=>{
+              const estaciones=[
+                {key:"AG", nombre:"Anticlinal Grande", color:"#e87030", lista:clientesData?.AG||[], total:clientesData.AG_total||0},
+                {key:"TP", nombre:"Tres Picos",        color:"#3a8fd4", lista:clientesData?.TP||[], total:clientesData.TP_total||0},
+                {key:"VH", nombre:"Valle Hermoso",     color:"#8b5cf6", lista:clientesData?.VH||[], total:clientesData.VH_total||0},
+                {key:"CD", nombre:"Estación CD",       color:"#20c0a0", lista:clientesData?.CD||[], total:clientesData.CD_total||0},
+                {key:"PG", nombre:"Planta Granel",     color:"#e8a020", lista:topClientesPlantaMes, total:totalPlantaMes},
+              ];
+              const totalRed=estaciones.reduce((a,e)=>a+e.total,0);
+              const maxTotal=Math.max(...estaciones.map(e=>e.total),1);
+
+              return(
+                <div>
+                  {/* ── Resumen consolidado para gerencia ── */}
+                  <div style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:14,padding:"20px 24px",marginBottom:24,boxShadow:"0 1px 6px rgba(0,0,0,.05)"}}>
+                    <div style={{fontFamily:"'DM Mono'",fontSize:10,color:"#94a3b8",letterSpacing:1.5,textTransform:"uppercase",marginBottom:16}}>Resumen del período — {mesLabel(mesSeleccionado)}</div>
+                    <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"flex-end",marginBottom:20}}>
+                      {estaciones.map(e=>{
+                        const pct=totalRed>0?(e.total/totalRed*100):0;
+                        const barH=maxTotal>0?Math.max((e.total/maxTotal)*80,4):4;
+                        return(
+                          <div key={e.key} style={{flex:1,minWidth:90,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                            <div style={{fontFamily:"'DM Mono'",fontSize:11,color:e.color,fontWeight:700}}>{fmt(e.total)}</div>
+                            <div style={{width:"100%",height:barH,background:`linear-gradient(180deg,${e.color},${e.color}66)`,borderRadius:"4px 4px 0 0",minHeight:4,transition:"height .6s"}}/>
+                            <div style={{fontFamily:"'DM Mono'",fontSize:9,color:"#64748b",textAlign:"center",lineHeight:1.3}}>{e.nombre.split(" ")[0]}<br/><span style={{color:"#94a3b8"}}>{pct.toFixed(1)}%</span></div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div style={{borderTop:"1px solid #f1f5f9",paddingTop:14,display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
+                      <div>
+                        <span style={{fontFamily:"'DM Mono'",fontSize:10,color:"#94a3b8",letterSpacing:1,textTransform:"uppercase"}}>Total Red — </span>
+                        <span style={{fontFamily:"'Bebas Neue'",fontSize:26,color:"#e87030",letterSpacing:1}}>{fmt(totalRed)}</span>
+                        <span style={{fontFamily:"'DM Mono'",fontSize:13,color:"#94a3b8",marginLeft:4}}>L</span>
+                      </div>
+                      <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
+                        {estaciones.map(e=>(
+                          <div key={e.key} style={{display:"flex",alignItems:"center",gap:5}}>
+                            <div style={{width:8,height:8,borderRadius:"50%",background:e.color,flexShrink:0}}/>
+                            <span style={{fontFamily:"'DM Mono'",fontSize:10,color:"#64748b"}}>{e.nombre}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Top 10 por estación ── */}
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:16}}>
+                    {estaciones.map(({key,nombre,color,lista,total})=>{
+                      const maxLitros=lista.length>0?lista[0].litros:1;
+                      return(
+                        <div key={key} style={{background:"#fff",borderRadius:14,overflow:"hidden",boxShadow:"0 1px 6px rgba(0,0,0,.06)",border:"1px solid #f1f5f9"}}>
+                          {/* cabecera color */}
+                          <div style={{background:`linear-gradient(135deg,${color}18,${color}08)`,borderBottom:`2px solid ${color}`,padding:"14px 18px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                            <div>
+                              <div style={{fontFamily:"'Bebas Neue'",fontSize:17,letterSpacing:2,color:"#1e293b"}}>{nombre}</div>
+                              <div style={{fontFamily:"'DM Mono'",fontSize:10,color:"#94a3b8",marginTop:1}}>top {Math.min(lista.length,10)} clientes</div>
+                            </div>
+                            <div style={{textAlign:"right"}}>
+                              <div style={{fontFamily:"'Bebas Neue'",fontSize:22,color,letterSpacing:1,lineHeight:1}}>{fmt(total)}</div>
+                              <div style={{fontFamily:"'DM Mono'",fontSize:9,color:"#94a3b8"}}>L total</div>
+                            </div>
+                          </div>
+                          {/* lista */}
+                          <div style={{padding:"12px 18px"}}>
+                            {lista.length===0&&(
+                              <div style={{color:"#cbd5e1",fontFamily:"'DM Mono'",fontSize:11,textAlign:"center",padding:"20px 0"}}>Sin datos para este período</div>
+                            )}
+                            {lista.map((item,idx)=>{
+                              const pct=maxLitros>0?(item.litros/maxLitros*100):0;
+                              const isTop=(idx===0);
+                              return(
+                                <div key={idx} style={{marginBottom:idx<lista.length-1?10:0,padding:isTop?"8px 10px":"4px 0",background:isTop?`${color}0a`:"transparent",borderRadius:isTop?6:0,transition:"background .2s"}}>
+                                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                                    <div style={{display:"flex",alignItems:"center",gap:6,flex:1,minWidth:0}}>
+                                      <span style={{fontFamily:"'DM Mono'",fontSize:9,color:isTop?color:"#cbd5e1",fontWeight:isTop?700:400,minWidth:16}}>#{idx+1}</span>
+                                      <span style={{fontFamily:"'DM Sans'",fontSize:12,color:"#1e293b",fontWeight:isTop?600:400,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}
+                                        title={item.cliente}>
+                                        {item.cliente}
+                                      </span>
+                                    </div>
+                                    <span style={{fontFamily:"'DM Mono'",fontSize:12,color:isTop?color:"#475569",fontWeight:isTop?700:500,whiteSpace:"nowrap",marginLeft:8}}>
+                                      {fmt(item.litros)} L
+                                    </span>
+                                  </div>
+                                  <div style={{height:3,background:"#f1f5f9",borderRadius:2}}>
+                                    <div style={{width:`${pct}%`,height:"100%",background:color,borderRadius:2,opacity:isTop?1:.5,transition:"width .7s"}}/>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {!loadingClientes&&!clientesData&&(
+              <div style={{textAlign:"center",padding:60,color:"#94a3b8",fontFamily:"'DM Mono'",fontSize:12}}>
+                <span className="spin" style={{fontSize:20,display:"block",marginBottom:12}}>⟳</span>
+                Cargando datos del mes actual...
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── PROPIO VS CLIENTES ── */}
+        {tab==="propioclientes"&&(
+          <div>
+            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:20,flexWrap:"wrap",gap:16}}>
+              <div>
+                <div style={{fontFamily:"'Bebas Neue'",fontSize:26,letterSpacing:3,color:"#1e293b",lineHeight:1}}>
+                  Consumo Propio Petrosar vs Clientes
+                </div>
+                <div style={{fontFamily:"'DM Mono'",fontSize:11,color:"#94a3b8",marginTop:4}}>
+                  Anticlinal · Tres Picos · Valle Hermoso · Estación CD
+                </div>
+              </div>
+              <select
+                value={pcMes}
+                onChange={e=>setPcMes(e.target.value)}
+                style={{fontFamily:"'DM Mono'",fontSize:12,fontWeight:600,padding:"8px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",background:"#fff",color:"#1e293b",cursor:"pointer"}}>
+                {pcMesesDisponibles.length===0&&<option value={pcMes}>{mesLabel(pcMes)}</option>}
+                {pcMesesDisponibles.map(m=>(
+                  <option key={m} value={m}>{mesLabel(m)}{m===mesActual()?" (actual)":""}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* leyenda compartida */}
+            <div style={{display:"flex",gap:22,marginBottom:18,alignItems:"center"}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{width:14,height:14,borderRadius:"50%",background:PC_COLOR_PROPIO}}/>
+                <span style={{fontFamily:"'DM Mono'",fontSize:15,fontWeight:600,color:"#1e293b"}}>Propio Petrosar (flota)</span>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{width:14,height:14,borderRadius:"50%",background:PC_COLOR_CLIENTES}}/>
+                <span style={{fontFamily:"'DM Mono'",fontSize:15,fontWeight:600,color:"#1e293b"}}>Clientes</span>
+              </div>
+              {pcLoading&&<span className="spin" style={{fontSize:13,color:"#94a3b8"}}>⟳</span>}
+            </div>
+
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:16}}>
+              {PC_KEYS.map(e=>{
+                const d=pcEstado(pcMes,e.key);
+                const pctPropio=d.total>0?(d.propio/d.total*100):0;
+                const pctClientes=d.total>0?(d.clientes/d.total*100):0;
+                return(
+                  <div key={e.key} style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:14,padding:"16px 16px 4px",boxShadow:"0 1px 6px rgba(0,0,0,.05)"}}>
+                    <div style={{fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:1.5,color:e.color,marginBottom:8,textAlign:"center"}}>{e.nombre}</div>
+                    {!d.cargado?(
+                      <div style={{height:160,display:"flex",alignItems:"center",justifyContent:"center",color:"#cbd5e1",fontFamily:"'DM Mono'",fontSize:11}}>
+                        <span className="spin" style={{fontSize:18}}>⟳</span>
+                      </div>
+                    ):d.total>0?(
+                      <div style={{display:"flex",justifyContent:"center",padding:"4px 0"}}>
+                        <DonutDosSegmentos pct={pctPropio} colorA={PC_COLOR_PROPIO} colorB={PC_COLOR_CLIENTES} size={150}/>
+                      </div>
+                    ):(
+                      <div style={{height:160,display:"flex",alignItems:"center",justifyContent:"center",color:"#cbd5e1",fontFamily:"'DM Mono'",fontSize:11}}>Sin datos este mes</div>
+                    )}
+                    <div style={{display:"flex",justifyContent:"space-around",padding:"10px 0",borderTop:"1px solid #f1f5f9",marginTop:8}}>
+                      <div style={{textAlign:"center"}}>
+                        <div style={{fontFamily:"'Bebas Neue'",fontSize:18,color:PC_COLOR_PROPIO}}>{pctPropio.toFixed(1)}%</div>
+                        <div style={{fontFamily:"'DM Mono'",fontSize:9,color:"#94a3b8"}}>{fmt(d.propio)} L</div>
+                      </div>
+                      <div style={{textAlign:"center"}}>
+                        <div style={{fontFamily:"'Bebas Neue'",fontSize:18,color:PC_COLOR_CLIENTES}}>{pctClientes.toFixed(1)}%</div>
+                        <div style={{fontFamily:"'DM Mono'",fontSize:9,color:"#94a3b8"}}>{fmt(d.clientes)} L</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Evolución mensual — barras apiladas 100% por estación */}
+            <div style={{marginTop:28}}>
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:1.5,color:"#1e293b",marginBottom:2}}>
+                Evolución — Propio vs Clientes por mes
+              </div>
+              <div style={{fontFamily:"'DM Mono'",fontSize:10,color:"#94a3b8",marginBottom:14}}>
+                Últimos {pcUltimos6Meses.length} mes{pcUltimos6Meses.length===1?"":"es"} con datos · pasá el mouse por una barra para ver el detalle
+              </div>
+              {pcUltimos6Meses.length===0?(
+                <div style={{textAlign:"center",padding:40,color:"#cbd5e1",fontFamily:"'DM Mono'",fontSize:11}}>
+                  <span className="spin" style={{fontSize:18,display:"block",marginBottom:8}}>⟳</span>
+                  Cargando evolución...
+                </div>
+              ):(
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:16}}>
+                  {PC_KEYS.map(e=>{
+                    const datosBarras=pcUltimos6Meses.map(m=>{
+                      const d=pcEstado(m,e.key);
+                      const pctA=d.total>0?(d.propio/d.total*100):0;
+                      const pctB=d.total>0?(d.clientes/d.total*100):0;
+                      return {label:mesLabelCorto(m), pctA, pctB, rawA:d.propio, rawB:d.clientes};
+                    });
+                    const todosCargados=pcUltimos6Meses.every(m=>pcCache[m]);
+                    return(
+                      <div key={e.key} style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:14,padding:16}}>
+                        <div style={{fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:1.5,color:e.color,marginBottom:10}}>{e.nombre}</div>
+                        {!todosCargados?(
+                          <div style={{height:170,display:"flex",alignItems:"center",justifyContent:"center",color:"#cbd5e1"}}>
+                            <span className="spin" style={{fontSize:16}}>⟳</span>
+                          </div>
+                        ):(
+                          <BarrasEvolucion datos={datosBarras} colorA={PC_COLOR_PROPIO} colorB={PC_COLOR_CLIENTES}/>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+
+
+        {/* ── INGRESOS ── */}
+        {tab==="ingresos"&&(
+          <div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:22,letterSpacing:2,color:"#1e293b"}}>Ingresos Registrados</div>
+              <button onClick={()=>setModalIngreso(true)} style={{background:"#16a34a",border:"none",borderRadius:8,color:"#fff",fontFamily:"'DM Mono'",fontSize:11,letterSpacing:1,padding:"9px 16px",cursor:"pointer",textTransform:"uppercase"}}>
+                + Nuevo ingreso
+              </button>
+            </div>
+            {ingresos.length===0?(
+              <div style={{textAlign:"center",padding:"60px 0",color:"#94a3b8",fontFamily:"'DM Mono'",fontSize:13,background:"#fff",borderRadius:14,border:"1px solid #e2e8f0"}}>
+                Sin ingresos registrados.<br/>
+                <span style={{fontSize:11,color:"#cbd5e1"}}>Los ingresos se cargan manualmente cuando recibís combustible desde la planta.</span>
+              </div>
+            ):(
+              <div style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:14,overflow:"hidden"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+                  <thead>
+                    <tr style={{background:"#f8fafc"}}>
+                      {["Fecha","Estación","Tanque","Litros","Observación"].map(h=>(
+                        <th key={h} style={{padding:"10px 16px",textAlign:h==="Litros"?"right":"left",fontFamily:"'DM Mono'",fontSize:9,color:"#94a3b8",letterSpacing:1.5,textTransform:"uppercase",borderBottom:"1px solid #f1f5f9"}}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...ingresos].reverse().map((ing,i)=>{
+                      const cfg=ESTACIONES_CONFIG[ing.estacion];
+                      const tk=cfg?.tanques.find(t=>t.id===ing.tanque);
+                      return(
+                        <tr key={ing.id} style={{borderBottom:"1px solid #f8fafc"}}>
+                          <td style={{padding:"10px 16px",fontFamily:"'DM Mono'",fontSize:12,color:"#64748b"}}>{ing.fecha}</td>
+                          <td style={{padding:"10px 16px"}}>
+                            <div style={{display:"flex",alignItems:"center",gap:6}}>
+                              <div style={{width:6,height:6,borderRadius:"50%",background:cfg?.color||"#888"}}/>
+                              <span style={{fontWeight:500,color:"#1e293b"}}>{cfg?.nombre||ing.estacion}</span>
+                            </div>
+                          </td>
+                          <td style={{padding:"10px 16px",fontFamily:"'DM Mono'",fontSize:11,color:"#64748b"}}>{tk?.nombre||ing.tanque}</td>
+                          <td style={{padding:"10px 16px",fontFamily:"'DM Mono'",fontSize:14,color:"#16a34a",textAlign:"right",fontWeight:600}}>+{fmt(ing.litros)} L</td>
+                          <td style={{padding:"10px 16px",fontSize:12,color:"#64748b"}}>{ing.obs||"—"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── ALARMAS ── */}
+        {tab==="alarmas"&&(
+          <div>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:22,letterSpacing:2,color:"#1e293b",marginBottom:8}}>Alarmas de Stock Mínimo</div>
+            <div style={{fontSize:12,color:"#64748b",marginBottom:24,fontFamily:"'DM Mono'"}}>
+              Configurá el umbral mínimo en litros para cada tanque. Cuando el stock baje de ese valor, el tanque mostrará una alerta roja.
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:16}}>
+              {Object.entries(ESTACIONES_CONFIG).map(([estId,cfg])=>(
+                <div key={estId} style={{background:"#fff",border:`1.5px solid ${cfg.color}44`,borderRadius:14,overflow:"hidden",boxShadow:"0 1px 6px rgba(0,0,0,.06)"}}>
+                  <div style={{height:3,background:`linear-gradient(90deg,${cfg.color},${cfg.color}44)`}}/>
+                  <div style={{padding:"14px 20px 10px",borderBottom:"1px solid #f1f5f9",display:"flex",alignItems:"center",gap:8}}>
+                    <div style={{width:8,height:8,borderRadius:"50%",background:cfg.color}}/>
+                    <span style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2,color:"#1e293b"}}>{cfg.nombre}</span>
+                    <span style={{background:`${cfg.color}18`,color:cfg.color,fontSize:9,padding:"2px 7px",borderRadius:3,fontFamily:"'DM Mono'",marginLeft:4}}>{cfg.sistema}</span>
+                  </div>
+                  <div style={{padding:"16px 20px"}}>
+                    {cfg.tanques.map((tk,i)=>{
+                      const umbral=(alarmas?.[estId]?.[tk.id])||0;
+                      return(
+                        <div key={tk.id} style={{marginBottom:i<cfg.tanques.length-1?16:0}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                            <label style={{fontFamily:"'DM Mono'",fontSize:10,color:"#64748b",letterSpacing:1.5,textTransform:"uppercase"}}>{tk.nombre}</label>
+                            <span style={{fontFamily:"'DM Mono'",fontSize:10,color:"#94a3b8"}}>cap. {fmt(tk.cap)} L</span>
+                          </div>
+                          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                            <input
+                              type="number"
+                              placeholder="0 = sin alarma"
+                              value={umbral||""}
+                              onChange={e=>{
+                                const v=parseFloat(e.target.value)||0;
+                                setAlarmas(p=>({...p,[estId]:{...p[estId],[tk.id]:v}}));
+                              }}
+                              style={{flex:1,background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:7,color:"#1e293b",padding:"9px 12px",fontSize:14,fontFamily:"'DM Mono'",fontWeight:500}}
+                            />
+                            <span style={{fontSize:11,color:"#94a3b8",whiteSpace:"nowrap"}}>L mín.</span>
+                          </div>
+                          {umbral>0&&<div style={{marginTop:6,fontSize:10,color:"#e87030",fontFamily:"'DM Mono'"}}>
+                            🔔 Alerta si stock &lt; {fmt(umbral)} L
+                          </div>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Resumen de alarmas activas */}
+            {Object.entries(ESTACIONES_CONFIG).some(([estId,cfg])=>
+              cfg.tanques.some(tk=>{
+                const umbral=(alarmas?.[estId]?.[tk.id])||0;
+                if(!umbral) return false;
+                const data=dataPorEst[estId];
+                const base=(stockInicial?.[estId]?.[tk.id])||0;
+                const ing=ingresos.filter(i=>i.estacion===estId&&i.tanque===tk.id).reduce((a,b)=>a+b.litros,0);
+                const desp=(data?.porTanque?.[tk.id])||0;
+                const stock=estId==="PLANTAGRANEL"&&plantaData?.stockVivo?plantaData.stockVivo[tk.id]||0:Math.max(0,base+ing-desp);
+                return stock<=umbral;
+              })
+            )&&(
+              <div style={{marginTop:20,background:"#fff5f5",border:"1.5px solid #fca5a5",borderRadius:12,padding:"16px 20px"}}>
+                <div style={{fontFamily:"'DM Mono'",fontSize:11,color:"#dc2626",letterSpacing:1.5,textTransform:"uppercase",marginBottom:12,fontWeight:700}}>⚠ Alarmas Activas</div>
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {Object.entries(ESTACIONES_CONFIG).flatMap(([estId,cfg])=>
+                    cfg.tanques.map(tk=>{
+                      const umbral=(alarmas?.[estId]?.[tk.id])||0;
+                      if(!umbral) return null;
+                      const data=dataPorEst[estId];
+                      const base=(stockInicial?.[estId]?.[tk.id])||0;
+                      const ing=ingresos.filter(i=>i.estacion===estId&&i.tanque===tk.id).reduce((a,b)=>a+b.litros,0);
+                      const desp=(data?.porTanque?.[tk.id])||0;
+                      const stock=estId==="PLANTAGRANEL"&&plantaData?.stockVivo?plantaData.stockVivo[tk.id]||0:Math.max(0,base+ing-desp);
+                      if(stock>umbral) return null;
+                      return(
+                        <div key={estId+tk.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",border:"1px solid #fca5a5",borderRadius:8,padding:"10px 14px"}}>
+                          <div style={{display:"flex",alignItems:"center",gap:8}}>
+                            <div style={{width:6,height:6,borderRadius:"50%",background:cfg.color}}/>
+                            <span style={{fontWeight:600,color:"#1e293b",fontFamily:"'DM Sans'"}}>{cfg.nombre}</span>
+                            <span style={{fontSize:11,color:"#64748b",fontFamily:"'DM Mono'"}}>{tk.nombre}</span>
+                          </div>
+                          <div style={{textAlign:"right"}}>
+                            <span style={{fontFamily:"'DM Mono'",fontSize:14,color:"#dc2626",fontWeight:700}}>{fmt(Math.round(stock))} L</span>
+                            <span style={{fontSize:10,color:"#94a3b8",fontFamily:"'DM Mono'",marginLeft:6}}>/ umbral {fmt(umbral)} L</span>
+                          </div>
+                        </div>
+                      );
+                    }).filter(Boolean)
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── CONFIG ── */}
+        {tab==="config"&&configVisible&&(
+          <div>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:22,letterSpacing:2,color:"#1e293b",marginBottom:8}}>Stock Inicial por Estación</div>
+            <div style={{fontSize:12,color:"#64748b",marginBottom:12,fontFamily:"'DM Mono'"}}>
+              Cargá los litros que tiene cada tanque al momento de inicio. La app descuenta los despachos automáticamente.
+            </div>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:20}}>
+              <div style={{fontFamily:"'DM Mono'",fontSize:11,padding:"6px 12px",borderRadius:6,background:configStatus.carga?(configStatus.carga.ok?"#f0fdf4":"#fef2f2"):"#f8fafc",color:configStatus.carga?(configStatus.carga.ok?"#16a34a":"#dc2626"):"#94a3b8",border:`1px solid ${configStatus.carga?(configStatus.carga.ok?"#86efac":"#fca5a5"):"#e2e8f0"}`}}>
+                {configStatus.carga?`${configStatus.carga.ok?"✓":"✗"} Carga (${configStatus.carga.hora}): ${configStatus.carga.msg}`:"Cargando config..."}
+              </div>
+              <div style={{fontFamily:"'DM Mono'",fontSize:11,padding:"6px 12px",borderRadius:6,background:configStatus.guardado?(configStatus.guardado.ok?"#f0fdf4":"#fef2f2"):"#f8fafc",color:configStatus.guardado?(configStatus.guardado.ok?"#16a34a":"#dc2626"):"#94a3b8",border:`1px solid ${configStatus.guardado?(configStatus.guardado.ok?"#86efac":"#fca5a5"):"#e2e8f0"}`}}>
+                {configStatus.guardado?`${configStatus.guardado.ok?"✓":"✗"} Guardado (${configStatus.guardado.hora}): ${configStatus.guardado.msg}`:"Sin guardados todavía"}
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:16}}>
+              {Object.entries(ESTACIONES_CONFIG).map(([estId,cfg])=>(
+                <div key={estId} style={{background:"#fff",border:`1.5px solid ${cfg.color}44`,borderRadius:14,overflow:"hidden",boxShadow:"0 1px 6px rgba(0,0,0,.06)"}}>
+                  <div style={{height:3,background:`linear-gradient(90deg,${cfg.color},${cfg.color}44)`}}/>
+                  <div style={{padding:"16px 20px 8px",borderBottom:"1px solid #f1f5f9",display:"flex",alignItems:"center",gap:8}}>
+                    <div style={{width:8,height:8,borderRadius:"50%",background:cfg.color}}/>
+                    <span style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2,color:"#1e293b"}}>{cfg.nombre}</span>
+                    <span style={{background:`${cfg.color}18`,color:cfg.color,fontSize:9,padding:"2px 7px",borderRadius:3,fontFamily:"'DM Mono'",marginLeft:4}}>{cfg.sistema}</span>
+                  </div>
+                  {(EST_SHEET_ID[estId]||estId==="PLANTAGRANEL")&&(
+                    <div style={{padding:"12px 20px",borderBottom:"1px solid #f1f5f9",background:"#fffbeb"}}>
+                      <label style={{fontFamily:"'DM Mono'",fontSize:10,color:"#92400e",letterSpacing:1.5,textTransform:"uppercase",display:"block",marginBottom:6}}>Fecha de corte (despachos se cuentan desde acá)</label>
+                      <input
+                        type="date"
+                        value={fechaCorte[estId]||""}
+                        onChange={e=>setFechaCorte(p=>({...p,[estId]:e.target.value}))}
+                        style={{background:"#fff",border:"1.5px solid #fbbf24",borderRadius:6,color:"#1e293b",padding:"8px 12px",fontSize:13,fontFamily:"'DM Mono'"}}
+                      />
+                      {fechaCorte[estId]&&(
+                        <>
+                          <span style={{marginLeft:10,fontSize:10,color:"#92400e",fontFamily:"'DM Mono'"}}>El stock de abajo debe ser el litraje real medido en esa fecha.</span>
+                          <button onClick={()=>setFechaCorte(p=>{const n={...p};delete n[estId];return n;})} style={{marginLeft:10,background:"transparent",border:"1px solid #fbbf24",borderRadius:5,color:"#92400e",fontSize:10,padding:"3px 8px",cursor:"pointer",fontFamily:"'DM Mono'"}}>Quitar corte</button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  <div style={{padding:"16px 20px"}}>
+                    {cfg.tanques.map((tk,i)=>{
+                      const val=(stockInicial?.[estId]?.[tk.id])||0;
+                      const pct=tk.cap>0?Math.min(100,(val/tk.cap)*100):0;
+                      const c=pct>60?cfg.color:pct>25?"#d49010":"#e03030";
+                      return(
+                        <div key={tk.id} style={{marginBottom:i<cfg.tanques.length-1?16:0}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                            <label style={{fontFamily:"'DM Mono'",fontSize:10,color:"#64748b",letterSpacing:1.5,textTransform:"uppercase"}}>{tk.nombre} — cap. {(tk.cap/1000).toFixed(0)}k L</label>
+                            <span style={{fontFamily:"'DM Mono'",fontSize:11,color:c}}>{pct.toFixed(0)}%</span>
+                          </div>
+                          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                            <input
+                              type="number"
+                              placeholder="0"
+                              value={val||""}
+                              onChange={e=>{
+                                const v=parseFloat(e.target.value)||0;
+                                setStockInicial(p=>({...p,[estId]:{...p[estId],[tk.id]:v}}));
+                              }}
+                              style={{flex:1,background:"#f8fafc",border:`1.5px solid ${cfg.color}44`,borderRadius:6,color:"#1e293b",padding:"9px 12px",fontSize:14,fontFamily:"'DM Mono'",fontWeight:500}}
+                            />
+                            <span style={{fontSize:11,color:"#94a3b8",whiteSpace:"nowrap"}}>/ {(tk.cap/1000).toFixed(0)}k L</span>
+                          </div>
+                          {estId==="PLANTAGRANEL"&&!fechaCorte.PLANTAGRANEL&&(
+                            <div style={{marginTop:6,fontSize:10,color:"#94a3b8",fontFamily:"'DM Mono'"}}>
+                              Sin fecha de corte configurada arriba, este número se suma al histórico completo de movimientos — para que sea el punto de partida real, primero cargá la fecha de corte. Stock actual calculado: {fmt(plantaData?.stockVivo?.[tk.id]||0)} L.
+                            </div>
+                          )}
+                          <div style={{height:4,background:"#f1f5f9",borderRadius:2,marginTop:8}}>
+                            <div style={{width:`${pct}%`,height:"100%",background:c,borderRadius:2,transition:"width .4s"}}/>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{padding:"10px 20px",borderTop:"1px solid #f1f5f9",background:"#f8fafc"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <span style={{fontFamily:"'DM Mono'",fontSize:10,color:"#94a3b8"}}>TOTAL CARGADO</span>
+                      <span style={{fontFamily:"'DM Mono'",fontSize:13,color:cfg.color,fontWeight:600}}>
+                        {fmt(cfg.tanques.reduce((a,tk)=>a+((stockInicial?.[estId]?.[tk.id])||0),0))} L
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Resumen */}
+            <div style={{marginTop:20,background:"#fff",border:"1px solid #e2e8f0",borderRadius:12,padding:"16px 20px",boxShadow:"0 1px 4px rgba(0,0,0,.05)"}}>
+              <div style={{fontFamily:"'DM Mono'",fontSize:10,color:"#94a3b8",letterSpacing:1.5,textTransform:"uppercase",marginBottom:12}}>Resumen de stock inicial cargado</div>
+              <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
+                {Object.entries(ESTACIONES_CONFIG).map(([estId,cfg])=>{
+                  const total=cfg.tanques.reduce((a,tk)=>a+((stockInicial?.[estId]?.[tk.id])||0),0);
+                  const cap=cfg.tanques.reduce((a,tk)=>a+tk.cap,0);
+                  const pct=cap>0?(total/cap*100):0;
+                  return(
+                    <div key={estId} style={{flex:1,minWidth:140,textAlign:"center"}}>
+                      <div style={{fontSize:9,color:"#94a3b8",fontFamily:"'DM Mono'",letterSpacing:1,marginBottom:4}}>{cfg.nombre.toUpperCase()}</div>
+                      <div style={{fontFamily:"'Bebas Neue'",fontSize:24,color:pct>60?cfg.color:pct>25?"#d49010":"#e03030",lineHeight:1}}>{fmt(total)}</div>
+                      <div style={{fontSize:10,color:"#94a3b8"}}>{pct.toFixed(0)}% de {fmt(cap)} L</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Diagnóstico de ingresos automáticos desde Planta */}
+            <div style={{marginTop:20,background:"#fff",border:"1px solid #e2e8f0",borderRadius:12,padding:"16px 20px",boxShadow:"0 1px 4px rgba(0,0,0,.05)"}}>
+              <div style={{fontFamily:"'DM Mono'",fontSize:10,color:"#94a3b8",letterSpacing:1.5,textTransform:"uppercase",marginBottom:4}}>Diagnóstico — Ingresos automáticos detectados desde Planta</div>
+              <div style={{fontSize:11,color:"#94a3b8",marginBottom:14,fontFamily:"'DM Mono'"}}>
+                Litros y filas que la app matcheó como ingreso para cada estación, según el destino exacto en la hoja de Planta. Comparalo contra tu conteo manual del sheet.
+              </div>
+              {!plantaData?.diagIngresos?(
+                <div style={{color:"#cbd5e1",fontFamily:"'DM Mono'",fontSize:11}}>Sin datos — sincronizá Planta primero.</div>
+              ):(
+                <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                  {Object.entries(ESTACIONES_CONFIG).filter(([id])=>id!=="PLANTAGRANEL").map(([estId,cfg])=>{
+                    const d=plantaData.diagIngresos[estId];
+                    if(!d) return(
+                      <div key={estId} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",background:"#f8fafc",borderRadius:8}}>
+                        <span style={{fontFamily:"'DM Mono'",fontSize:12,color:"#94a3b8"}}>{cfg.nombre}</span>
+                        <span style={{fontFamily:"'DM Mono'",fontSize:11,color:"#cbd5e1"}}>Sin ingresos detectados</span>
+                      </div>
+                    );
+                    return(
+                      <div key={estId} style={{border:`1px solid ${d.inconsistencias.length>0?"#fca5a5":"#e2e8f0"}`,borderRadius:8,padding:"10px 14px",background:d.inconsistencias.length>0?"#fef2f2":"#f8fafc"}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                          <span style={{fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:1,color:cfg.color}}>{cfg.nombre}</span>
+                          <div style={{textAlign:"right"}}>
+                            <span style={{fontFamily:"'DM Mono'",fontSize:14,fontWeight:700,color:"#1e293b"}}>{fmt(d.litros)} L</span>
+                            <span style={{fontFamily:"'DM Mono'",fontSize:10,color:"#94a3b8",marginLeft:8}}>{d.matches} filas</span>
+                          </div>
+                        </div>
+                        {d.inconsistencias.length>0&&(
+                          <div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #fecaca"}}>
+                            <div style={{fontFamily:"'DM Mono'",fontSize:10,color:"#dc2626",fontWeight:700,marginBottom:6}}>
+                              ⚠ {d.inconsistencias.length} fila(s) con distribución cargada que NO coincide con el total real (se reescaló proporcionalmente al total real, conservando el reparto entre tanques):
+                            </div>
+                            {d.inconsistencias.map((inc,i)=>(
+                              <div key={i} style={{fontFamily:"'DM Mono'",fontSize:10,color:"#991b1b",padding:"3px 0"}}>
+                                {inc.fecha} · comp {inc.comp} · total real: {fmt(inc.total)} L · distribución cargada sumaba: {fmt(inc.sumaDistribucion)} L · diferencia: {fmt(inc.sumaDistribucion-inc.total)} L
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const _root = ReactDOM.createRoot(document.getElementById("root"));
+_root.render(<App/>);
+// Reveal after React mounts
+requestAnimationFrame(()=>requestAnimationFrame(()=>{
+  document.getElementById("root").style.opacity="1";
+}));
+// Also support hash changes while page is open
+window.addEventListener("hashchange",()=>{
+  const h=window.location.hash.replace("#","").toLowerCase();
+  if(["dashboard","despachos","ingresos"].includes(h)){
+    // Trigger re-render by dispatching a custom event
+    window._setTab && window._setTab(h);
+  }
+});
+</script>
+</body>
+</html>
