@@ -489,6 +489,18 @@ async function fetchPlantaGranel(stockInicial, fechaCorte){
   despExternosMes.forEach(d=>{ if(d.fecha) _diasSetPlantaMes[String(d.fecha).slice(0,10)]=true; });
   const diasConMovimientoMes=Object.keys(_diasSetPlantaMes).length;
 
+  // Consumo REAL de Planta: todas las salidas (externos + estaciones propias)
+  // de los últimos 30 días corridos, sobre los días en que hubo retiro.
+  const _hoy=new Date(); _hoy.setHours(0,0,0,0);
+  const _desde30=new Date(_hoy); _desde30.setDate(_hoy.getDate()-29);
+  const salidas30=despachos
+    .filter(d=>!["RTO","FAC"].includes(d.ref))
+    .filter(d=>{ const f=_parseFechaLocal(d.fecha); return f && !isNaN(f) && f>=_desde30 && f<=new Date(); });
+  const salidasReal=salidas30.reduce((a,d)=>a+d.litros,0);
+  const _diasSal={};
+  salidas30.forEach(d=>{ const f=_parseFechaLocal(d.fecha); _diasSal[f.toDateString()]=true; });
+  const diasSalidaReal=Object.keys(_diasSal).length;
+
   // Top clientes externos del mes actual (excluye entregas a puntos propios)
   const mapaClientes={};
   despExternosMes.forEach(d=>{
@@ -508,6 +520,8 @@ async function fetchPlantaGranel(stockInicial, fechaCorte){
     despachoExterno,
     despachoExternoMes,
     diasConMovimientoMes,
+    salidasReal,
+    diasSalidaReal,
     topClientesPlanta,
     ingresosAuto,
     diagIngresos,
@@ -668,7 +682,7 @@ function EstacionCard({est,data,ingresos,stockInicial,onUpload,uploading,idx,pla
 
   // Días CON MOVIMIENTO en el mes (no días de calendario — evita que fines de semana
   // sin actividad inflen el consumo/día y la autonomía calculada)
-  const diasConMovimiento=est==="PLANTAGRANEL" ? plantaData?.diasConMovimientoMes
+  const diasConMovimiento=est==="PLANTAGRANEL" ? plantaData?.diasSalidaReal
     : est==="RESERO" ? reseroDias
     : est==="ANTICLINAL" ? clientesData?.AG_dias
     : est==="TRESPICOS" ? clientesData?.TP_dias
@@ -680,7 +694,8 @@ function EstacionCard({est,data,ingresos,stockInicial,onUpload,uploading,idx,pla
   // si no (ej. Base CR, que todavía no reporta esto), caemos a días transcurridos del mes.
   const hoy=new Date();
   const diasMes=(diasConMovimiento&&diasConMovimiento>0)?diasConMovimiento:hoy.getDate();
-  const consumoDiario=diasMes>0?totalDesp/diasMes:0;
+  const totalConsumo=est==="PLANTAGRANEL" ? (plantaData?.salidasReal||0) : totalDesp;
+  const consumoDiario=diasMes>0?totalConsumo/diasMes:0;
 
   // Días de autonomía
   const autonomia=consumoDiario>0?Math.floor(totalStock/consumoDiario):999;
@@ -735,7 +750,7 @@ function EstacionCard({est,data,ingresos,stockInicial,onUpload,uploading,idx,pla
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:1,borderTop:"1px solid #f1f5f9",background:"#f8fafc"}}>
         {[
           ["DESPACHOS",fmt(totalDesp)+" L","mes actual"],
-          ["CONSUMO/DÍA",fmt(consumoDiario)+" L",diasConMovimiento?`sobre ${diasConMovimiento} días c/mov.`:"estimado"],
+          ["CONSUMO/DÍA",fmt(consumoDiario)+" L",est==="PLANTAGRANEL"?`últ. 30 días · ${diasConMovimiento||0} días c/retiro`:(diasConMovimiento?`sobre ${diasConMovimiento} días c/mov.`:"estimado")],
           ["AUTONOMÍA",autonomia>90?"90+ d":autonomia+" d","aprox"],
         ].map(([label,val,sub])=>(
           <div key={label} style={{background:"#fff",padding:"10px 14px",textAlign:"center",border:"1px solid #f1f5f9"}}>
