@@ -305,13 +305,54 @@ async function gasGet(action){
   try{ return JSON.parse(text); }
   catch(e){ throw new Error("Respuesta no es JSON (¿action='"+action+"' no existe en el backend?): "+text.slice(0,120)); }
 }
-// Config FIJA desde el código: pisa lo que venga guardado en el Sheet (Config) para estas estaciones.
-// Para cambiar el stock inicial o la fecha de corte de CD, se cambia ACÁ y se vuelve a publicar.
+// Config FIJA desde el código: pisa lo que venga guardado en el Sheet (Config), así se ve igual en cualquier PC.
+// Para cambiar un stock inicial o una fecha de corte, se cambia ACÁ y se vuelve a publicar.
+// - fechaCorte + stockInicial: corte de TODA la estación.
+// - tanques: corte de UN tanque puntual (los demás tanques de esa estación siguen con su corte/stock de siempre).
+//   El stock es el litraje medido al cierre del día anterior a la fecha de corte.
 const CONFIG_FIJA={
   ESTACIONCD:{fechaCorte:"2026-10-13", stockInicial:{tk1:12400,tk2:7980,tk3:4400}}, // cierre 12/10/2026
+  PLANTAGRANEL:{tanques:{tk2:{fechaCorte:"2026-11-01", stock:14000}}}, // Euro Tk2 — cierre 31/10/2026
+  TRESPICOS:{tanques:{tk1:{fechaCorte:"2026-11-01", stock:7600}}},     // Euro Tk1 — cierre 31/10/2026
 };
-const _fijaStock=Object.fromEntries(Object.entries(CONFIG_FIJA).map(([k,v])=>[k,v.stockInicial]));
-const _fijaCorte=Object.fromEntries(Object.entries(CONFIG_FIJA).map(([k,v])=>[k,v.fechaCorte]));
+const _fijaCorte=Object.fromEntries(Object.entries(CONFIG_FIJA).filter(([k,v])=>v.fechaCorte).map(([k,v])=>[k,v.fechaCorte]));
+// Aplica los stocks fijos (de estación completa y de tanque puntual) sobre un objeto stockInicial
+function aplicarFijaStock(base){
+  const out={...base};
+  Object.entries(CONFIG_FIJA).forEach(([estId,v])=>{
+    const est={...(out[estId]||{})};
+    if(v.stockInicial) Object.assign(est,v.stockInicial);
+    if(v.tanques) Object.entries(v.tanques).forEach(([tkId,t])=>{ est[tkId]=t.stock; });
+    out[estId]=est;
+  });
+  return out;
+}
+// Fecha de corte efectiva de un tanque: la del tanque si tiene una fija, si no la de la estación
+function corteTanque(estId,tkId,fechaCorte){
+  return CONFIG_FIJA[estId]?.tanques?.[tkId]?.fechaCorte || fechaCorte?.[estId] || "";
+}
+// Trae despachos de una estación respetando cortes por tanque (si un tanque tiene su propio corte,
+// se hace un segundo pedido con esa fecha y se reemplaza el total de ese tanque)
+async function fetchDespachosEstConCorte(estId,fechaCorte){
+  const pedir=async(desde)=>{
+    const url=GAS_URL_ESTACIONES+"?action=getDespachos&estacion="+EST_SHEET_ID[estId]+(desde?("&desde="+desde):"")+"&nocache="+Date.now();
+    const d=await (await fetch(url)).json();
+    if(d.error) throw new Error(d.error);
+    return d;
+  };
+  const d=await pedir(fechaCorte?.[estId]||"");
+  const tks=CONFIG_FIJA[estId]?.tanques;
+  if(tks){
+    const porFecha={};
+    Object.entries(tks).forEach(([tkId,t])=>{ (porFecha[t.fechaCorte]=porFecha[t.fechaCorte]||[]).push(tkId); });
+    for(const [desde,tkIds] of Object.entries(porFecha)){
+      const d2=await pedir(desde);
+      d.porTanque={...(d.porTanque||{})};
+      tkIds.forEach(tkId=>{ d.porTanque[tkId]=(d2.porTanque?.[tkId])||0; });
+    }
+  }
+  return d;
+}
 
 async function gasPost(payload){
   const res=await fetch(GAS_URL_PLANTA,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify(payload)});
@@ -379,10 +420,11 @@ async function fetchPlantaGranel(stockInicial, fechaCorte){
     const fecha=String(row[1]||"");
 
     // Stock propio de Planta: solo cuenta movimientos desde SU fecha de corte (si tiene una configurada).
-    if(_pasaDesdeLocal(fecha, fechaCorte?.PLANTAGRANEL)){
-      if(esIngreso){ tk1+=v1; tk2+=v2; tk3+=v3; }
-      else { tk1-=v1; tk2-=v2; tk3-=v3; }
-    }
+    // (cada tanque respeta su propio corte si tiene uno fijo en CONFIG_FIJA)
+    const sg=esIngreso?1:-1;
+    if(_pasaDesdeLocal(fecha, corteTanque("PLANTAGRANEL","tk1",fechaCorte))) tk1+=sg*v1;
+    if(_pasaDesdeLocal(fecha, corteTanque("PLANTAGRANEL","tk2",fechaCorte))) tk2+=sg*v2;
+    if(_pasaDesdeLocal(fecha, corteTanque("PLANTAGRANEL","tk3",fechaCorte))) tk3+=sg*v3;
 
     if(!esIngreso){
       // Detectar a qué estación fue el despacho y acumularlo como ingreso — pero
@@ -421,7 +463,7 @@ async function fetchPlantaGranel(stockInicial, fechaCorte){
             // Distribuir por tanque según JSON guardado (ya validado/ajustado contra el total real)
             Object.entries(distribucionFinal).forEach(([tkId,lts])=>{
               const tkValido=cfg.tanques.find(t=>t.id===tkId);
-              if(tkValido&&lts>0){
+              if(tkValido&&lts>0&&_pasaDesdeLocal(fecha, corteTanque(estId,tkId,fechaCorte))){
                 ingresosAutoEst[estId][tkId]=(ingresosAutoEst[estId][tkId]||0)+(parseFloat(lts)||0);
               }
             });
@@ -432,7 +474,8 @@ async function fetchPlantaGranel(stockInicial, fechaCorte){
           } else {
             // Sin distribución cargada: todo al primer tanque, usando el total real
             const tkDest=cfg.tanques[0].id;
-            ingresosAutoEst[estId][tkDest]=(ingresosAutoEst[estId][tkDest]||0)+total;
+            if(_pasaDesdeLocal(fecha, corteTanque(estId,tkDest,fechaCorte)))
+              ingresosAutoEst[estId][tkDest]=(ingresosAutoEst[estId][tkDest]||0)+total;
           }
         });
       }
@@ -887,7 +930,7 @@ function App(){
   const [dataPorEst,setDataPorEst]=useState({});
   const [ingresos,setIngresos]=useState([]);
   const [alarmas,setAlarmas]=useState({});
-  const [stockInicial,setStockInicial]=useState({
+  const [stockInicial,setStockInicial]=useState(()=>aplicarFijaStock({
     ANTICLINAL:{tk1:3933,tk2:14759},
     TRESPICOS:{tk1:9800,tk2:4800,tk3:2600},
     RESERO:{tk1:8400},
@@ -895,7 +938,7 @@ function App(){
     PLANTAGRANEL:{tk1:26000,tk2:24000,tk3:8100},
     ESTACIONCD:{tk1:12400,tk2:7980,tk3:4400},
     BASECR:{tk1:0},
-  });
+  }));
   const [fechaCorte,setFechaCorte]=useState({TRESPICOS:"2026-09-01",ESTACIONCD:"2026-10-13",VALLE:"2026-09-01"});
   const [plantaData,setPlantaData]=useState(null);
   const [plantaLoading,setPlantaLoading]=useState(false);
@@ -955,9 +998,7 @@ function App(){
       setEstLoading(p=>({...p,[estId]:true}));
       // Sin &mes= para que devuelva histórico completo — pero con &desde= si hay fecha de corte
       // configurada, para que el backend sume despachos solo desde esa fecha (necesario para stock)
-      const desdeParam=fechaCorte[estId]?("&desde="+fechaCorte[estId]):"";
-      const url=GAS_URL_ESTACIONES+"?action=getDespachos&estacion="+EST_SHEET_ID[estId]+desdeParam+"&nocache="+Date.now();
-      fetch(url).then(r=>r.json()).then(d=>{ if(!d.error) setDataPorEst(p=>({...p,[estId]:d})); }).catch(()=>{}).finally(()=>setEstLoading(p=>({...p,[estId]:false})));
+      fetchDespachosEstConCorte(estId,fechaCorte).then(d=>setDataPorEst(p=>({...p,[estId]:d}))).catch(()=>{}).finally(()=>setEstLoading(p=>({...p,[estId]:false})));
     });
     // Timestamp
     const ahora=new Date();
@@ -1092,7 +1133,7 @@ function App(){
     gasGet("getEstConfig")
       .then(cfg=>{
         if(cfg && cfg.stockInicial && Object.keys(cfg.stockInicial).length>0){
-          setStockInicial(p=>({...p,...cfg.stockInicial,..._fijaStock}));
+          setStockInicial(p=>aplicarFijaStock({...p,...cfg.stockInicial}));
         }
         if(cfg && cfg.alarmas) setAlarmas(cfg.alarmas);
         if(cfg && cfg.fechaCorte) setFechaCorte({...cfg.fechaCorte,..._fijaCorte});
@@ -1137,12 +1178,8 @@ function App(){
   // Sincronizar una estación manualmente
   const handleSyncEst=(estId)=>{
     setEstLoading(p=>({...p,[estId]:true}));
-    const shId=EST_SHEET_ID[estId];
-    const desdeParam=fechaCorte[estId]?("&desde="+fechaCorte[estId]):"";
-    const url=GAS_URL_ESTACIONES+"?action=getDespachos&estacion="+shId+desdeParam+"&nocache="+Date.now();
-    fetch(url).then(r=>r.json())
+    fetchDespachosEstConCorte(estId,fechaCorte)
       .then(d=>{
-        if(d.error) throw new Error(d.error);
         setDataPorEst(p=>({...p,[estId]:d}));
         showToast(`✓ ${ESTACIONES_CONFIG[estId].nombre} actualizada`,"ok");
       })
