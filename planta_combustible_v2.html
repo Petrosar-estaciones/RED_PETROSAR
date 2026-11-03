@@ -180,6 +180,12 @@ const fmt=n=>Number(n||0).toLocaleString("es-AR");
 const toDay=()=>new Date().toISOString().slice(0,10);
 const TANKS=["Tk1","Tk2","Tk3"];
 const TANK_LABELS={"Tk1":"Gasoil Tk1","Tk2":"Euro Tk2","Tk3":"Euro Tk3"};
+// Stock FIJO por tanque desde el código (igual que en la app Red de Estaciones): pisa el stock inicial
+// guardado en el Sheet y solo cuenta movimientos desde su fecha de corte, así se ve igual en cualquier PC.
+// stock = litros medidos al cierre del día anterior a fechaCorte. Para cambiarlo, se cambia ACÁ y se publica.
+const STOCK_FIJO_PLANTA={
+  Tk2:{fechaCorte:"2026-11-01", stock:14000}, // Euro Tk2 — cierre 31/10/2026
+};
 const TIPOS=[{val:"RTO",label:"RTO — Remito"},{val:"FAC",label:"FAC — Factura"},{val:"PS",label:"PS  — Despacho"}];
 
 /* ══ COMPONENTES COMUNES ══════════════════════════════════════════════════ */
@@ -282,7 +288,12 @@ function PlantaGranel({showToast}){
 
   const stocks=useMemo(()=>{
     const st={...initStock};
-    movs.forEach(m=>{const sg=["RTO","FAC"].includes(m.ref)?1:-1;TANKS.forEach(tk=>{st[tk]=(st[tk]||0)+sg*(parseFloat(m[tk.toLowerCase()])||0);});});
+    TANKS.forEach(tk=>{ if(STOCK_FIJO_PLANTA[tk]) st[tk]=STOCK_FIJO_PLANTA[tk].stock; });
+    movs.forEach(m=>{const sg=["RTO","FAC"].includes(m.ref)?1:-1;TANKS.forEach(tk=>{
+      const fija=STOCK_FIJO_PLANTA[tk];
+      if(fija&&String(m.fecha||"").slice(0,10)<fija.fechaCorte) return; // anterior al corte: ya absorbido en el stock fijo
+      st[tk]=(st[tk]||0)+sg*(parseFloat(m[tk.toLowerCase()])||0);
+    });});
     return st;
   },[movs,initStock]);
   const stockTotal=TANKS.reduce((a,tk)=>a+(stocks[tk]||0),0);
@@ -594,7 +605,9 @@ function PlantaGranel({showToast}){
               {TANKS.map(tk=>(
                 <div key={tk} style={{marginBottom:13}}>
                   <label style={{...lbl,color:P.accent}}>{TANK_LABELS[tk]} — Litros</label>
-                  <input style={inp} type="number" value={initStock[tk]} onChange={e=>setInitStock(p=>({...p,[tk]:parseFloat(e.target.value)||0}))}/>
+                  {STOCK_FIJO_PLANTA[tk]
+                    ?<div style={{...inp,background:P.bg2,color:P.inkM}}>{fmt(STOCK_FIJO_PLANTA[tk].stock)} L al {STOCK_FIJO_PLANTA[tk].fechaCorte.split("-").reverse().join("/")} (fijo en el código)</div>
+                    :<input style={inp} type="number" value={initStock[tk]} onChange={e=>setInitStock(p=>({...p,[tk]:parseFloat(e.target.value)||0}))}/>}
                 </div>
               ))}
             </div>
