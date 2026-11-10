@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flujo de litros · Red Petrosar</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+  :root{
+    --paper:#F1F3F2; --card:#ffffff; --ink:#132226; --ink-soft:#5C6B6E;
+    --line:#DCE2E1; --line-strong:#C3CBC9;
+    --petrol:#0E3F45; --petrol-soft:#E4EEEF; --petrol-light:#7FA7AB;
+    --amber:#DE9A2C; --amber-soft:#FBF0DC;
+    --green:#2F8F5B; --red:#C0392B;
+    --gasoil:#E07B1F; --euro:#2F8F5B;
+    --sans:'Inter', system-ui, -apple-system, sans-serif;
+    --display:'Space Grotesk', var(--sans);
+    --mono:'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{ background:var(--paper); font-family:var(--sans); color:var(--ink); }
+  .topbar{ background:var(--petrol); color:#fff; padding:20px 30px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; }
+  .brand .mark{ font-family:var(--display); font-weight:700; font-size:19px; }
+  .brand .mark .dot{ color:var(--amber); }
+  .brand .sub{ font-size:11.5px; color:#B9CBCC; letter-spacing:.04em; margin-top:3px; }
+  .top-actions{ display:flex; align-items:center; gap:12px; }
+  .status{ font-size:11.5px; color:#B9CBCC; }
+  .body{ padding:22px 30px 50px; max-width:1280px; margin:0 auto; }
+
+  .filters{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
+  .filters .lbl{ font-size:11px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.06em; margin-right:4px; }
+  .chip{ font-family:var(--sans); font-size:12.5px; padding:6px 14px; border-radius:6px; border:1px solid var(--line-strong); background:#fff; color:var(--ink-soft); cursor:pointer; }
+  .chip:hover{ border-color:var(--petrol); color:var(--petrol); }
+  .chip.active{ background:var(--petrol); border-color:var(--petrol); color:#fff; font-weight:600; }
+  .chip.gasoil.active{ background:var(--gasoil); border-color:var(--gasoil); }
+  .chip.euro.active{ background:var(--euro); border-color:var(--euro); }
+
+  .kpis{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:18px; }
+  .kpi{ background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; border-top:3px solid var(--petrol); }
+  .kpi.k-venta{ border-top-color:var(--amber); }
+  .kpi.k-consumo{ border-top-color:var(--petrol-light); }
+  .kpi.k-dif{ border-top-color:var(--ink-soft); }
+  .kpi .l{ font-size:10.5px; text-transform:uppercase; letter-spacing:.07em; color:var(--ink-soft); }
+  .kpi .n{ font-family:var(--mono); font-size:22px; font-weight:600; margin-top:4px; }
+  .kpi .s{ font-size:11.5px; color:var(--ink-soft); margin-top:2px; }
+
+  .panel{ background:var(--card); border:1px solid var(--line); border-radius:10px; margin-bottom:18px; overflow:hidden; }
+  .panel-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 18px; border-bottom:1px solid var(--line); background:#FAFBFA; flex-wrap:wrap; }
+  .panel-head h2{ font-family:var(--display); font-weight:600; font-size:14px; margin:0; }
+  .panel-head .hint{ font-size:11.5px; color:var(--ink-soft); }
+  .panel-body{ padding:16px 18px; overflow-x:auto; }
+
+  table{ width:100%; border-collapse:collapse; font-size:12.6px; }
+  thead th{ text-align:right; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); border-bottom:1px solid var(--line-strong); padding:8px; white-space:nowrap; font-weight:600; background:#FAFBFA; }
+  thead th:first-child{ text-align:left; }
+  thead tr.grp th{ text-align:center; border-bottom:1px solid var(--line); color:var(--ink); }
+  tbody td{ padding:7px 8px; border-bottom:1px solid var(--line); font-family:var(--mono); white-space:nowrap; text-align:right; }
+  tbody td:first-child{ text-align:left; font-family:var(--sans); font-weight:500; }
+  tbody tr:hover{ background:#FAFBFA; }
+  tfoot td{ padding:8px; border-top:1.5px solid var(--ink); font-weight:600; font-family:var(--mono); text-align:right; background:#FAFBFA; white-space:nowrap; }
+  tfoot td:first-child{ text-align:left; font-family:var(--sans); }
+  .neg{ color:var(--red); }
+  .pos{ color:var(--green); }
+  .muted{ color:var(--ink-soft); }
+  .sep-l{ border-left:1px solid var(--line); }
+  .tag{ display:inline-block; font-size:10px; font-family:var(--sans); padding:1px 6px; border-radius:4px; margin-left:6px; background:var(--petrol-soft); color:var(--petrol); font-weight:600; letter-spacing:.03em; }
+  .tag.c{ background:#EEF0F0; color:var(--ink-soft); }
+
+  .legend{ display:flex; gap:16px; font-size:11.5px; color:var(--ink-soft); margin-bottom:8px; flex-wrap:wrap; }
+  .legend span{ display:flex; align-items:center; gap:6px; }
+  .legend i{ width:11px; height:11px; border-radius:2px; display:inline-block; }
+  .chart-wrap{ position:relative; }
+  .tip{ position:absolute; pointer-events:none; background:var(--ink); color:#fff; font-size:11.5px; padding:7px 10px; border-radius:6px; opacity:0; transition:opacity .1s; white-space:nowrap; font-family:var(--mono); z-index:5; }
+
+  .btn{ font-family:var(--sans); font-weight:600; font-size:12.5px; padding:8px 16px; border-radius:6px; border:none; cursor:pointer; background:var(--amber); color:#fff; }
+  .btn:hover{ background:#c6851f; }
+  .btn:disabled{ background:var(--line-strong); cursor:not-allowed; }
+
+  .notes{ font-size:12px; color:var(--ink-soft); line-height:1.6; }
+  .notes b{ color:var(--ink); }
+  .notes ul{ margin:6px 0 0; padding-left:18px; }
+  .warn{ background:var(--amber-soft); border:1px solid #EFC885; color:#7a5310; font-size:12.5px; padding:10px 14px; border-radius:8px; margin-bottom:16px; }
+  .loading{ text-align:center; padding:60px; color:var(--ink-soft); font-size:14px; }
+  .error{ color:var(--red); padding:30px; text-align:center; }
+  table.compact{ font-size:11.8px; }
+  table.compact thead th{ white-space:normal; padding:7px 5px; line-height:1.25; vertical-align:bottom; }
+  table.compact tbody td, table.compact tfoot td{ padding:6px 5px; }
+  select.sel{ font-family:var(--sans); font-size:12.5px; padding:6px 10px; border:1px solid var(--line-strong); border-radius:6px; background:#fff; color:var(--ink); }
+  @media (max-width:900px){ .kpis{ grid-template-columns:1fr 1fr; } }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="brand">
+    <div class="mark">Flujo de litros<span class="dot">·</span> Red Petrosar</div>
+    <div class="sub">Ingresos y egresos de combustible por punto · desde marzo 2026</div>
+  </div>
+  <div class="top-actions">
+    <div class="status" id="statusTxt">Cargando datos…</div>
+    <button class="btn" id="btnExcel" onclick="descargarExcel()" disabled>⬇ Descargar Excel</button>
+  </div>
+</div>
+<div class="body" id="app"><div class="loading">Conectando con Google Sheets…</div></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   FUENTES
+═══════════════════════════════════════════════════════════════ */
+const FL_SHEET_EST    = '1418oEjkm9IVg6RsBIrygD42G2SaDa0yx0DmJtpZxBWE'; // ESTACIONES DESPACHO
+const FL_SHEET_PLANTA = '1NWUzcMuA5JmUXW5p3MiWwes8M4nb5EBNoTssFBU0ndE'; // Planta granel
+const FL_SHEET_BASECR = '1A_0pcSuycTcTBcf8bAHXopHk_FrLSgcdbDSFbvZnLuQ'; // Base CR
+const FL_SHEET_CDINF  = '177qGXlNmtYig4gVM2b2f5zylTvnNpW3YWDbVhP8qAyg'; // Informe Lts diarios cd (dashboard CD)
+const FL_DESDE        = new Date(2026, 2, 1); // los datos arrancan el 01/03/2026
+const FL_LTS_CAMION   = 36000;                // capacidad de un camión cisterna
+
+const FL_FUENTES = [
+  { key:'PLANTA', nombre:'Planta granel',    id:FL_SHEET_PLANTA, ref:'1688777748' },
+  { key:'BASECR', nombre:'Base CR',          id:FL_SHEET_BASECR, ref:'0' },
+  { key:'TP',     nombre:'TP',               id:FL_SHEET_EST,    ref:'0' },
+  { key:'AG',     nombre:'AG',               id:FL_SHEET_EST,    ref:'1244583268' },
+  { key:'VH',     nombre:'VH',               id:FL_SHEET_EST,    ref:'VH' },
+  { key:'DEBOCD', nombre:'Informe Lts diarios CD', id:FL_SHEET_CDINF, ref:'debocd' }, // misma fuente que el dashboard de litros CD
+  { key:'CD',     nombre:'CD (surtidores)',  id:FL_SHEET_EST,    ref:'CD' },
+  { key:'RESERO', nombre:'Resero',           id:FL_SHEET_EST,    ref:'1798585939' }
+];
+
+/* Puntos de la red */
+const FL_PUNTOS = ['PLANTA','CD','VH','TP','AG','BASE CR','RESERO'];
+const FL_PUNTO_LBL = { PLANTA:'Planta Granel', CD:'Estación CD', VH:'Remota VH', TP:'Remota TP', AG:'Remota AG', 'BASE CR':'Base CR', RESERO:'Resero' };
+const FL_PUNTO_TAG = { PLANTA:'venta', CD:'venta', VH:'venta', TP:'venta', AG:'venta', 'BASE CR':'consumo', RESERO:'consumo' };
+/* Producto fijo por punto (un solo producto en el tanque) */
+const FL_PROD_FIJO = { VH:'EURO', TP:'EURO', RESERO:'EURO', 'BASE CR':'EURO', AG:'GASOIL' };
+/* Receptores de Planta que son puntos de la red (traspasos internos) */
+const FL_DESTINOS = [['ESTACION CD','CD'],['REMOTA VH','VH'],['REMOTA TP','TP'],['REMOTA AG','AG'],['BASE CR','BASE CR'],['RESERO','RESERO']];
+
+const FL_MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+/* ═══════════════════════════════════════════════════════════════
+   UTILIDADES gviz
+═══════════════════════════════════════════════════════════════ */
+function gv(row,i){ return (i>=0 && row.c && row.c[i]) ? (row.c[i].v ?? null) : null; }
+function gs(row,i){ return String(gv(row,i) ?? '').trim(); }
+function gf(row,i){ return (row.c && row.c[i]) ? (row.c[i].f || '') : ''; }
+
+function flFecha(row,i){
+  const tryStr = src => {
+    if(src===null || src===undefined || src==='') return null;
+    src = String(src);
+    let m = src.match(/Date\((\d+),(\d+),(\d+)/);           if(m) return new Date(+m[1],+m[2],+m[3]);
+    m = src.match(/(\d{4})-(\d{2})-(\d{2})/);                if(m) return new Date(+m[1],+m[2]-1,+m[3]);
+    m = src.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);          if(m) return new Date(+m[3],+m[2]-1,+m[1]);
+    m = src.match(/(\d{1,2})-(\d{1,2})-(\d{4})/);            if(m) return new Date(+m[3],+m[2]-1,+m[1]);
+    return null;
+  };
+  let r = tryStr(gv(row,i)); if(r && !isNaN(r)) return r;
+  r = tryStr(gf(row,i));     if(r && !isNaN(r)) return r;
+  return null;
+}
+
+/* Litros: misma lógica que flota_petrosar_v7 (valor numérico o texto con coma decimal) */
+function flLitros(row,i){
+  const lv = gv(row,i), lf = gf(row,i);
+  if(typeof lv==='number' && lv===Math.floor(lv) && lf){
+    return parseFloat(lf.replace(/\./g,'').replace(',','.')) || lv;
+  }
+  if(typeof lv==='number') return lv;
+  if(typeof lv==='string') return parseFloat(lv.replace(/\./g,'').replace(',','.')) || 0;
+  if(lf) return parseFloat(lf.replace(/\./g,'').replace(',','.')) || 0;
+  return 0;
+}
+
+function flMesKey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+function flMesLbl(k, corto){
+  const [y,m] = k.split('-'); const n = FL_MESES[+m-1];
+  return corto ? n.slice(0,3)+' '+y.slice(2) : n.charAt(0).toUpperCase()+n.slice(1)+' '+y;
+}
+function fmtL(n){ return Math.round(n).toLocaleString('es-AR'); }
+function fmtSig(n){ const r=Math.round(n)||0; return (r>0?'+':'')+r.toLocaleString('es-AR'); }
+
+async function flFetchGviz(id, ref){
+  const p = /^\d+$/.test(String(ref)) ? `gid=${ref}` : `sheet=${encodeURIComponent(ref)}`;
+  const r = await fetch(`https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:json&headers=1&${p}`);
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  const t = await r.text();
+  const j = JSON.parse(t.slice(t.indexOf('(')+1, t.lastIndexOf(')')));
+  if(j.status==='error') throw new Error(j.errors?.[0]?.message || 'Error sheet');
+  return j.table;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PROCESAMIENTO
+   Cada movimiento: { mes, punto, tipo, prod, lts }
+   tipo: compra (ingreso de proveedor) · ingreso (recibido de Planta)
+         venta · consumo (consumo propio) · traspaso (enviado a otro punto)
+═══════════════════════════════════════════════════════════════ */
+let flMovs = [];
+let flControlCD = {};  // mes -> litros despachados por surtidores CD
+const flHoy = new Date(); flHoy.setHours(23,59,59,999);
+
+function flAdd(fecha, punto, tipo, prod, lts){
+  if(!lts) return;
+  flMovs.push({ mes:flMesKey(fecha), dia:fecha.getDate(), punto, tipo, prod, lts });
+}
+function flEnRango(fecha){ return fecha && fecha >= FL_DESDE && fecha <= flHoy; }
+
+function procPlanta(t){
+  // B=Fecha(1) C=Ref(2) G=Receptor(6) L=Gasoil Tk1(11) M=Euro Tk2(12) N=Euro Tk3(13) S=reparto tanques destino(18)
+  for(const row of t.rows||[]){
+    const ref = gs(row,2).toUpperCase();
+    if(ref!=='PS' && ref!=='RTO') continue;
+    const fecha = flFecha(row,1); if(!flEnRango(fecha)) continue;
+    const g = flLitros(row,11), e = flLitros(row,12) + flLitros(row,13);
+    if(ref==='RTO'){ flAdd(fecha,'PLANTA','compra','GASOIL',g); flAdd(fecha,'PLANTA','compra','EURO',e); continue; }
+    const rec = gs(row,6).toUpperCase().replace(/\s+/g,' ');
+    const dest = (FL_DESTINOS.find(([txt])=>rec.includes(txt))||[])[1];
+    if(dest){
+      flAdd(fecha,'PLANTA','traspaso','GASOIL',g); flAdd(fecha,'PLANTA','traspaso','EURO',e);
+      if(FL_PROD_FIJO[dest]){ flAdd(fecha,dest,'ingreso',FL_PROD_FIJO[dest],g+e); continue; }
+      // CD: tk1 y tk2 = Euro, tk3 = Gasoil (reparto cargado en Planta)
+      let ok = false;
+      try{
+        const js = JSON.parse(gs(row,18) || '{}');
+        const eu = (+js.tk1||0)+(+js.tk2||0), go = (+js.tk3||0);
+        if(eu+go>0 && Math.abs(eu+go-(g+e))<1){ flAdd(fecha,dest,'ingreso','EURO',eu); flAdd(fecha,dest,'ingreso','GASOIL',go); ok = true; }
+      }catch(_){}
+      if(!ok){ flAdd(fecha,dest,'ingreso','GASOIL',g); flAdd(fecha,dest,'ingreso','EURO',e); }
+    } else if(/^INT\b/.test(rec)){
+      flAdd(fecha,'PLANTA','consumo','GASOIL',g); flAdd(fecha,'PLANTA','consumo','EURO',e);
+    } else {
+      flAdd(fecha,'PLANTA','venta','GASOIL',g); flAdd(fecha,'PLANTA','venta','EURO',e);
+    }
+  }
+}
+
+function procBaseCR(t){
+  // A=Fecha(0) B=Interno(1) E=Litros(4) G=Observaciones(6)
+  // Los ingresos ya se cuentan desde Planta: se excluyen las filas de ingreso
+  for(const row of t.rows||[]){
+    const fecha = flFecha(row,0); if(!flEnRango(fecha)) continue;
+    const lts = flLitros(row,4);
+    const obs = gs(row,6).toUpperCase();
+    if(obs.includes('INGRESO') || lts > 1000) continue; // gviz a veces trae vacía la columna Observaciones
+    flAdd(fecha,'BASE CR','consumo','EURO',lts);
+  }
+}
+
+function procRemota(t, punto, iFecha, iLitros, iCliente){
+  for(const row of t.rows||[]){
+    const fecha = flFecha(row,iFecha); if(!flEnRango(fecha)) continue;
+    const lts = flLitros(row,iLitros);
+    const tipo = gs(row,iCliente).toUpperCase().includes('PETROSAR') ? 'consumo' : 'venta';
+    flAdd(fecha,punto,tipo,FL_PROD_FIJO[punto],lts);
+  }
+}
+
+function flEsNC(c){
+  const u = String(c||'').toUpperCase().trim();
+  return u.startsWith('A NC') || u.startsWith('R NC') || u.startsWith('NC') || u.includes(' NC-') || u.includes('/NC');
+}
+function procDebocd(t){
+  // A=Comprobante(0) B=Fecha(1) C=Cliente(2) E=Producto(4) F=Cantidad(5)
+  for(const row of t.rows||[]){
+    const fecha = flFecha(row,1); if(!flEnRango(fecha)) continue;
+    const prodRaw = gs(row,4).toUpperCase();
+    if(/\s(VH|TP)$/.test(prodRaw)) continue; // comprobantes de VH/TP: ya están en sus hojas
+    let lts = flLitros(row,5);
+    if(flEsNC(gs(row,0))) lts = -Math.abs(lts);
+    const cli = gs(row,2).toUpperCase();
+    const tipo = (cli.includes('PETROSAR') || cli.startsWith('03007') || cli.includes('ESTACION CERRO DRAGON')) ? 'consumo' : 'venta';
+    flAdd(fecha,'CD',tipo, prodRaw.includes('GASOIL') ? 'GASOIL' : 'EURO', lts);
+  }
+}
+
+function procCDSurtidores(t){
+  // B=end_date(1) F=id producto(5) G=volume(6) — solo control contra comprobantes
+  for(const row of t.rows||[]){
+    const fecha = flFecha(row,1); if(!flEnRango(fecha)) continue;
+    const k = flMesKey(fecha), prod = gs(row,5).toUpperCase().startsWith('EURO') ? 'EURO' : 'GASOIL';
+    if(!flControlCD[k]) flControlCD[k] = { GASOIL:0, EURO:0 };
+    flControlCD[k][prod] += flLitros(row,6);
+  }
+}
+
+function procResero(t){
+  // C=Fecha de Inicio(2) R=Cantidad(17) — único tanque, Euro, todo flota propia
+  for(const row of t.rows||[]){
+    const fecha = flFecha(row,2); if(!flEnRango(fecha)) continue;
+    let lts = flLitros(row,17);
+    if(lts >= 1000) lts = lts/1000; // la consola a veces exporta "35,068" como 35068
+    flAdd(fecha,'RESERO','consumo','EURO',lts);
+  }
+}
+
+const FL_PROC = {
+  PLANTA:procPlanta, BASECR:procBaseCR,
+  TP:t=>procRemota(t,'TP',1,2,17), AG:t=>procRemota(t,'AG',1,2,17), VH:t=>procRemota(t,'VH',1,4,2),
+  DEBOCD:procDebocd, CD:procCDSurtidores, RESERO:procResero
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   AGREGADOS
+═══════════════════════════════════════════════════════════════ */
+let flProd = 'TOTAL';        // TOTAL | GASOIL | EURO
+let flMesSel = 'ANIO';       // ANIO | yyyy-mm
+let flMatriz = 'venta';      // venta | consumo | ingreso | egreso
+let flAgg = {}, flMesesList = [];
+
+function flBuildAgg(){
+  flAgg = {};
+  for(const m of flMovs){
+    const a = flAgg[m.mes] ??= {};
+    const p = a[m.punto] ??= {};
+    const t = p[m.tipo] ??= { GASOIL:0, EURO:0 };
+    t[m.prod] += m.lts;
+  }
+  flMesesList = Object.keys(flAgg).sort();
+}
+function flGet(mes, punto, tipo){
+  const meses = mes==='ANIO' ? flMesesList : [mes];
+  const puntos = punto==='*' ? FL_PUNTOS : [punto];
+  let s = 0;
+  for(const m of meses) for(const p of puntos){
+    const t = flAgg[m]?.[p]?.[tipo]; if(!t) continue;
+    s += flProd==='TOTAL' ? t.GASOIL+t.EURO : t[flProd];
+  }
+  return s;
+}
+function flRed(mes){
+  const compras = flGet(mes,'PLANTA','compra');
+  const ventas  = flGet(mes,'*','venta');
+  const consumo = flGet(mes,'*','consumo');
+  return { compras, ventas, consumo, egresos:ventas+consumo, dif:compras-ventas-consumo };
+}
+function flPunto(mes, p){
+  const ingresos = flGet(mes,p,'compra') + flGet(mes,p,'ingreso');
+  const venta = flGet(mes,p,'venta'), consumo = flGet(mes,p,'consumo'), traspaso = flGet(mes,p,'traspaso');
+  const egresos = venta+consumo+traspaso;
+  return { ingresos, venta, consumo, traspaso, egresos, neto:ingresos-egresos };
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESUMEN MENSUAL DE EGRESOS (formato contadora)
+   Egresos = lo despachado: ventas + consumo propio.
+   Planta: solo ventas a clientes (sin traspasos a los puntos).
+═══════════════════════════════════════════════════════════════ */
+let flResScope = 'RED';   // RED | punto
+const FL_RES_TIPOS = { PLANTA:['venta'], CD:['venta','consumo'], VH:['venta','consumo'], TP:['venta','consumo'], AG:['venta','consumo'], 'BASE CR':['consumo'], RESERO:['consumo'] };
+
+function flResumen(scope){
+  const puntos = scope==='RED' ? FL_PUNTOS : [scope];
+  const hoyKey = flMesKey(new Date());
+  const base = {};
+  for(const m of flMovs){
+    if(!puntos.includes(m.punto) || !FL_RES_TIPOS[m.punto].includes(m.tipo)) continue;
+    const r = base[m.mes] ??= { EURO:0, GASOIL:0, ultDia:0 };
+    r[m.prod] += m.lts;
+    if(m.dia > r.ultDia) r.ultDia = m.dia;
+  }
+  const filas = flMesesList.map(mes=>{
+    const r = base[mes] || { EURO:0, GASOIL:0, ultDia:0 };
+    const [y,mo] = mes.split('-').map(Number);
+    const diasMes = new Date(y, mo, 0).getDate();
+    const parcial = mes===hoyKey;
+    const dias = parcial ? r.ultDia : diasMes;
+    const total = r.EURO + r.GASOIL;
+    const diario = dias ? total/dias : 0;
+    return { mes, parcial, desde:new Date(y,mo-1,1), hasta:new Date(y,mo-1,parcial?(r.ultDia||1):diasMes), dias,
+      euro:r.EURO, gasoil:r.GASOIL, total, diario, semanal:diario*7,
+      camMes: total/FL_LTS_CAMION, camSem: diario*7/FL_LTS_CAMION,
+      camSemEuro: dias ? r.EURO/dias*7/FL_LTS_CAMION : 0, camSemGas: dias ? r.GASOIL/dias*7/FL_LTS_CAMION : 0 };
+  });
+  const T = filas.reduce((a,f)=>{ a.dias+=f.dias; a.euro+=f.euro; a.gasoil+=f.gasoil; a.total+=f.total; return a; }, { dias:0, euro:0, gasoil:0, total:0 });
+  T.diario = T.dias ? T.total/T.dias : 0; T.semanal = T.diario*7;
+  T.camMes = T.total/FL_LTS_CAMION; T.camSem = T.semanal/FL_LTS_CAMION;
+  T.camSemEuro = T.dias ? T.euro/T.dias*7/FL_LTS_CAMION : 0; T.camSemGas = T.dias ? T.gasoil/T.dias*7/FL_LTS_CAMION : 0;
+  return { filas, T };
+}
+function fmtFecha(d){ return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); }
+function fmt2(n){ return (+n||0).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+function flResumenHTML(){
+  const { filas, T } = flResumen(flResScope);
+  const parcial = filas.find(f=>f.parcial);
+  const opt = (k,t) => `<option value="${k}" ${flResScope===k?'selected':''}>${t}</option>`;
+  return `
+    <div class="panel">
+      <div class="panel-head"><h2>Resumen mensual de egresos</h2>
+        <select class="sel" onchange="flResScope=this.value;flRender()">
+          ${opt('RED','Toda la red')}${FL_PUNTOS.map(p=>opt(p,FL_PUNTO_LBL[p]+(p==='PLANTA'?' (ventas a clientes)':''))).join('')}
+        </select>
+      </div>
+      <div class="panel-body">
+        <div class="notes" style="margin-bottom:10px;">${parcial?`${flMesLbl(parcial.mes).split(' ')[0]} es parcial (datos hasta el ${fmtFecha(parcial.hasta)}). `:''}Promedio semanal = promedio diario × 7. Camión = ${FL_LTS_CAMION.toLocaleString('es-AR')} L. Egresos = ventas + consumo propio; de Planta solo las ventas a clientes.</div>
+        <table class="compact">
+          <thead><tr><th>Mes</th><th>Desde</th><th>Hasta</th><th>Días con datos</th><th class="sep-l">Euro + Diesel (L)</th><th>Gasoil (L)</th><th>Total (L)</th><th class="sep-l">Promedio diario (L)</th><th>Promedio semanal (L)</th><th class="sep-l">Camiones / mes</th><th>Camiones / semana</th><th>Camiones Euro / semana</th><th>Camiones Gasoil / semana</th></tr></thead>
+          <tbody>${filas.map(f=>`<tr><td>${flMesLbl(f.mes).split(' ')[0]}${f.parcial?' (parcial)':''}</td><td>${fmtFecha(f.desde)}</td><td>${fmtFecha(f.hasta)}</td><td>${f.dias}</td><td class="sep-l">${fmtL(f.euro)}</td><td>${fmtL(f.gasoil)}</td><td><b>${fmtL(f.total)}</b></td><td class="sep-l">${fmtL(f.diario)}</td><td>${fmtL(f.semanal)}</td><td class="sep-l">${fmt2(f.camMes)}</td><td>${fmt2(f.camSem)}</td><td>${fmt2(f.camSemEuro)}</td><td>${fmt2(f.camSemGas)}</td></tr>`).join('')}</tbody>
+          <tfoot><tr><td>Total / promedio</td><td></td><td></td><td>${T.dias}</td><td>${fmtL(T.euro)}</td><td>${fmtL(T.gasoil)}</td><td>${fmtL(T.total)}</td><td>${fmtL(T.diario)}</td><td>${fmtL(T.semanal)}</td><td>${fmt2(T.camMes)}</td><td>${fmt2(T.camSem)}</td><td>${fmt2(T.camSemEuro)}</td><td>${fmt2(T.camSemGas)}</td></tr></tfoot>
+        </table>
+        <div style="margin-top:18px;font-family:var(--display);font-weight:600;font-size:13px;">Camiones por semana · promedio de cada mes</div>
+        <div class="legend" style="margin-top:6px;"><span><i style="background:var(--euro)"></i>Euro + Diesel</span><span><i style="background:var(--gasoil)"></i>Gasoil</span></div>
+        <div class="chart-wrap" id="chartCam"><div class="tip" id="tipCam"></div></div>
+      </div>
+    </div>`;
+}
+
+function flChartCamiones(){
+  const wrap = document.getElementById('chartCam'); if(!wrap) return;
+  const { filas } = flResumen(flResScope);
+  const W = Math.max(wrap.clientWidth, 600), H = 230, padL = 40, padR = 10, padT = 10, padB = 28;
+  const max = Math.max(0.05, ...filas.map(f=>f.camSem));
+  const stepC = max>6 ? 2 : max>3 ? 1 : max>1 ? 0.5 : max>0.4 ? 0.1 : 0.05;
+  const top = Math.ceil(max*1.08/stepC)*stepC;
+  const y = v => padT + (H-padT-padB) * (1 - v/top);
+  const gw = (W-padL-padR)/filas.length, bw = Math.min(46, gw*0.55);
+  let svg = `<svg width="${W}" height="${H}" style="display:block;font-family:IBM Plex Mono,monospace;font-size:10px;">`;
+  const nT = Math.round(top/stepC);
+  for(let i=0;i<=nT;i++){ const v=top*i/nT, yy=y(v);
+    svg += `<line x1="${padL}" x2="${W-padR}" y1="${yy}" y2="${yy}" stroke="#E6EAE9"/><text x="${padL-6}" y="${yy+3}" text-anchor="end" fill="#8A9799">${fmt2(v)}</text>`; }
+  filas.forEach((f,i)=>{
+    const x = padL + gw*i + (gw-bw)/2;
+    svg += `<rect x="${x}" y="${y(f.camSemEuro)}" width="${bw}" height="${y(0)-y(f.camSemEuro)}" fill="#2F8F5B"/>`;
+    svg += `<rect x="${x}" y="${y(f.camSemEuro+f.camSemGas)}" width="${bw}" height="${y(f.camSemEuro)-y(f.camSemEuro+f.camSemGas)}" fill="#E07B1F" rx="2"/>`;
+    svg += `<text x="${x+bw/2}" y="${y(f.camSem)-4}" text-anchor="middle" fill="#132226" font-weight="600">${fmt2(f.camSem)}</text>`;
+    svg += `<text x="${x+bw/2}" y="${H-10}" text-anchor="middle" fill="#5C6B6E">${flMesLbl(f.mes,true)}${f.parcial?'*':''}</text>`;
+    svg += `<rect x="${padL+gw*i}" y="${padT}" width="${gw}" height="${H-padT-padB}" fill="transparent" data-i="${i}" class="hit"/>`;
+  });
+  svg += `</svg>`;
+  wrap.insertAdjacentHTML('beforeend', svg);
+  const tip = document.getElementById('tipCam');
+  wrap.querySelectorAll('rect.hit').forEach(r=>{
+    r.addEventListener('mousemove', ev=>{
+      const f = filas[+r.dataset.i], b = wrap.getBoundingClientRect();
+      tip.innerHTML = `<b>${flMesLbl(f.mes)}${f.parcial?' (parcial)':''}</b><br>Euro: ${fmt2(f.camSemEuro)} camiones/sem<br>Gasoil: ${fmt2(f.camSemGas)} camiones/sem<br>Total: ${fmt2(f.camSem)} · ${fmtL(f.semanal)} L/sem`;
+      tip.style.left = Math.min(ev.clientX-b.left+12, b.width-210)+'px'; tip.style.top = (ev.clientY-b.top-10)+'px'; tip.style.opacity = 1;
+    });
+    r.addEventListener('mouseleave', ()=>{ tip.style.opacity = 0; });
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RENDER
+═══════════════════════════════════════════════════════════════ */
+let flFallas = [];
+
+function flRender(){
+  const tot = flRed('ANIO');
+  const ult = flMesesList[flMesesList.length-1];
+  const prodChip = (k,t,c) => `<button class="chip ${c||''} ${flProd===k?'active':''}" onclick="flProd='${k}';flRender()">${t}</button>`;
+  const mesChip  = (k,t) => `<button class="chip ${flMesSel===k?'active':''}" onclick="flMesSel='${k}';flRender()">${t}</button>`;
+  const pct = (a,b) => b>0 ? ((a/b)*100).toFixed(1)+'%' : '—';
+
+  document.getElementById('app').innerHTML = `
+    ${flFallas.length ? `<div class="warn">No se pudieron leer: <b>${flFallas.join(', ')}</b>. Los totales de esos puntos quedan en cero. Verificá que las planillas estén compartidas con "cualquier persona con el enlace".</div>` : ''}
+    <div class="filters">
+      <span class="lbl">Producto</span>
+      ${prodChip('TOTAL','Total')}${prodChip('GASOIL','Gasoil','gasoil')}${prodChip('EURO','Euro','euro')}
+      <span class="muted" style="font-size:11.5px;margin-left:10px;">Datos de ${flMesLbl(flMesesList[0])} a ${flMesLbl(ult)}${ult===flMesKey(new Date())?' (mes en curso)':''}</span>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><div class="l">Ingresos · compras</div><div class="n">${fmtL(tot.compras)}</div><div class="s">litros recibidos en Planta</div></div>
+      <div class="kpi k-venta"><div class="l">Ventas</div><div class="n">${fmtL(tot.ventas)}</div><div class="s">${pct(tot.ventas,tot.egresos)} de los egresos</div></div>
+      <div class="kpi k-consumo"><div class="l">Consumo propio</div><div class="n">${fmtL(tot.consumo)}</div><div class="s">${pct(tot.consumo,tot.egresos)} de los egresos</div></div>
+      <div class="kpi k-dif"><div class="l">Ingresos − egresos</div><div class="n ${tot.dif<0?'neg':''}">${fmtSig(tot.dif)}</div><div class="s">variación de stock de la red</div></div>
+    </div>
+
+    ${flResumenHTML()}
+
+    <div class="panel">
+      <div class="panel-head"><h2>Flujo de la red por mes</h2><span class="hint">Los traspasos entre Planta y los puntos no se cuentan: salen de un lado y entran en otro</span></div>
+      <div class="panel-body">
+        <div class="legend"><span><i style="background:var(--petrol)"></i>Ingresos (compras)</span><span><i style="background:var(--amber)"></i>Ventas</span><span><i style="background:var(--petrol-light)"></i>Consumo propio</span></div>
+        <div class="chart-wrap" id="chartWrap"><div class="tip" id="tip"></div></div>
+        <table style="margin-top:14px;">
+          <thead><tr><th>Mes</th><th>Ingresos (compras)</th><th class="sep-l">Ventas</th><th>Consumo propio</th><th>Total egresos</th><th class="sep-l">Ingresos − egresos</th><th>Acumulado</th></tr></thead>
+          <tbody>${(()=>{ let acu=0; return flMesesList.map(m=>{ const r=flRed(m); acu+=r.dif;
+            return `<tr><td>${flMesLbl(m)}</td><td>${fmtL(r.compras)}</td><td class="sep-l">${fmtL(r.ventas)}</td><td>${fmtL(r.consumo)}</td><td>${fmtL(r.egresos)}</td><td class="sep-l ${r.dif<0?'neg':''}">${fmtSig(r.dif)}</td><td class="${acu<0?'neg':''}">${fmtSig(acu)}</td></tr>`; }).join(''); })()}</tbody>
+          <tfoot><tr><td>Total</td><td>${fmtL(tot.compras)}</td><td>${fmtL(tot.ventas)}</td><td>${fmtL(tot.consumo)}</td><td>${fmtL(tot.egresos)}</td><td class="${tot.dif<0?'neg':''}">${fmtSig(tot.dif)}</td><td></td></tr></tfoot>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Por punto</h2>
+        <div class="filters" style="margin:0;">${mesChip('ANIO','Año')}${flMesesList.map(m=>mesChip(m,flMesLbl(m,true))).join('')}</div>
+      </div>
+      <div class="panel-body">
+        <table>
+          <thead><tr><th>Punto</th><th>Ingresos</th><th class="sep-l">Ventas</th><th>Consumo propio</th><th>Traspasos enviados</th><th>Total egresos</th><th class="sep-l">Ingresos − egresos</th></tr></thead>
+          <tbody>${FL_PUNTOS.map(p=>{ const r=flPunto(flMesSel,p);
+            return `<tr><td>${FL_PUNTO_LBL[p]}<span class="tag ${FL_PUNTO_TAG[p]==='consumo'?'c':''}">${FL_PUNTO_TAG[p]==='consumo'?'consumo propio':'punto de venta'}</span></td><td>${fmtL(r.ingresos)}</td><td class="sep-l">${r.venta?fmtL(r.venta):'<span class="muted">—</span>'}</td><td>${r.consumo?fmtL(r.consumo):'<span class="muted">—</span>'}</td><td>${r.traspaso?fmtL(r.traspaso):'<span class="muted">—</span>'}</td><td>${fmtL(r.egresos)}</td><td class="sep-l ${r.neto<0?'neg':''}">${fmtSig(r.neto)}</td></tr>`; }).join('')}</tbody>
+          <tfoot>${(()=>{ const s=FL_PUNTOS.map(p=>flPunto(flMesSel,p)).reduce((a,r)=>{ for(const k in r) a[k]=(a[k]||0)+r[k]; return a; },{});
+            return `<tr><td>Total red</td><td>${fmtL(s.ingresos)}</td><td>${fmtL(s.venta)}</td><td>${fmtL(s.consumo)}</td><td>${fmtL(s.traspaso)}</td><td>${fmtL(s.egresos)}</td><td class="${s.neto<0?'neg':''}">${fmtSig(s.neto)}</td></tr>`; })()}</tfoot>
+        </table>
+        <div class="notes" style="margin-top:10px;">Ingresos de Planta = compras al proveedor. Ingresos de los demás puntos = lo que reciben desde Planta.</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Detalle mensual por punto</h2>
+        <select class="sel" onchange="flMatriz=this.value;flRender()">
+          ${[['venta','Ventas'],['consumo','Consumo propio'],['ingreso','Ingresos'],['egreso','Total egresos']].map(([k,t])=>`<option value="${k}" ${flMatriz===k?'selected':''}>${t}</option>`).join('')}
+        </select>
+      </div>
+      <div class="panel-body">
+        <table>
+          <thead><tr><th>Punto</th>${flMesesList.map(m=>`<th>${flMesLbl(m,true)}</th>`).join('')}<th class="sep-l">Total</th></tr></thead>
+          <tbody>${FL_PUNTOS.map(p=>{ const vals=flMesesList.map(m=>flMatrizVal(m,p)); const t=vals.reduce((a,b)=>a+b,0);
+            if(!t) return '';
+            return `<tr><td>${FL_PUNTO_LBL[p]}</td>${vals.map(v=>`<td>${v?fmtL(v):'<span class="muted">—</span>'}</td>`).join('')}<td class="sep-l"><b>${fmtL(t)}</b></td></tr>`; }).join('')}</tbody>
+          <tfoot><tr><td>Total</td>${flMesesList.map(m=>`<td>${fmtL(FL_PUNTOS.reduce((a,p)=>a+flMatrizVal(m,p),0))}</td>`).join('')}<td>${fmtL(flMesesList.reduce((a,m)=>a+FL_PUNTOS.reduce((b,p)=>b+flMatrizVal(m,p),0),0))}</td></tr></tfoot>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Control Estación CD · surtidores vs comprobantes</h2><span class="hint">Litros que salieron por los surtidores contra los comprobantes</span></div>
+      <div class="panel-body">
+        <table>
+          <thead><tr><th>Mes</th><th>Surtidores</th><th>Comprobantes</th><th class="sep-l">Diferencia</th></tr></thead>
+          <tbody>${flMesesList.map(m=>{ const c=flControlCD[m]; const sur=c?(flProd==='TOTAL'?c.GASOIL+c.EURO:c[flProd]):0;
+            const com=flGet(m,'CD','venta')+flGet(m,'CD','consumo'); const d=sur-com;
+            return `<tr><td>${flMesLbl(m)}</td><td>${fmtL(sur)}</td><td>${fmtL(com)}</td><td class="sep-l ${Math.abs(d)>=1?(d<0?'neg':'pos'):''}">${fmtSig(d)}</td></tr>`; }).join('')}</tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Cómo se arma</h2></div>
+      <div class="panel-body notes">
+        <ul>
+          <li><b>Ingresos de la red:</b> remitos de compra (RTO) cargados en Planta granel.</li>
+          <li><b>Traspasos:</b> salidas de Planta (PS) a Estación CD, VH, TP, AG, Base CR y Resero. Son egreso de Planta e ingreso del punto que recibe.</li>
+          <li><b>Ventas de Planta:</b> salidas de Planta a terceros (Latitud 45, PAE, Manpetrol, etc.). Si el receptor es un interno (INT …), se cuenta como consumo propio.</li>
+          <li><b>Estación CD:</b> comprobantes de la planilla "Informe Lts diarios cd", la misma que usa el dashboard de litros CD. Las notas de crédito restan. Clientes Petrosar y 03007 Estación Cerro Dragón van a consumo propio, el resto a ventas.</li>
+          <li><b>VH, TP y AG:</b> sus hojas de despacho. Cliente Petrosar va a consumo propio, el resto a ventas.</li>
+          <li><b>Base CR y Resero:</b> todo consumo propio. En Base CR se excluyen las filas de ingreso porque ya se cuentan desde Planta.</li>
+          <li><b>Ingresos − egresos:</b> es la variación de stock más las diferencias de medición. No incluye el stock inicial.</li>
+          <li><b>Por producto:</b> en Planta el producto sale de la columna del tanque (Tk1 Gasoil, Tk2 y Tk3 Euro). Como alguna vez se descargó Euro en el tanque de Gasoil, la apertura por producto de Planta es aproximada. El total no se ve afectado.</li>
+        </ul>
+      </div>
+    </div>
+  `;
+  flChart();
+  flChartCamiones();
+}
+
+function flMatrizVal(m,p){
+  const r = flPunto(m,p);
+  return flMatriz==='venta' ? r.venta : flMatriz==='consumo' ? r.consumo : flMatriz==='ingreso' ? r.ingresos : r.egresos;
+}
+
+/* Gráfico SVG: por mes, barra de ingresos + barra apilada de egresos */
+function flChart(){
+  const wrap = document.getElementById('chartWrap'); if(!wrap) return;
+  const data = flMesesList.map(m=>({ m, ...flRed(m) }));
+  const W = Math.max(wrap.clientWidth, 600), H = 260, padL = 52, padR = 10, padT = 10, padB = 28;
+  const max = Math.max(1, ...data.map(d=>Math.max(d.compras,d.egresos)));
+  const paso = Math.pow(10, Math.floor(Math.log10(max))); const top = Math.ceil(max/paso)*paso;
+  const y = v => padT + (H-padT-padB) * (1 - v/top);
+  const gw = (W-padL-padR)/data.length, bw = Math.min(26, gw*0.32);
+  let svg = `<svg width="${W}" height="${H}" style="display:block;font-family:IBM Plex Mono,monospace;font-size:10px;">`;
+  for(let i=0;i<=4;i++){ const v=top*i/4, yy=y(v);
+    svg += `<line x1="${padL}" x2="${W-padR}" y1="${yy}" y2="${yy}" stroke="#E6EAE9"/><text x="${padL-6}" y="${yy+3}" text-anchor="end" fill="#8A9799">${Math.round(v/1000).toLocaleString('es-AR')}k</text>`; }
+  data.forEach((d,i)=>{
+    const cx = padL + gw*i + gw/2, x1 = cx - bw - 2, x2 = cx + 2;
+    svg += `<rect x="${x1}" y="${y(d.compras)}" width="${bw}" height="${y(0)-y(d.compras)}" fill="#0E3F45" rx="2" data-i="${i}"/>`;
+    svg += `<rect x="${x2}" y="${y(d.ventas)}" width="${bw}" height="${y(0)-y(d.ventas)}" fill="#DE9A2C" data-i="${i}"/>`;
+    svg += `<rect x="${x2}" y="${y(d.ventas+d.consumo)}" width="${bw}" height="${y(d.ventas)-y(d.ventas+d.consumo)}" fill="#7FA7AB" rx="2" data-i="${i}"/>`;
+    svg += `<text x="${cx}" y="${H-10}" text-anchor="middle" fill="#5C6B6E">${flMesLbl(d.m,true)}</text>`;
+    svg += `<rect x="${padL+gw*i}" y="${padT}" width="${gw}" height="${H-padT-padB}" fill="transparent" data-i="${i}" class="hit"/>`;
+  });
+  svg += `</svg>`;
+  wrap.insertAdjacentHTML('beforeend', svg);
+  const tip = document.getElementById('tip');
+  wrap.querySelectorAll('rect.hit').forEach(r=>{
+    r.addEventListener('mousemove', ev=>{
+      const d = data[+r.dataset.i], b = wrap.getBoundingClientRect();
+      tip.innerHTML = `<b>${flMesLbl(d.m)}</b><br>Ingresos: ${fmtL(d.compras)}<br>Ventas: ${fmtL(d.ventas)}<br>Consumo propio: ${fmtL(d.consumo)}<br>Ingresos − egresos: ${fmtSig(d.dif)}`;
+      tip.style.left = Math.min(ev.clientX-b.left+12, b.width-190)+'px'; tip.style.top = (ev.clientY-b.top-10)+'px'; tip.style.opacity = 1;
+    });
+    r.addEventListener('mouseleave', ()=>{ tip.style.opacity = 0; });
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CARGA
+═══════════════════════════════════════════════════════════════ */
+async function flCargar(){
+  flMovs = []; flControlCD = {}; flFallas = [];
+  const res = await Promise.allSettled(FL_FUENTES.map(fu=>flFetchGviz(fu.id, fu.ref)));
+  res.forEach((r,i)=>{
+    const fu = FL_FUENTES[i];
+    if(r.status==='fulfilled'){
+      try{ FL_PROC[fu.key](r.value); }
+      catch(e){ console.error('[flujo] error procesando', fu.nombre, e); flFallas.push(fu.nombre); }
+    } else { console.error('[flujo] no se pudo leer', fu.nombre, r.reason); flFallas.push(fu.nombre); }
+  });
+  flBuildAgg();
+  if(!flMesesList.length){
+    document.getElementById('app').innerHTML = '<div class="error">No se pudieron leer los datos. Verificá que las planillas sean públicas.</div>';
+    document.getElementById('statusTxt').textContent = 'Error de conexión';
+    return;
+  }
+  document.getElementById('statusTxt').textContent = flFallas.length ? '⚠ Datos incompletos' : '✓ Datos actualizados';
+  document.getElementById('btnExcel').disabled = false;
+  flRender();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   EXCEL (valores numéricos)
+═══════════════════════════════════════════════════════════════ */
+function descargarExcel(){
+  if(typeof XLSX==='undefined'){ alert('No se pudo cargar la librería de Excel.'); return; }
+  const prodGuardado = flProd;
+  const wb = XLSX.utils.book_new();
+  const r2 = n => Math.round(n*100)/100;
+
+  ['TOTAL','GASOIL','EURO'].forEach(pr=>{
+    flProd = pr;
+    const aoa = [['Mes','Ingresos (compras)','Ventas','Consumo propio','Total egresos','Ingresos - egresos']];
+    flMesesList.forEach(m=>{ const r=flRed(m); aoa.push([flMesLbl(m),r2(r.compras),r2(r.ventas),r2(r.consumo),r2(r.egresos),r2(r.dif)]); });
+    const t=flRed('ANIO'); aoa.push(['Total',r2(t.compras),r2(t.ventas),r2(t.consumo),r2(t.egresos),r2(t.dif)]);
+    const ws = XLSX.utils.aoa_to_sheet(aoa); ws['!cols']=[{wch:16},{wch:18},{wch:14},{wch:16},{wch:14},{wch:18}];
+    XLSX.utils.book_append_sheet(wb, ws, pr==='TOTAL'?'Red mensual':'Red '+pr.toLowerCase());
+  });
+
+  // Resumen mensual de egresos (formato contadora): red y cada punto
+  ['RED',...FL_PUNTOS].forEach(sc=>{
+    const { filas, T } = flResumen(sc);
+    if(sc!=='RED' && !T.total) return;
+    const aoa = [['Mes','Desde','Hasta','Días con datos','Euro + Diesel (L)','Gasoil (L)','Total (L)','Promedio diario (L)','Promedio semanal (L)','Camiones / mes','Camiones / semana','Camiones Euro / semana','Camiones Gasoil / semana']];
+    filas.forEach(f=>aoa.push([flMesLbl(f.mes).split(' ')[0]+(f.parcial?' (parcial)':''),fmtFecha(f.desde),fmtFecha(f.hasta),f.dias,r2(f.euro),r2(f.gasoil),r2(f.total),r2(f.diario),r2(f.semanal),r2(f.camMes),r2(f.camSem),r2(f.camSemEuro),r2(f.camSemGas)]));
+    aoa.push(['Total / promedio','','',T.dias,r2(T.euro),r2(T.gasoil),r2(T.total),r2(T.diario),r2(T.semanal),r2(T.camMes),r2(T.camSem),r2(T.camSemEuro),r2(T.camSemGas)]);
+    const ws = XLSX.utils.aoa_to_sheet(aoa); ws['!cols']=[{wch:20},{wch:11},{wch:11},{wch:9},{wch:15},{wch:12},{wch:13},{wch:13},{wch:14},{wch:11},{wch:11},{wch:12},{wch:12}];
+    XLSX.utils.book_append_sheet(wb, ws, sc==='RED' ? 'Egresos red' : ('Egresos '+FL_PUNTO_LBL[sc]).slice(0,31));
+  });
+
+  flProd = 'TOTAL';
+  const det =[['Mes','Punto','Ingresos','Ventas','Consumo propio','Traspasos enviados','Total egresos','Ingresos - egresos','Ventas Gasoil','Ventas Euro','Consumo Gasoil','Consumo Euro']];
+  flMesesList.forEach(m=>FL_PUNTOS.forEach(p=>{
+    const r = flPunto(m,p);
+    const g = (t,pr)=>{ const x=flAgg[m]?.[p]?.[t]; return x?r2(x[pr]):0; };
+    det.push([flMesLbl(m),FL_PUNTO_LBL[p],r2(r.ingresos),r2(r.venta),r2(r.consumo),r2(r.traspaso),r2(r.egresos),r2(r.neto),g('venta','GASOIL'),g('venta','EURO'),g('consumo','GASOIL'),g('consumo','EURO')]);
+  }));
+  const wsd = XLSX.utils.aoa_to_sheet(det); wsd['!cols']=[{wch:16},{wch:14},{wch:12},{wch:12},{wch:15},{wch:18},{wch:14},{wch:18},{wch:13},{wch:12},{wch:15},{wch:13}];
+  XLSX.utils.book_append_sheet(wb, wsd, 'Por punto');
+
+  flProd = prodGuardado;
+  const fecha = new Date().toLocaleDateString('es-AR').replace(/\//g,'-');
+  XLSX.writeFile(wb, 'Flujo_litros_red_'+fecha+'.xlsx');
+}
+
+window.addEventListener('resize', ()=>{ if(flMesesList.length) flRender(); });
+flCargar();
+</script>
+</body>
+</html>
