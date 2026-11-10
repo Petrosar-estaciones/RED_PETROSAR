@@ -389,20 +389,19 @@ function fmt2(n){ return (+n||0).toLocaleString('es-AR',{minimumFractionDigits:2
 function flResumenHTML(){
   const { filas, T } = flResumen('RED');
   const parcial = filas.find(f=>f.parcial);
-  const celdas = f => `<td>${f.dias}</td><td class="sep-l">${fmtL(f.euro)}</td><td>${fmtL(f.gasoil)}</td><td><b>${fmtL(f.total)}</b></td><td class="sep-l">${fmtL(f.diario)}</td><td>${fmtL(f.semanal)}</td><td class="sep-l">${fmt2(f.camMes)}</td><td><b>${fmt2(f.camSem)}</b></td><td>${fmt2(f.camSemEuro)}</td><td>${fmt2(f.camSemGas)}</td>`;
+  const celdas = f => `<td>${f.dias}</td><td class="sep-l"><b>${fmtL(f.total)}</b></td><td class="sep-l">${fmtL(f.diario)}</td><td>${fmtL(f.semanal)}</td><td class="sep-l">${fmt2(f.camMes)}</td><td><b>${fmt2(f.camSem)}</b></td>`;
   return `
     <div class="panel">
       <div class="panel-head"><h2>Litros vendidos y consumidos · toda la red 2026</h2></div>
       <div class="panel-body">
         <div class="notes" style="margin-bottom:10px;">${parcial?`${flMesLbl(parcial.mes).split(' ')[0]} es parcial (datos hasta el ${fmtFecha(parcial.hasta)}). `:''}Promedio semanal = promedio diario × 7. Camión = ${FL_LTS_CAMION.toLocaleString('es-AR')} L.</div>
-        <table class="compact">
-          <thead><tr><th>Mes</th><th>Desde</th><th>Hasta</th><th>Días con datos</th><th class="sep-l">Euro + Diesel (L)</th><th>Gasoil (L)</th><th>Total (L)</th><th class="sep-l">Promedio diario (L)</th><th>Promedio semanal (L)</th><th class="sep-l">Camiones / mes</th><th>Camiones / semana</th><th>Camiones Euro / semana</th><th>Camiones Gasoil / semana</th></tr></thead>
+        <table>
+          <thead><tr><th>Mes</th><th>Desde</th><th>Hasta</th><th>Días con datos</th><th class="sep-l">Total litros</th><th class="sep-l">Promedio diario (L)</th><th>Promedio semanal (L)</th><th class="sep-l">Camiones / mes</th><th>Camiones / semana</th></tr></thead>
           <tbody>${filas.map(f=>`<tr><td>${flMesLbl(f.mes).split(' ')[0]}${f.parcial?' (parcial)':''}</td><td>${fmtFecha(f.desde)}</td><td>${fmtFecha(f.hasta)}</td>${celdas(f)}</tr>`).join('')}</tbody>
           <tfoot><tr><td>Total / promedio 2026</td><td></td><td></td>${celdas(T)}</tr></tfoot>
         </table>
         <div style="margin-top:18px;font-family:var(--display);font-weight:600;font-size:13px;">Camiones por semana · promedio de cada mes</div>
-        <div class="legend" style="margin-top:6px;"><span><i style="background:var(--euro)"></i>Euro + Diesel</span><span><i style="background:var(--gasoil)"></i>Gasoil</span></div>
-        <div class="chart-wrap" id="chartCam"><div class="tip" id="tipCam"></div></div>
+                <div class="chart-wrap" id="chartCam"><div class="tip" id="tipCam"></div></div>
         <div class="notes" style="margin-top:12px;">Incluye todo lo vendido y consumido: Estación CD, Remota VH, TP y AG (ventas + consumo propio), Base CR y Resero (consumo propio) y las ventas a clientes de Planta Granel. No incluye los envíos de Planta a los puntos, para no contar dos veces el mismo combustible.</div>
       </div>
     </div>`;
@@ -423,8 +422,7 @@ function flChartCamiones(){
     svg += `<line x1="${padL}" x2="${W-padR}" y1="${yy}" y2="${yy}" stroke="#E6EAE9"/><text x="${padL-6}" y="${yy+3}" text-anchor="end" fill="#8A9799">${fmt2(v)}</text>`; }
   filas.forEach((f,i)=>{
     const x = padL + gw*i + (gw-bw)/2;
-    svg += `<rect x="${x}" y="${y(f.camSemEuro)}" width="${bw}" height="${y(0)-y(f.camSemEuro)}" fill="#2F8F5B"/>`;
-    svg += `<rect x="${x}" y="${y(f.camSemEuro+f.camSemGas)}" width="${bw}" height="${y(f.camSemEuro)-y(f.camSemEuro+f.camSemGas)}" fill="#E07B1F" rx="2"/>`;
+    svg += `<rect x="${x}" y="${y(f.camSem)}" width="${bw}" height="${y(0)-y(f.camSem)}" fill="#0E3F45" rx="2"/>`;
     svg += `<text x="${x+bw/2}" y="${y(f.camSem)-4}" text-anchor="middle" fill="#132226" font-weight="600">${fmt2(f.camSem)}</text>`;
     svg += `<text x="${x+bw/2}" y="${H-10}" text-anchor="middle" fill="#5C6B6E">${flMesLbl(f.mes,true)}${f.parcial?'*':''}</text>`;
     svg += `<rect x="${padL+gw*i}" y="${padT}" width="${gw}" height="${H-padT-padB}" fill="transparent" data-i="${i}" class="hit"/>`;
@@ -435,7 +433,7 @@ function flChartCamiones(){
   wrap.querySelectorAll('rect.hit').forEach(r=>{
     r.addEventListener('mousemove', ev=>{
       const f = filas[+r.dataset.i], b = wrap.getBoundingClientRect();
-      tip.innerHTML = `<b>${flMesLbl(f.mes)}${f.parcial?' (parcial)':''}</b><br>Euro: ${fmt2(f.camSemEuro)} camiones/sem<br>Gasoil: ${fmt2(f.camSemGas)} camiones/sem<br>Total: ${fmt2(f.camSem)} · ${fmtL(f.semanal)} L/sem`;
+      tip.innerHTML = `<b>${flMesLbl(f.mes)}${f.parcial?' (parcial)':''}</b><br>${fmt2(f.camSem)} camiones/sem<br>${fmtL(f.semanal)} L/sem`;
       tip.style.left = Math.min(ev.clientX-b.left+12, b.width-210)+'px'; tip.style.top = (ev.clientY-b.top-10)+'px'; tip.style.opacity = 1;
     });
     r.addEventListener('mouseleave', ()=>{ tip.style.opacity = 0; });
@@ -485,11 +483,11 @@ function descargarExcel(){
   if(typeof XLSX==='undefined'){ alert('No se pudo cargar la librería de Excel.'); return; }
   const r2 = n => Math.round(n*100)/100;
   const { filas, T } = flResumen('RED');
-  const aoa = [['Mes','Desde','Hasta','Días con datos','Euro + Diesel (L)','Gasoil (L)','Total (L)','Promedio diario (L)','Promedio semanal (L)','Camiones / mes','Camiones / semana','Camiones Euro / semana','Camiones Gasoil / semana']];
-  filas.forEach(f=>aoa.push([flMesLbl(f.mes).split(' ')[0]+(f.parcial?' (parcial)':''),fmtFecha(f.desde),fmtFecha(f.hasta),f.dias,r2(f.euro),r2(f.gasoil),r2(f.total),r2(f.diario),r2(f.semanal),r2(f.camMes),r2(f.camSem),r2(f.camSemEuro),r2(f.camSemGas)]));
-  aoa.push(['Total / promedio 2026','','',T.dias,r2(T.euro),r2(T.gasoil),r2(T.total),r2(T.diario),r2(T.semanal),r2(T.camMes),r2(T.camSem),r2(T.camSemEuro),r2(T.camSemGas)]);
+  const aoa = [['Mes','Desde','Hasta','Días con datos','Total litros','Promedio diario (L)','Promedio semanal (L)','Camiones / mes','Camiones / semana']];
+  filas.forEach(f=>aoa.push([flMesLbl(f.mes).split(' ')[0]+(f.parcial?' (parcial)':''),fmtFecha(f.desde),fmtFecha(f.hasta),f.dias,r2(f.total),r2(f.diario),r2(f.semanal),r2(f.camMes),r2(f.camSem)]));
+  aoa.push(['Total / promedio 2026','','',T.dias,r2(T.total),r2(T.diario),r2(T.semanal),r2(T.camMes),r2(T.camSem)]);
   const wb = XLSX.utils.book_new(), ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols']=[{wch:20},{wch:11},{wch:11},{wch:9},{wch:15},{wch:12},{wch:13},{wch:13},{wch:14},{wch:11},{wch:11},{wch:12},{wch:12}];
+  ws['!cols']=[{wch:20},{wch:11},{wch:11},{wch:9},{wch:14},{wch:16},{wch:17},{wch:13},{wch:15}];
   XLSX.utils.book_append_sheet(wb, ws, 'Mensual');
   XLSX.writeFile(wb, 'Litros_red_semana_'+new Date().toLocaleDateString('es-AR').replace(/\//g,'-')+'.xlsx');
 }
