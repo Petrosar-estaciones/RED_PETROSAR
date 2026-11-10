@@ -426,6 +426,86 @@ function flResumenHTML(){
     </div>`;
 }
 
+/* ═══ Detalle diario ═══ */
+let flMesDia = null;
+function flDiario(mes){
+  const [y,mo] = mes.split('-').map(Number);
+  const dias = {};
+  for(const m of flMovs){
+    if(m.mes!==mes || !FL_RES_TIPOS[m.punto].includes(m.tipo)) continue;
+    const d = dias[m.dia] ??= { cli:0, con:0 };
+    if(m.tipo==='venta') d.cli += m.lts; else d.con += m.lts;
+  }
+  const hoyKey = flMesKey(new Date());
+  const ult = mes===hoyKey ? Math.max(0,...Object.keys(dias).map(Number)) : new Date(y,mo,0).getDate();
+  const filas = [];
+  for(let d=1; d<=ult; d++){
+    const r = dias[d] || { cli:0, con:0 };
+    filas.push({ fecha:new Date(y,mo-1,d), cli:r.cli, con:r.con, total:r.cli+r.con });
+  }
+  return filas;
+}
+const FL_DOW = ['dom','lun','mar','mié','jue','vie','sáb'];
+
+function flDiarioHTML(){
+  if(!flMesDia || !flMesesList.includes(flMesDia)) flMesDia = flMesesList[flMesesList.length-1];
+  const filas = flDiario(flMesDia);
+  const T = filas.reduce((a,f)=>{ a.cli+=f.cli; a.con+=f.con; a.total+=f.total; return a; }, { cli:0, con:0, total:0 });
+  const n = filas.length || 1;
+  const max = filas.reduce((a,f)=>f.total>a.total?f:a, filas[0]||{total:0});
+  const chip = m => `<button class="chip ${flMesDia===m?'active':''}" onclick="flMesDia='${m}';flRender()">${flMesLbl(m,true)}</button>`;
+  return `
+    <div class="panel">
+      <div class="panel-head"><h2>Litros por día · ${flMesLbl(flMesDia)}</h2>
+        <div class="filters" style="margin:0;">${flMesesList.map(chip).join('')}</div>
+      </div>
+      <div class="panel-body">
+        <div class="legend"><span><i style="background:var(--amber)"></i>Clientes</span><span><i style="background:var(--petrol)"></i>Consumo propio</span>
+          <span style="margin-left:auto;">Promedio ${fmtL(T.total/n)} L/día · día más alto ${max.fecha?fmtFecha(max.fecha)+' ('+fmtL(max.total)+' L)':'—'}</span></div>
+        <div class="chart-wrap" id="chartDia"><div class="tip" id="tipDia"></div></div>
+        <table style="margin-top:14px;">
+          <thead><tr><th>Fecha</th><th>Día</th><th class="sep-l">Clientes (L)</th><th>Consumo propio (L)</th><th>Total (L)</th></tr></thead>
+          <tbody>${filas.map(f=>{ const fds = f.fecha.getDay()===0||f.fecha.getDay()===6;
+            return `<tr${fds?' style="background:#FAFBFA;"':''}><td>${fmtFecha(f.fecha)}</td><td style="text-align:right;font-family:var(--sans);" class="muted">${FL_DOW[f.fecha.getDay()]}</td><td class="sep-l">${fmtL(f.cli)}</td><td>${fmtL(f.con)}</td><td><b>${fmtL(f.total)}</b></td></tr>`; }).join('')}</tbody>
+          <tfoot><tr><td>Total ${flMesLbl(flMesDia).split(' ')[0].toLowerCase()}</td><td></td><td>${fmtL(T.cli)}</td><td>${fmtL(T.con)}</td><td>${fmtL(T.total)}</td></tr>
+            <tr><td>Promedio por día</td><td></td><td>${fmtL(T.cli/n)}</td><td>${fmtL(T.con/n)}</td><td>${fmtL(T.total/n)}</td></tr></tfoot>
+        </table>
+      </div>
+    </div>`;
+}
+
+function flChartDia(){
+  const wrap = document.getElementById('chartDia'); if(!wrap) return;
+  const filas = flDiario(flMesDia);
+  const W = Math.max(wrap.clientWidth, 600), H = 220, padL = 46, padR = 10, padT = 10, padB = 24;
+  const max = Math.max(1000, ...filas.map(f=>f.total));
+  const paso = max>20000 ? 5000 : max>8000 ? 2500 : 1000;
+  const top = Math.ceil(max*1.05/paso)*paso;
+  const y = v => padT + (H-padT-padB) * (1 - v/top);
+  const gw = (W-padL-padR)/Math.max(filas.length,1), bw = Math.max(4, gw*0.7);
+  let svg = `<svg width="${W}" height="${H}" style="display:block;font-family:IBM Plex Mono,monospace;font-size:10px;">`;
+  for(let v=0; v<=top; v+=paso){ const yy=y(v);
+    svg += `<line x1="${padL}" x2="${W-padR}" y1="${yy}" y2="${yy}" stroke="#E6EAE9"/><text x="${padL-6}" y="${yy+3}" text-anchor="end" fill="#8A9799">${(v/1000).toLocaleString('es-AR')}k</text>`; }
+  filas.forEach((f,i)=>{
+    const x = padL + gw*i + (gw-bw)/2;
+    svg += `<rect x="${x}" y="${y(f.con)}" width="${bw}" height="${y(0)-y(f.con)}" fill="#0E3F45"/>`;
+    svg += `<rect x="${x}" y="${y(f.total)}" width="${bw}" height="${y(f.con)-y(f.total)}" fill="#DE9A2C" rx="1"/>`;
+    if(filas.length<=16 || (i+1)%2===1) svg += `<text x="${x+bw/2}" y="${H-8}" text-anchor="middle" fill="#5C6B6E">${i+1}</text>`;
+    svg += `<rect x="${padL+gw*i}" y="${padT}" width="${gw}" height="${H-padT-padB}" fill="transparent" data-i="${i}" class="hit"/>`;
+  });
+  svg += `</svg>`;
+  wrap.insertAdjacentHTML('beforeend', svg);
+  const tip = document.getElementById('tipDia');
+  wrap.querySelectorAll('rect.hit').forEach(r=>{
+    r.addEventListener('mousemove', ev=>{
+      const f = filas[+r.dataset.i], b = wrap.getBoundingClientRect();
+      tip.innerHTML = `<b>${FL_DOW[f.fecha.getDay()]} ${fmtFecha(f.fecha)}</b><br>Clientes: ${fmtL(f.cli)} L<br>Consumo propio: ${fmtL(f.con)} L<br>Total: ${fmtL(f.total)} L`;
+      tip.style.left = Math.min(ev.clientX-b.left+12, b.width-180)+'px'; tip.style.top = (ev.clientY-b.top-10)+'px'; tip.style.opacity = 1;
+    });
+    r.addEventListener('mouseleave', ()=>{ tip.style.opacity = 0; });
+  });
+}
+
 function flChartCamiones(){
   const wrap = document.getElementById('chartCam'); if(!wrap) return;
   const { filas } = flSplit();
@@ -469,8 +549,10 @@ let flFallas = [];
 function flRender(){
   document.getElementById('app').innerHTML = `
     ${flFallas.length ? `<div class="warn">No se pudieron leer: <b>${flFallas.join(', ')}</b>. Esos puntos quedan en cero. Verificá que las planillas estén compartidas con "cualquier persona con el enlace".</div>` : ''}
-    ${flResumenHTML()}`;
+    ${flResumenHTML()}
+    ${flDiarioHTML()}`;
   flChartCamiones();
+  flChartDia();
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -511,6 +593,10 @@ function descargarExcel(){
   const wb = XLSX.utils.book_new(), ws = XLSX.utils.aoa_to_sheet(aoa);
   ws['!cols']=[{wch:20},{wch:11},{wch:11},{wch:9},{wch:14},{wch:18},{wch:13},{wch:10},{wch:17},{wch:17},{wch:22},{wch:15}];
   XLSX.utils.book_append_sheet(wb, ws, 'Mensual');
+  const dd = [['Fecha','Día','Clientes (L)','Consumo propio (L)','Total (L)']];
+  flMesesList.forEach(m=>flDiario(m).forEach(f=>dd.push([fmtFecha(f.fecha),FL_DOW[f.fecha.getDay()],r2(f.cli),r2(f.con),r2(f.total)])));
+  const wsd = XLSX.utils.aoa_to_sheet(dd); wsd['!cols']=[{wch:12},{wch:6},{wch:14},{wch:18},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, wsd, 'Diario');
   XLSX.writeFile(wb, 'Litros_red_semana_'+new Date().toLocaleDateString('es-AR').replace(/\//g,'-')+'.xlsx');
 }
 
