@@ -114,6 +114,8 @@ const FL_SHEET_BASECR = '1A_0pcSuycTcTBcf8bAHXopHk_FrLSgcdbDSFbvZnLuQ'; // Base 
 const FL_SHEET_CDINF  = '177qGXlNmtYig4gVM2b2f5zylTvnNpW3YWDbVhP8qAyg'; // Informe Lts diarios cd (dashboard CD)
 const FL_DESDE        = new Date(2026, 2, 1); // los datos arrancan el 01/03/2026
 const FL_LTS_CAMION   = 36000;                // capacidad de un camión cisterna
+const FL_BASECR_REGLA = new Date(2026, 8, 1); // igual que flota: antes de esta fecha se excluyen los internos de la estación en Base CR
+const FL_INTERNOS_EESS = [836, 742, 794, 1131];
 
 const FL_FUENTES = [
   { key:'PLANTA', nombre:'Planta granel',    id:FL_SHEET_PLANTA, ref:'1688777748' },
@@ -242,6 +244,8 @@ function procBaseCR(t){
     const lts = flLitros(row,4);
     const obs = gs(row,6).toUpperCase();
     if(obs.includes('INGRESO') || lts > 1000) continue; // gviz a veces trae vacía la columna Observaciones
+    // Misma regla que flota: en los meses cerrados (antes del 01/09/2026) no se toman las cargas de los internos de la estación
+    if(fecha < FL_BASECR_REGLA && FL_INTERNOS_EESS.includes(+gv(row,1))) continue;
     flAdd(fecha,'BASE CR','consumo','EURO',lts);
   }
 }
@@ -369,16 +373,24 @@ function flResumen(scope){
     return { mes, parcial, desde:new Date(y,mo-1,1), hasta:new Date(y,mo-1,parcial?(r.ultDia||1):diasMes), dias,
       euro:r.EURO, gasoil:r.GASOIL, total, diario, semanal:diario*7,
       camMes: total/FL_LTS_CAMION, camSem: diario*7/FL_LTS_CAMION,
+      semEuro: dias ? r.EURO/dias*7 : 0, semGas: dias ? r.GASOIL/dias*7 : 0,
       camSemEuro: dias ? r.EURO/dias*7/FL_LTS_CAMION : 0, camSemGas: dias ? r.GASOIL/dias*7/FL_LTS_CAMION : 0 };
   });
   const T = filas.reduce((a,f)=>{ a.dias+=f.dias; a.euro+=f.euro; a.gasoil+=f.gasoil; a.total+=f.total; return a; }, { dias:0, euro:0, gasoil:0, total:0 });
   T.diario = T.dias ? T.total/T.dias : 0; T.semanal = T.diario*7;
   T.camMes = T.total/FL_LTS_CAMION; T.camSem = T.semanal/FL_LTS_CAMION;
+  T.semEuro = T.dias ? T.euro/T.dias*7 : 0; T.semGas = T.dias ? T.gasoil/T.dias*7 : 0;
   T.camSemEuro = T.dias ? T.euro/T.dias*7/FL_LTS_CAMION : 0; T.camSemGas = T.dias ? T.gasoil/T.dias*7/FL_LTS_CAMION : 0;
   return { filas, T };
 }
 function fmtFecha(d){ return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); }
 function fmt2(n){ return (+n||0).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+function flResCeldas(f){
+  return `<td class="sep-l">${fmtL(f.euro)}</td><td>${fmtL(f.semEuro)}</td><td>${fmt2(f.camSemEuro)}</td>`
+       + `<td class="sep-l">${fmtL(f.gasoil)}</td><td>${fmtL(f.semGas)}</td><td>${fmt2(f.camSemGas)}</td>`
+       + `<td class="sep-l"><b>${fmtL(f.total)}</b></td><td>${fmtL(f.diario)}</td><td>${fmtL(f.semanal)}</td><td>${fmt2(f.camMes)}</td><td>${fmt2(f.camSem)}</td>`;
+}
 
 function flResumenHTML(){
   const { filas, T } = flResumen(flResScope);
@@ -394,9 +406,13 @@ function flResumenHTML(){
       <div class="panel-body">
         <div class="notes" style="margin-bottom:10px;">${parcial?`${flMesLbl(parcial.mes).split(' ')[0]} es parcial (datos hasta el ${fmtFecha(parcial.hasta)}). `:''}Promedio semanal = promedio diario × 7. Camión = ${FL_LTS_CAMION.toLocaleString('es-AR')} L. Egresos = ventas + consumo propio; de Planta solo las ventas a clientes.</div>
         <table class="compact">
-          <thead><tr><th>Mes</th><th>Desde</th><th>Hasta</th><th>Días con datos</th><th class="sep-l">Euro + Diesel (L)</th><th>Gasoil (L)</th><th>Total (L)</th><th class="sep-l">Promedio diario (L)</th><th>Promedio semanal (L)</th><th class="sep-l">Camiones / mes</th><th>Camiones / semana</th><th>Camiones Euro / semana</th><th>Camiones Gasoil / semana</th></tr></thead>
-          <tbody>${filas.map(f=>`<tr><td>${flMesLbl(f.mes).split(' ')[0]}${f.parcial?' (parcial)':''}</td><td>${fmtFecha(f.desde)}</td><td>${fmtFecha(f.hasta)}</td><td>${f.dias}</td><td class="sep-l">${fmtL(f.euro)}</td><td>${fmtL(f.gasoil)}</td><td><b>${fmtL(f.total)}</b></td><td class="sep-l">${fmtL(f.diario)}</td><td>${fmtL(f.semanal)}</td><td class="sep-l">${fmt2(f.camMes)}</td><td>${fmt2(f.camSem)}</td><td>${fmt2(f.camSemEuro)}</td><td>${fmt2(f.camSemGas)}</td></tr>`).join('')}</tbody>
-          <tfoot><tr><td>Total / promedio</td><td></td><td></td><td>${T.dias}</td><td>${fmtL(T.euro)}</td><td>${fmtL(T.gasoil)}</td><td>${fmtL(T.total)}</td><td>${fmtL(T.diario)}</td><td>${fmtL(T.semanal)}</td><td>${fmt2(T.camMes)}</td><td>${fmt2(T.camSem)}</td><td>${fmt2(T.camSemEuro)}</td><td>${fmt2(T.camSemGas)}</td></tr></tfoot>
+          <thead>
+            <tr class="grp"><th rowspan="2" style="text-align:left;vertical-align:bottom;">Mes</th><th rowspan="2" style="vertical-align:bottom;">Desde</th><th rowspan="2" style="vertical-align:bottom;">Hasta</th><th rowspan="2" style="vertical-align:bottom;">Días con datos</th>
+              <th colspan="3" class="sep-l" style="border-top:3px solid var(--euro);">Euro + Diesel</th><th colspan="3" class="sep-l" style="border-top:3px solid var(--gasoil);">Gasoil</th><th colspan="5" class="sep-l" style="border-top:3px solid var(--petrol);">Total</th></tr>
+            <tr><th class="sep-l">Litros</th><th>Prom. semanal</th><th>Camiones / semana</th><th class="sep-l">Litros</th><th>Prom. semanal</th><th>Camiones / semana</th><th class="sep-l">Litros</th><th>Prom. diario</th><th>Prom. semanal</th><th>Camiones / mes</th><th>Camiones / semana</th></tr>
+          </thead>
+          <tbody>${filas.map(f=>`<tr><td>${flMesLbl(f.mes).split(' ')[0]}${f.parcial?' (parcial)':''}</td><td>${fmtFecha(f.desde)}</td><td>${fmtFecha(f.hasta)}</td><td>${f.dias}</td>${flResCeldas(f)}</tr>`).join('')}</tbody>
+          <tfoot><tr><td>Total / promedio</td><td></td><td></td><td>${T.dias}</td>${flResCeldas(T)}</tr></tfoot>
         </table>
         <div style="margin-top:18px;font-family:var(--display);font-weight:600;font-size:13px;">Camiones por semana · promedio de cada mes</div>
         <div class="legend" style="margin-top:6px;"><span><i style="background:var(--euro)"></i>Euro + Diesel</span><span><i style="background:var(--gasoil)"></i>Gasoil</span></div>
@@ -536,7 +552,7 @@ function flRender(){
           <li><b>Ventas de Planta:</b> salidas de Planta a terceros (Latitud 45, PAE, Manpetrol, etc.). Si el receptor es un interno (INT …), se cuenta como consumo propio.</li>
           <li><b>Estación CD:</b> comprobantes de la planilla "Informe Lts diarios cd", la misma que usa el dashboard de litros CD. Las notas de crédito restan. Clientes Petrosar y 03007 Estación Cerro Dragón van a consumo propio, el resto a ventas.</li>
           <li><b>VH, TP y AG:</b> sus hojas de despacho. Cliente Petrosar va a consumo propio, el resto a ventas.</li>
-          <li><b>Base CR y Resero:</b> todo consumo propio. En Base CR se excluyen las filas de ingreso porque ya se cuentan desde Planta.</li>
+          <li><b>Base CR y Resero:</b> todo consumo propio. En Base CR se excluyen las filas de ingreso porque ya se cuentan desde Planta. Igual que en la app de flota, hasta agosto 2026 (meses cerrados) no se toman las cargas de los internos de la estación (836, 742, 794, 1131) en Base CR.</li>
           <li><b>Ingresos − egresos:</b> es la variación de stock más las diferencias de medición. No incluye el stock inicial.</li>
           <li><b>Por producto:</b> en Planta el producto sale de la columna del tanque (Tk1 Gasoil, Tk2 y Tk3 Euro). Como alguna vez se descargó Euro en el tanque de Gasoil, la apertura por producto de Planta es aproximada. El total no se ve afectado.</li>
         </ul>
@@ -631,10 +647,12 @@ function descargarExcel(){
   ['RED',...FL_PUNTOS].forEach(sc=>{
     const { filas, T } = flResumen(sc);
     if(sc!=='RED' && !T.total) return;
-    const aoa = [['Mes','Desde','Hasta','Días con datos','Euro + Diesel (L)','Gasoil (L)','Total (L)','Promedio diario (L)','Promedio semanal (L)','Camiones / mes','Camiones / semana','Camiones Euro / semana','Camiones Gasoil / semana']];
-    filas.forEach(f=>aoa.push([flMesLbl(f.mes).split(' ')[0]+(f.parcial?' (parcial)':''),fmtFecha(f.desde),fmtFecha(f.hasta),f.dias,r2(f.euro),r2(f.gasoil),r2(f.total),r2(f.diario),r2(f.semanal),r2(f.camMes),r2(f.camSem),r2(f.camSemEuro),r2(f.camSemGas)]));
-    aoa.push(['Total / promedio','','',T.dias,r2(T.euro),r2(T.gasoil),r2(T.total),r2(T.diario),r2(T.semanal),r2(T.camMes),r2(T.camSem),r2(T.camSemEuro),r2(T.camSemGas)]);
-    const ws = XLSX.utils.aoa_to_sheet(aoa); ws['!cols']=[{wch:20},{wch:11},{wch:11},{wch:9},{wch:15},{wch:12},{wch:13},{wch:13},{wch:14},{wch:11},{wch:11},{wch:12},{wch:12}];
+    const aoa = [['','','','','Euro + Diesel','','','Gasoil','','','Total','','','',''],
+                 ['Mes','Desde','Hasta','Días con datos','Litros','Prom. semanal','Camiones / semana','Litros','Prom. semanal','Camiones / semana','Litros','Prom. diario','Prom. semanal','Camiones / mes','Camiones / semana']];
+    const num = f => [r2(f.euro),r2(f.semEuro),r2(f.camSemEuro),r2(f.gasoil),r2(f.semGas),r2(f.camSemGas),r2(f.total),r2(f.diario),r2(f.semanal),r2(f.camMes),r2(f.camSem)];
+    filas.forEach(f=>aoa.push([flMesLbl(f.mes).split(' ')[0]+(f.parcial?' (parcial)':''),fmtFecha(f.desde),fmtFecha(f.hasta),f.dias,...num(f)]));
+    aoa.push(['Total / promedio','','',T.dias,...num(T)]);
+    const ws = XLSX.utils.aoa_to_sheet(aoa); ws['!cols']=[{wch:20},{wch:11},{wch:11},{wch:9},{wch:12},{wch:12},{wch:11},{wch:12},{wch:12},{wch:11},{wch:12},{wch:11},{wch:12},{wch:11},{wch:11}]; ws['!merges']=[{s:{r:0,c:4},e:{r:0,c:6}},{s:{r:0,c:7},e:{r:0,c:9}},{s:{r:0,c:10},e:{r:0,c:14}}];
     XLSX.utils.book_append_sheet(wb, ws, sc==='RED' ? 'Egresos red' : ('Egresos '+FL_PUNTO_LBL[sc]).slice(0,31));
   });
 
