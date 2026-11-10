@@ -352,12 +352,13 @@ function flPunto(mes, p){
 let flResScope = 'RED';   // RED | punto
 const FL_RES_TIPOS = { PLANTA:['venta'], CD:['venta','consumo'], VH:['venta','consumo'], TP:['venta','consumo'], AG:['venta','consumo'], 'BASE CR':['consumo'], RESERO:['consumo'] };
 
-function flResumen(scope){
+function flResumen(scope, tipoSel){
   const puntos = scope==='RED' ? FL_PUNTOS : [scope];
   const hoyKey = flMesKey(new Date());
   const base = {};
   for(const m of flMovs){
     if(!puntos.includes(m.punto) || !FL_RES_TIPOS[m.punto].includes(m.tipo)) continue;
+    if(tipoSel && m.tipo!==tipoSel) continue;
     const r = base[m.mes] ??= { EURO:0, GASOIL:0, ultDia:0 };
     r[m.prod] += m.lts;
     if(m.dia > r.ultDia) r.ultDia = m.dia;
@@ -386,30 +387,48 @@ function flResumen(scope){
 function fmtFecha(d){ return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); }
 function fmt2(n){ return (+n||0).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 
+function flSplit(){
+  const R = flResumen('RED'), C = flResumen('RED','venta'), P = flResumen('RED','consumo');
+  const mk = (r,c,p) => {
+    const d = r.dias, sem = x => d ? x/d*7 : 0;
+    return { ...r, cli:c.total, con:p.total, semCli:sem(c.total), semCon:sem(p.total),
+             camSemCli:sem(c.total)/FL_LTS_CAMION, camSemCon:sem(p.total)/FL_LTS_CAMION,
+             pctCli: r.total ? c.total/r.total*100 : 0 };
+  };
+  return { filas: R.filas.map((r,i)=>mk(r,C.filas[i],P.filas[i])), T: mk(R.T,C.T,P.T) };
+}
+
 function flResumenHTML(){
-  const { filas, T } = flResumen('RED');
+  const { filas, T } = flSplit();
   const parcial = filas.find(f=>f.parcial);
-  const celdas = f => `<td>${f.dias}</td><td class="sep-l"><b>${fmtL(f.total)}</b></td><td class="sep-l">${fmtL(f.diario)}</td><td>${fmtL(f.semanal)}</td><td class="sep-l">${fmt2(f.camMes)}</td><td><b>${fmt2(f.camSem)}</b></td>`;
+  const celdas = f => `<td>${f.dias}</td>
+    <td class="sep-l">${fmtL(f.cli)}</td><td>${fmtL(f.con)}</td><td><b>${fmtL(f.total)}</b></td><td class="muted">${f.pctCli.toFixed(1)}%</td>
+    <td class="sep-l">${fmtL(f.semanal)}</td>
+    <td class="sep-l">${fmt2(f.camSemCli)}</td><td>${fmt2(f.camSemCon)}</td><td><b>${fmt2(f.camSem)}</b></td>`;
   return `
     <div class="panel">
       <div class="panel-head"><h2>Litros vendidos y consumidos · toda la red 2026</h2></div>
       <div class="panel-body">
-        <div class="notes" style="margin-bottom:10px;">${parcial?`${flMesLbl(parcial.mes).split(' ')[0]} es parcial (datos hasta el ${fmtFecha(parcial.hasta)}). `:''}Promedio semanal = promedio diario × 7. Camión = ${FL_LTS_CAMION.toLocaleString('es-AR')} L.</div>
-        <table>
-          <thead><tr><th>Mes</th><th>Desde</th><th>Hasta</th><th>Días con datos</th><th class="sep-l">Total litros</th><th class="sep-l">Promedio diario (L)</th><th>Promedio semanal (L)</th><th class="sep-l">Camiones / mes</th><th>Camiones / semana</th></tr></thead>
-          <tbody>${filas.map(f=>`<tr><td>${flMesLbl(f.mes).split(' ')[0]}${f.parcial?' (parcial)':''}</td><td>${fmtFecha(f.desde)}</td><td>${fmtFecha(f.hasta)}</td>${celdas(f)}</tr>`).join('')}</tbody>
+        <div class="notes" style="margin-bottom:10px;">Promedio semanal = promedio diario × 7. Camión = ${FL_LTS_CAMION.toLocaleString('es-AR')} L.${parcial?` <b>${flMesLbl(parcial.mes).split(' ')[0]} es parcial</b> (datos hasta el ${fmtFecha(parcial.hasta)}, ${parcial.dias} días): su promedio es una proyección y todavía puede cambiar bastante.`:''}</div>
+        <table class="compact">
+          <thead>
+            <tr class="grp"><th colspan="4"></th><th colspan="4" class="sep-l">Litros del mes</th><th class="sep-l"></th><th colspan="3" class="sep-l">Camiones por semana</th></tr>
+            <tr><th>Mes</th><th>Desde</th><th>Hasta</th><th>Días con datos</th><th class="sep-l">Clientes</th><th>Consumo propio</th><th>Total</th><th>% clientes</th><th class="sep-l">Promedio semanal (L)</th><th class="sep-l">Clientes</th><th>Consumo propio</th><th>Total</th></tr>
+          </thead>
+          <tbody>${filas.map(f=>`<tr${f.parcial?' style="color:var(--ink-soft);font-style:italic;"':''}><td>${flMesLbl(f.mes).split(' ')[0]}${f.parcial?' (parcial)*':''}</td><td>${fmtFecha(f.desde)}</td><td>${fmtFecha(f.hasta)}</td>${celdas(f)}</tr>`).join('')}</tbody>
           <tfoot><tr><td>Total / promedio 2026</td><td></td><td></td>${celdas(T)}</tr></tfoot>
         </table>
         <div style="margin-top:18px;font-family:var(--display);font-weight:600;font-size:13px;">Camiones por semana · promedio de cada mes</div>
-                <div class="chart-wrap" id="chartCam"><div class="tip" id="tipCam"></div></div>
-        <div class="notes" style="margin-top:12px;">Incluye todo lo vendido y consumido: Estación CD, Remota VH, TP y AG (ventas + consumo propio), Base CR y Resero (consumo propio) y las ventas a clientes de Planta Granel. No incluye los envíos de Planta a los puntos, para no contar dos veces el mismo combustible.</div>
+        <div class="legend" style="margin-top:6px;"><span><i style="background:var(--amber)"></i>Clientes</span><span><i style="background:var(--petrol)"></i>Consumo propio</span></div>
+        <div class="chart-wrap" id="chartCam"><div class="tip" id="tipCam"></div></div>
+        <div class="notes" style="margin-top:12px;"><b>Clientes:</b> ventas de Estación CD, Remota VH, TP y AG y ventas de Planta Granel a terceros. <b>Consumo propio:</b> cargas de Petrosar y de la estación en CD, VH, TP y AG, más todo Base CR y Resero. No incluye los envíos de Planta a los puntos, para no contar dos veces el mismo combustible.${parcial?' * Mes en curso.':''}</div>
       </div>
     </div>`;
 }
 
 function flChartCamiones(){
   const wrap = document.getElementById('chartCam'); if(!wrap) return;
-  const { filas } = flResumen('RED');
+  const { filas } = flSplit();
   const W = Math.max(wrap.clientWidth, 600), H = 230, padL = 40, padR = 10, padT = 10, padB = 28;
   const max = Math.max(0.05, ...filas.map(f=>f.camSem));
   const stepC = max>6 ? 2 : max>3 ? 1 : max>1 ? 0.5 : max>0.4 ? 0.1 : 0.05;
@@ -422,7 +441,9 @@ function flChartCamiones(){
     svg += `<line x1="${padL}" x2="${W-padR}" y1="${yy}" y2="${yy}" stroke="#E6EAE9"/><text x="${padL-6}" y="${yy+3}" text-anchor="end" fill="#8A9799">${fmt2(v)}</text>`; }
   filas.forEach((f,i)=>{
     const x = padL + gw*i + (gw-bw)/2;
-    svg += `<rect x="${x}" y="${y(f.camSem)}" width="${bw}" height="${y(0)-y(f.camSem)}" fill="#0E3F45" rx="2"/>`;
+    const op = f.parcial ? ' opacity="0.45"' : '';
+    svg += `<rect x="${x}" y="${y(f.camSemCon)}" width="${bw}" height="${y(0)-y(f.camSemCon)}" fill="#0E3F45"${op}/>`;
+    svg += `<rect x="${x}" y="${y(f.camSem)}" width="${bw}" height="${y(f.camSemCon)-y(f.camSem)}" fill="#DE9A2C" rx="2"${op}/>`;
     svg += `<text x="${x+bw/2}" y="${y(f.camSem)-4}" text-anchor="middle" fill="#132226" font-weight="600">${fmt2(f.camSem)}</text>`;
     svg += `<text x="${x+bw/2}" y="${H-10}" text-anchor="middle" fill="#5C6B6E">${flMesLbl(f.mes,true)}${f.parcial?'*':''}</text>`;
     svg += `<rect x="${padL+gw*i}" y="${padT}" width="${gw}" height="${H-padT-padB}" fill="transparent" data-i="${i}" class="hit"/>`;
@@ -433,7 +454,7 @@ function flChartCamiones(){
   wrap.querySelectorAll('rect.hit').forEach(r=>{
     r.addEventListener('mousemove', ev=>{
       const f = filas[+r.dataset.i], b = wrap.getBoundingClientRect();
-      tip.innerHTML = `<b>${flMesLbl(f.mes)}${f.parcial?' (parcial)':''}</b><br>${fmt2(f.camSem)} camiones/sem<br>${fmtL(f.semanal)} L/sem`;
+      tip.innerHTML = `<b>${flMesLbl(f.mes)}${f.parcial?' (parcial)':''}</b><br>Clientes: ${fmt2(f.camSemCli)}<br>Consumo propio: ${fmt2(f.camSemCon)}<br>Total: ${fmt2(f.camSem)} camiones/sem${f.parcial?'<br>(proyección con '+f.dias+' días)':''}`;
       tip.style.left = Math.min(ev.clientX-b.left+12, b.width-210)+'px'; tip.style.top = (ev.clientY-b.top-10)+'px'; tip.style.opacity = 1;
     });
     r.addEventListener('mouseleave', ()=>{ tip.style.opacity = 0; });
@@ -482,12 +503,13 @@ async function flCargar(){
 function descargarExcel(){
   if(typeof XLSX==='undefined'){ alert('No se pudo cargar la librería de Excel.'); return; }
   const r2 = n => Math.round(n*100)/100;
-  const { filas, T } = flResumen('RED');
-  const aoa = [['Mes','Desde','Hasta','Días con datos','Total litros','Promedio diario (L)','Promedio semanal (L)','Camiones / mes','Camiones / semana']];
-  filas.forEach(f=>aoa.push([flMesLbl(f.mes).split(' ')[0]+(f.parcial?' (parcial)':''),fmtFecha(f.desde),fmtFecha(f.hasta),f.dias,r2(f.total),r2(f.diario),r2(f.semanal),r2(f.camMes),r2(f.camSem)]));
-  aoa.push(['Total / promedio 2026','','',T.dias,r2(T.total),r2(T.diario),r2(T.semanal),r2(T.camMes),r2(T.camSem)]);
+  const { filas, T } = flSplit();
+  const aoa = [['Mes','Desde','Hasta','Días con datos','Litros clientes','Litros consumo propio','Total litros','% clientes','Promedio semanal (L)','Camiones/sem clientes','Camiones/sem consumo propio','Camiones/sem total']];
+  const fila = f => [f.dias,r2(f.cli),r2(f.con),r2(f.total),r2(f.pctCli),r2(f.semanal),r2(f.camSemCli),r2(f.camSemCon),r2(f.camSem)];
+  filas.forEach(f=>aoa.push([flMesLbl(f.mes).split(' ')[0]+(f.parcial?' (parcial)':''),fmtFecha(f.desde),fmtFecha(f.hasta),...fila(f)]));
+  aoa.push(['Total / promedio 2026','','',...fila(T)]);
   const wb = XLSX.utils.book_new(), ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols']=[{wch:20},{wch:11},{wch:11},{wch:9},{wch:14},{wch:16},{wch:17},{wch:13},{wch:15}];
+  ws['!cols']=[{wch:20},{wch:11},{wch:11},{wch:9},{wch:14},{wch:18},{wch:13},{wch:10},{wch:17},{wch:17},{wch:22},{wch:15}];
   XLSX.utils.book_append_sheet(wb, ws, 'Mensual');
   XLSX.writeFile(wb, 'Litros_red_semana_'+new Date().toLocaleDateString('es-AR').replace(/\//g,'-')+'.xlsx');
 }
