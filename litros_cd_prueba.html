@@ -476,10 +476,6 @@ function renderComparativa() {
       </div>
       <div style="position:relative;height:240px;"><canvas id="chartCmpDia"></canvas></div>
     </div>
-    <div class="panel">
-      <div class="panel-title">Litros acumulados en el mes</div>
-      <div style="position:relative;height:240px;"><canvas id="chartCmpAcum"></canvas></div>
-    </div>
   `;
 
   const opcLinea = {
@@ -498,9 +494,6 @@ function renderComparativa() {
 
   charts.cmpDia = new Chart(document.getElementById('chartCmpDia'),{
     type:'line', data:{labels, datasets:[dsAnt(serieAnt), dsAct(serieAct)]}, options:opcLinea
-  });
-  charts.cmpAcum = new Chart(document.getElementById('chartCmpAcum'),{
-    type:'line', data:{labels, datasets:[dsAnt(acumAnt), dsAct(acumAct)]}, options:opcLinea
   });
 }
 
