@@ -350,7 +350,7 @@ function flPunto(mes, p){
    Planta: solo ventas a clientes (sin traspasos a los puntos).
 ═══════════════════════════════════════════════════════════════ */
 let flResScope = 'RED';   // RED | punto
-const FL_RES_TIPOS = { PLANTA:['venta'], CD:['venta','consumo'], VH:['venta','consumo'], TP:['venta','consumo'], AG:['venta','consumo'], 'BASE CR':['consumo'], RESERO:['consumo'] };
+const FL_RES_TIPOS = { PLANTA:['venta','consumo'], CD:['venta','consumo'], VH:['venta','consumo'], TP:['venta','consumo'], AG:['venta','consumo'], 'BASE CR':['consumo'], RESERO:['consumo'] };
 
 function flResumen(scope, tipoSel){
   const puntos = scope==='RED' ? FL_PUNTOS : [scope];
@@ -421,7 +421,7 @@ function flResumenHTML(){
         <div style="margin-top:18px;font-family:var(--display);font-weight:600;font-size:13px;">Camiones por semana · promedio de cada mes</div>
         <div class="legend" style="margin-top:6px;"><span><i style="background:var(--amber)"></i>Clientes</span><span><i style="background:var(--petrol)"></i>Consumo propio</span></div>
         <div class="chart-wrap" id="chartCam"><div class="tip" id="tipCam"></div></div>
-        <div class="notes" style="margin-top:12px;"><b>Clientes:</b> ventas de Estación CD, Remota VH, TP y AG y ventas de Planta Granel a terceros. <b>Consumo propio:</b> cargas de Petrosar y de la estación en CD, VH, TP y AG, más todo Base CR y Resero. No incluye los envíos de Planta a los puntos, para no contar dos veces el mismo combustible.${parcial?' * Mes en curso.':''}</div>
+        <div class="notes" style="margin-top:12px;"><b>Clientes:</b> ventas de Estación CD, Remota VH, TP y AG y ventas de Planta Granel a terceros. <b>Consumo propio:</b> cargas de Petrosar y de la estación en CD, VH, TP y AG, las salidas de Planta a internos (INT …), y todo Base CR y Resero. No incluye los envíos de Planta a los puntos, para no contar dos veces el mismo combustible.${parcial?' * Mes en curso.':''}</div>
       </div>
     </div>`;
 }
