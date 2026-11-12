@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Costo de camiones · Red Petrosar</title>
+<title>Precios y costo de camiones · Red Petrosar</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
   :root{
@@ -12,13 +13,20 @@
     --petrol:#0E3F45; --petrol-soft:#E4EEEF;
     --euro:#2E8E5B; --euro-soft:#E3F2EA;
     --gasoil:#E07A1F; --gasoil-soft:#FCEEDF;
+    --red:#C0392B;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,system-ui,sans-serif;font-size:14px}
-  header{background:var(--petrol);color:#fff;padding:18px 28px}
+  header{background:var(--petrol);color:#fff;padding:18px 28px 0}
   header h1{margin:0;font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700}
-  header p{margin:4px 0 0;opacity:.75;font-size:13px}
-  main{max-width:1000px;margin:24px auto;padding:0 20px;display:grid;gap:20px}
+  header p{margin:4px 0 14px;opacity:.75;font-size:13px}
+  nav{display:flex;gap:4px}
+  nav button{background:transparent;border:none;color:#fff;opacity:.7;padding:10px 18px;font-family:'Space Grotesk',sans-serif;
+             font-size:14px;font-weight:600;cursor:pointer;border-radius:8px 8px 0 0}
+  nav button.on{background:var(--paper);color:var(--petrol);opacity:1}
+  main{max-width:1050px;margin:24px auto;padding:0 20px}
+  .tab{display:none;gap:20px}
+  .tab.on{display:grid}
   .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px 22px}
   .card h2{margin:0 0 14px;font-family:'Space Grotesk',sans-serif;font-size:16px;color:var(--petrol)}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
@@ -27,18 +35,25 @@
   .prod.gasoil{background:var(--gasoil-soft);border-color:#F2D2B0}
   .prod h3{margin:0 0 10px;font-family:'Space Grotesk',sans-serif;font-size:15px}
   .euro h3{color:var(--euro)} .gasoil h3{color:var(--gasoil)}
+  .prod h4{margin:14px 0 2px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft)}
   label{display:block;font-size:12px;color:var(--ink-soft);margin:8px 0 3px;font-weight:600}
-  input{width:100%;padding:9px 11px;border:1px solid var(--line-strong);border-radius:6px;
-        font-family:'IBM Plex Mono',monospace;font-size:15px;text-align:right;background:#fff}
-  input:focus{outline:2px solid var(--petrol);border-color:var(--petrol)}
+  input,select{width:100%;padding:9px 11px;border:1px solid var(--line-strong);border-radius:6px;
+        font-family:'IBM Plex Mono',monospace;font-size:15px;background:#fff;color:var(--ink)}
+  input{text-align:right}
+  input[type=date],input[type=password],input.txt,select{text-align:left;font-family:Inter,sans-serif;font-size:14px}
+  input:focus,select:focus{outline:2px solid var(--petrol);border-color:var(--petrol)}
   input.big{font-size:22px;padding:12px 14px;font-weight:600}
+  input[readonly]{background:#F6F8F8;color:var(--ink-soft)}
   .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .row4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .bar{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap}
+  .bar > div{min-width:160px}
   table{width:100%;border-collapse:collapse;font-size:14px}
   th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:right}
   th:first-child,td:first-child{text-align:left}
   th{font-size:12px;color:var(--ink-soft);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
   td{font-family:'IBM Plex Mono',monospace}
-  td:first-child{font-family:Inter,sans-serif}
+  td.t{font-family:Inter,sans-serif;text-align:left}
   tr.sub td{color:var(--ink-soft);font-size:13px}
   tr.total td{font-weight:700;font-size:16px;border-top:2px solid var(--petrol);border-bottom:none;color:var(--petrol)}
   .col-euro{color:var(--euro)} .col-gasoil{color:var(--gasoil)}
@@ -48,40 +63,83 @@
   .totalbox .val{font-family:'IBM Plex Mono',monospace;font-size:30px;font-weight:600}
   .totalbox .sm{font-size:12px;opacity:.75;margin-top:4px;font-family:'IBM Plex Mono',monospace}
   .btns{display:flex;gap:10px;flex-wrap:wrap}
-  button{background:var(--card);border:1px solid var(--line-strong);border-radius:6px;padding:8px 14px;
+  button.b{background:var(--card);border:1px solid var(--line-strong);border-radius:6px;padding:9px 14px;
          font-family:Inter,sans-serif;font-size:13px;font-weight:600;color:var(--petrol);cursor:pointer}
-  button:hover{background:var(--petrol-soft)}
-  button.primary{background:var(--petrol);color:#fff;border-color:var(--petrol)}
-  .note{font-size:12px;color:var(--ink-soft);margin-top:10px}
-  details summary{cursor:pointer;font-family:'Space Grotesk',sans-serif;font-weight:600;color:var(--petrol);font-size:15px}
-  .warn{color:#C0392B;font-size:12px;margin-top:6px;display:none}
+  button.b:hover{background:var(--petrol-soft)}
+  button.b.primary{background:var(--petrol);color:#fff;border-color:var(--petrol)}
+  button.b:disabled{opacity:.5;cursor:default}
+  button.link{background:none;border:none;color:var(--petrol);font-size:12px;font-weight:600;cursor:pointer;padding:6px 0;text-decoration:underline}
+  .note{font-size:12px;color:var(--ink-soft);margin:10px 0 0}
+  .msg{font-size:13px;margin-top:10px;min-height:18px}
+  .msg.err{color:var(--red)} .msg.ok{color:var(--euro)}
+  .chip{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px}
+  .chip.Compra{background:var(--petrol-soft);color:var(--petrol)}
+  .chip.Venta{background:#F3E8F6;color:#6B2A7E}
+  .kpis{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .kpi{border-radius:8px;padding:14px 16px}
+  .kpi.euro{background:var(--euro-soft)} .kpi.gasoil{background:var(--gasoil-soft)}
+  .kpi h3{margin:0 0 8px;font-family:'Space Grotesk',sans-serif;font-size:15px}
+  .kpi .l{display:flex;justify-content:space-between;padding:3px 0;font-size:13px}
+  .kpi .l span:last-child{font-family:'IBM Plex Mono',monospace;font-weight:600}
+  .kpi .l.m{border-top:1px solid rgba(0,0,0,.1);margin-top:4px;padding-top:6px}
+  .desglose{display:none;margin-top:4px}
+  .desglose.on{display:block}
+  .scroll{max-height:460px;overflow:auto}
+  #chart svg{width:100%;height:auto;display:block}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--ink-soft);margin-top:8px}
+  .legend i{display:inline-block;width:22px;height:0;border-top:3px solid;vertical-align:middle;margin-right:6px}
+  .empty{color:var(--ink-soft);font-size:13px;padding:20px 0;text-align:center}
 </style>
 </head>
 <body>
 <header>
-  <h1>Costo de compra por camión</h1>
-  <p>Ingresá los litros de cada producto y se calcula el costo total del equipo</p>
+  <h1>Precios de combustible</h1>
+  <p>Costo de camiones, historial de precios de compra y venta</p>
+  <nav>
+    <button data-tab="calc" class="on">Calculadora</button>
+    <button data-tab="hist">Histórico</button>
+    <button data-tab="carga">Actualizar precios</button>
+  </nav>
 </header>
 
 <main>
-  <!-- CANTIDADES -->
+<!-- ===================== CALCULADORA ===================== -->
+<div class="tab on" id="tab_calc">
   <section class="card">
-    <h2>Litros del equipo</h2>
+    <div class="bar">
+      <div><label for="c_fecha">Fecha de la factura</label><input type="date" id="c_fecha"></div>
+      <div style="flex:1"><p class="note" id="c_vig" style="margin:0 0 10px">Cargando precios…</p></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Datos del equipo</h2>
     <div class="grid2">
       <div class="prod euro">
         <h3>Euro Diesel</h3>
         <label for="lt_euro">Cantidad (litros)</label>
         <input id="lt_euro" class="big" inputmode="decimal" placeholder="0">
+        <div class="row3">
+          <div><label>Neto $/L</label><input id="p_euro_neto" inputmode="decimal" placeholder="0"></div>
+          <div><label>ITC $/L</label><input id="p_euro_itc" inputmode="decimal" placeholder="0"></div>
+          <div><label>IDC $/L</label><input id="p_euro_idc" inputmode="decimal" placeholder="0"></div>
+        </div>
       </div>
       <div class="prod gasoil">
         <h3>Gasoil</h3>
         <label for="lt_gasoil">Cantidad (litros)</label>
         <input id="lt_gasoil" class="big" inputmode="decimal" placeholder="0">
+        <div class="row3">
+          <div><label>Neto $/L</label><input id="p_gasoil_neto" inputmode="decimal" placeholder="0"></div>
+          <div><label>ITC $/L</label><input id="p_gasoil_itc" inputmode="decimal" placeholder="0"></div>
+          <div><label>IDC $/L</label><input id="p_gasoil_idc" inputmode="decimal" placeholder="0"></div>
+        </div>
       </div>
     </div>
+    <div class="msg err" id="warn_precios"></div>
+    <p class="note">Los valores por litro se completan solos con el historial según la fecha. Si los cambiás acá, solo afecta este cálculo.</p>
   </section>
 
-  <!-- TOTAL -->
   <section class="totalbox">
     <div>
       <div class="lbl">Costo total del equipo</div>
@@ -90,74 +148,138 @@
     <div class="val" id="tot_general">$ 0,00</div>
   </section>
 
-  <!-- DETALLE -->
   <section class="card">
     <h2>Detalle</h2>
     <table>
-      <thead>
-        <tr><th>Concepto</th><th class="col-euro">Euro Diesel</th><th class="col-gasoil">Gasoil</th><th>Total</th></tr>
-      </thead>
+      <thead><tr><th>Concepto</th><th class="col-euro">Euro Diesel</th><th class="col-gasoil">Gasoil</th><th>Total</th></tr></thead>
       <tbody id="detalle"></tbody>
     </table>
     <div class="btns" style="margin-top:14px">
-      <button class="primary" id="btn_copiar">Copiar detalle</button>
-      <button id="btn_limpiar">Limpiar litros</button>
+      <button class="b primary" id="btn_copiar">Copiar detalle</button>
+      <button class="b" id="btn_limpiar">Limpiar litros</button>
     </div>
-    <p class="note">IVA 21% y percepción de IVA 3% se calculan sobre el neto. ITC e IDC son montos fijos por litro, sin IVA.</p>
+    <p class="note">IVA 21% y percepción de IVA 3% sobre el neto. ITC e IDC: importe por litro.</p>
+  </section>
+</div>
+
+<!-- ===================== HISTÓRICO ===================== -->
+<div class="tab" id="tab_hist">
+  <section class="card">
+    <h2 id="h_vig_tit">Precios vigentes hoy</h2>
+    <div class="kpis" id="h_kpis"></div>
   </section>
 
-  <!-- PRECIOS -->
   <section class="card">
-    <details id="det_precios">
-      <summary>Valores por litro (actualizar cuando cambie la lista de precios)</summary>
-      <div class="grid2" style="margin-top:14px">
-        <div class="prod euro">
-          <h3>Euro Diesel</h3>
-          <div class="row3">
-            <div><label>Neto $/L</label><input id="p_euro_neto" inputmode="decimal"></div>
-            <div><label>ITC $/L</label><input id="p_euro_itc" inputmode="decimal"></div>
-            <div><label>IDC $/L</label><input id="p_euro_idc" inputmode="decimal"></div>
-          </div>
-        </div>
-        <div class="prod gasoil">
-          <h3>Gasoil</h3>
-          <div class="row3">
-            <div><label>Neto $/L</label><input id="p_gasoil_neto" inputmode="decimal"></div>
-            <div><label>ITC $/L</label><input id="p_gasoil_itc" inputmode="decimal"></div>
-            <div><label>IDC $/L</label><input id="p_gasoil_idc" inputmode="decimal"></div>
-          </div>
-        </div>
-      </div>
-      <div class="row3" style="margin-top:14px;max-width:420px">
-        <div><label>IVA %</label><input id="p_iva" inputmode="decimal"></div>
-        <div><label>Percep. IVA %</label><input id="p_perc" inputmode="decimal"></div>
-      </div>
-      <div class="btns" style="margin-top:14px">
-        <button id="btn_restaurar">Volver a los valores fijos del código</button>
-      </div>
-      <p class="note">Los cambios que hagas acá se guardan solo en esta PC. Para que todos vean los mismos valores, actualizá el bloque PRECIOS en el código.</p>
-    </details>
-    <div class="warn" id="warn_precios">Faltan cargar los valores por litro: abrí “Valores por litro”.</div>
+    <div class="bar">
+      <div><label>Producto</label><select id="f_prod"><option value="">Todos</option><option>Euro Diesel</option><option>Gasoil</option></select></div>
+      <div><label>Tipo</label><select id="f_tipo"><option value="">Compra y venta</option><option>Compra</option><option>Venta</option></select></div>
+      <div><label>Desde</label><input type="date" id="f_desde"></div>
+      <div><label>Hasta</label><input type="date" id="f_hasta"></div>
+      <div><button class="b primary" id="btn_excel">Exportar a Excel</button></div>
+    </div>
   </section>
+
+  <section class="card">
+    <h2>Evolución del precio final por litro</h2>
+    <div id="chart"></div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <section class="card">
+    <h2>Historial de actualizaciones</h2>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Vigencia</th><th>Producto</th><th>Tipo</th><th>Final $/L</th><th>Neto $/L</th><th>IVA $/L</th><th>ITC $/L</th><th>IDC $/L</th><th>Obs.</th></tr></thead>
+        <tbody id="h_tabla"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<!-- ===================== ACTUALIZAR PRECIOS ===================== -->
+<div class="tab" id="tab_carga">
+  <section class="card">
+    <h2>Nueva actualización de precios</h2>
+    <div class="bar">
+      <div><label for="u_fecha">Vigente desde</label><input type="date" id="u_fecha"></div>
+      <div style="flex:1"><label for="u_obs">Observación (opcional)</label><input id="u_obs" class="txt" placeholder="Ej: aumento YPF / actualización ITC AFIP"></div>
+    </div>
+    <p class="note">Completá solo lo que cambia. Si un producto no se actualiza, dejalo vacío: sigue vigente el último precio cargado.</p>
+  </section>
+
+  <section class="card">
+    <div class="grid2">
+      <div class="prod euro" data-p="euro">
+        <h3>Euro Diesel</h3>
+        <h4>Compra (por litro)</h4>
+        <div class="row3">
+          <div><label>Neto</label><input id="u_euro_neto" inputmode="decimal"></div>
+          <div><label>ITC</label><input id="u_euro_itc" inputmode="decimal"></div>
+          <div><label>IDC</label><input id="u_euro_idc" inputmode="decimal"></div>
+        </div>
+        <label>Costo final $/L (con IVA y percepción)</label><input id="u_euro_cfinal" readonly>
+        <h4>Venta</h4>
+        <label>Precio final surtidor $/L</label><input id="u_euro_vfinal" inputmode="decimal">
+        <button class="link" data-desg="euro">Cargar desglose de venta</button>
+        <div class="desglose" id="desg_euro">
+          <div class="row4">
+            <div><label>Neto</label><input id="u_euro_vneto" inputmode="decimal"></div>
+            <div><label>IVA</label><input id="u_euro_viva" inputmode="decimal"></div>
+            <div><label>ITC</label><input id="u_euro_vitc" inputmode="decimal"></div>
+            <div><label>IDC</label><input id="u_euro_vidc" inputmode="decimal"></div>
+          </div>
+        </div>
+      </div>
+      <div class="prod gasoil" data-p="gasoil">
+        <h3>Gasoil</h3>
+        <h4>Compra (por litro)</h4>
+        <div class="row3">
+          <div><label>Neto</label><input id="u_gasoil_neto" inputmode="decimal"></div>
+          <div><label>ITC</label><input id="u_gasoil_itc" inputmode="decimal"></div>
+          <div><label>IDC</label><input id="u_gasoil_idc" inputmode="decimal"></div>
+        </div>
+        <label>Costo final $/L (con IVA y percepción)</label><input id="u_gasoil_cfinal" readonly>
+        <h4>Venta</h4>
+        <label>Precio final surtidor $/L</label><input id="u_gasoil_vfinal" inputmode="decimal">
+        <button class="link" data-desg="gasoil">Cargar desglose de venta</button>
+        <div class="desglose" id="desg_gasoil">
+          <div class="row4">
+            <div><label>Neto</label><input id="u_gasoil_vneto" inputmode="decimal"></div>
+            <div><label>IVA</label><input id="u_gasoil_viva" inputmode="decimal"></div>
+            <div><label>ITC</label><input id="u_gasoil_vitc" inputmode="decimal"></div>
+            <div><label>IDC</label><input id="u_gasoil_vidc" inputmode="decimal"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="bar">
+      <div><label for="u_pin">PIN</label><input type="password" id="u_pin" autocomplete="off"></div>
+      <div><button class="b primary" id="btn_guardar">Guardar precios</button></div>
+    </div>
+    <div class="msg" id="u_msg"></div>
+  </section>
+</div>
 </main>
 
 <script>
 /* ============================================================
-   PRECIOS FIJOS — actualizar acá cuando cambie la lista.
-   Valores por litro, sin IVA. Usar punto como decimal.
+   CONFIGURACIÓN
    ============================================================ */
-const PRECIOS = {
-  euro:   { neto: 0, itc: 0, idc: 0 },
-  gasoil: { neto: 0, itc: 0, idc: 0 },
-  iva: 21,
-  perc: 3
-};
+const API_URL = 'https://script.google.com/macros/s/AKfycbwpsyw4EQ-bzmlwuM4FF02mrcInpxDbAJkTZCgPM1aLGum7tO-qfG_P2w1VSxo4kvEf/exec';
+const IVA  = 21;   // %
+const PERC = 3;    // % percepción IVA
 
-const LS_KEY = 'costo_camiones_precios';
-const PRODS = ['euro', 'gasoil'];
+const PRODS  = ['euro', 'gasoil'];
+const NOMBRE = { euro: 'Euro Diesel', gasoil: 'Gasoil' };
+const COLOR  = { euro: '#2E8E5B', gasoil: '#E07A1F' };
+const KEY    = { 'Euro Diesel': 'euro', 'Gasoil': 'gasoil' };
 const $ = id => document.getElementById(id);
+let HIST = [];
 
-// --- números formato argentino ---
+/* ---------- utilidades ---------- */
 function parseAR(v) {
   if (v == null) return 0;
   let s = String(v).trim().replace(/\$|\s/g, '');
@@ -167,114 +289,252 @@ function parseAR(v) {
   const n = parseFloat(s);
   return isNaN(n) ? 0 : n;
 }
-const fmt = (n, d = 2) => n.toLocaleString('es-AR', { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmt = (n, d = 2) => (n || 0).toLocaleString('es-AR', { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmtIn = n => n ? fmt(n, 4).replace(/0+$/, '').replace(/,$/, '') : '';
 const money = n => '$ ' + fmt(n);
+const fFecha = s => s ? s.split('-').reverse().join('/') : '';
+const hoyISO = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+const costoFinal = (neto, itc, idc) => neto * (1 + IVA / 100 + PERC / 100) + itc + idc;
 
-// --- precios: código + override local ---
-function cargarPrecios() {
-  let p = JSON.parse(JSON.stringify(PRECIOS));
+/* ---------- pestañas ---------- */
+document.querySelectorAll('nav button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.id === 'tab_' + b.dataset.tab));
+  if (b.dataset.tab === 'hist') renderHist();
+}));
+
+/* ---------- datos ---------- */
+async function cargarHist() {
+  if (!API_URL.startsWith('https://')) { $('c_vig').textContent = 'Falta configurar API_URL: cargá los valores por litro a mano.'; return; }
   try {
-    const ls = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
-    if (ls) p = ls;
-  } catch (e) {}
-  PRODS.forEach(k => ['neto', 'itc', 'idc'].forEach(c => $(`p_${k}_${c}`).value = p[k][c] ? fmt(p[k][c], 4).replace(/,?0+$/, '') : ''));
-  $('p_iva').value = fmt(p.iva, 2).replace(/,?0+$/, '');
-  $('p_perc').value = fmt(p.perc, 2).replace(/,?0+$/, '');
-}
-function leerPrecios() {
-  const p = { iva: parseAR($('p_iva').value), perc: parseAR($('p_perc').value) };
-  PRODS.forEach(k => p[k] = {
-    neto: parseAR($(`p_${k}_neto`).value),
-    itc:  parseAR($(`p_${k}_itc`).value),
-    idc:  parseAR($(`p_${k}_idc`).value)
-  });
-  return p;
-}
-function guardarPrecios() {
-  try { localStorage.setItem(LS_KEY, JSON.stringify(leerPrecios())); } catch (e) {}
+    const r = await fetch(API_URL, { cache: 'no-store' });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'Error');
+    HIST = j.rows.map(x => ({ ...x, carga: x.carga || '' }));
+  } catch (e) {
+    $('c_vig').textContent = 'No se pudo leer el historial. Podés cargar los valores por litro a mano.';
+    return;
+  }
+  aplicarVigentes();
+  renderHist();
 }
 
-// --- cálculo (precisión completa, redondeo solo al mostrar) ---
+// último registro con vigencia <= fecha (si hay dos el mismo día, gana el último cargado)
+function vigente(prod, tipo, fecha) {
+  let best = null;
+  for (const r of HIST) {
+    if (r.producto !== prod || r.tipo !== tipo || r.fecha > fecha) continue;
+    if (!best || r.fecha > best.fecha || (r.fecha === best.fecha && r.carga >= best.carga)) best = r;
+  }
+  return best;
+}
+
+/* ===================== CALCULADORA ===================== */
+function aplicarVigentes() {
+  const f = $('c_fecha').value || hoyISO();
+  const info = [];
+  PRODS.forEach(k => {
+    const v = vigente(NOMBRE[k], 'Compra', f);
+    $(`p_${k}_neto`).value = v ? fmtIn(v.neto) : '';
+    $(`p_${k}_itc`).value  = v ? fmtIn(v.itc)  : '';
+    $(`p_${k}_idc`).value  = v ? fmtIn(v.idc)  : '';
+    info.push(v ? `${NOMBRE[k]}: vigente desde ${fFecha(v.fecha)}` : `${NOMBRE[k]}: sin precio cargado a esa fecha`);
+  });
+  $('c_vig').textContent = info.join(' · ');
+  calcular();
+}
+
 function calcular() {
-  const p = leerPrecios();
   const r = {};
   PRODS.forEach(k => {
     const lt = parseAR($(`lt_${k}`).value);
-    const neto = lt * p[k].neto;
-    const iva  = neto * p.iva / 100;
-    const perc = neto * p.perc / 100;
-    const itc  = lt * p[k].itc;
-    const idc  = lt * p[k].idc;
+    const pn = parseAR($(`p_${k}_neto`).value), pi = parseAR($(`p_${k}_itc`).value), pd = parseAR($(`p_${k}_idc`).value);
+    const neto = lt * pn, iva = neto * IVA / 100, perc = neto * PERC / 100, itc = lt * pi, idc = lt * pd;
     const total = neto + iva + perc + itc + idc;
-    r[k] = { lt, neto, iva, perc, itc, idc, total, xl: lt ? total / lt : 0 };
+    r[k] = { lt, neto, iva, perc, itc, idc, total, xl: lt ? total / lt : 0, sinPrecio: lt > 0 && !pn };
   });
   const T = {};
   ['lt', 'neto', 'iva', 'perc', 'itc', 'idc', 'total'].forEach(c => T[c] = r.euro[c] + r.gasoil[c]);
   T.xl = T.lt ? T.total / T.lt : 0;
 
   const filas = [
-    ['Litros', 'lt', v => fmt(v, 0)],
-    ['Neto', 'neto', money],
-    [`IVA ${fmt(p.iva, 0)}%`, 'iva', money],
-    [`Percep. IVA ${fmt(p.perc, 0)}%`, 'perc', money],
-    ['ITC', 'itc', money],
-    ['IDC', 'idc', money],
-    ['Total', 'total', money, 'total'],
-    ['Costo por litro', 'xl', money, 'sub']
+    ['Litros', 'lt', v => fmt(v, 0)], ['Neto', 'neto', money], [`IVA ${IVA}%`, 'iva', money],
+    [`Percep. IVA ${PERC}%`, 'perc', money], ['ITC', 'itc', money], ['IDC', 'idc', money],
+    ['Total', 'total', money, 'total'], ['Costo por litro', 'xl', money, 'sub']
   ];
-  $('detalle').innerHTML = filas.map(([lbl, c, f, cls]) =>
-    `<tr class="${cls || ''}"><td>${lbl}</td><td>${f(r.euro[c])}</td><td>${f(r.gasoil[c])}</td><td>${f(T[c])}</td></tr>`
-  ).join('');
-
+  $('detalle').innerHTML = filas.map(([l, c, f, cls]) =>
+    `<tr class="${cls || ''}"><td class="t">${l}</td><td>${f(r.euro[c])}</td><td>${f(r.gasoil[c])}</td><td>${f(T[c])}</td></tr>`).join('');
   $('tot_general').textContent = money(T.total);
   $('tot_litros').textContent = `${fmt(T.lt, 0)} litros · ${money(T.xl)} por litro`;
-
-  const faltan = PRODS.some(k => r[k].lt > 0 && p[k].neto === 0);
-  $('warn_precios').style.display = faltan ? 'block' : 'none';
-  return { r, T, p };
+  const falt = PRODS.filter(k => r[k].sinPrecio).map(k => NOMBRE[k]);
+  $('warn_precios').textContent = falt.length ? `Falta el neto por litro de ${falt.join(' y ')}.` : '';
+  return { r, T };
 }
 
-// --- copiar detalle para pegar en WhatsApp / mail ---
 function copiar() {
-  const { r, T, p } = calcular();
-  const lin = [];
-  const nombres = { euro: 'EURO DIESEL', gasoil: 'GASOIL' };
+  const { r, T } = calcular();
+  const lin = [`Fecha: ${fFecha($('c_fecha').value)}`, ''];
   PRODS.forEach(k => {
-    if (!r[k].lt) return;
-    const x = r[k];
-    lin.push(`${nombres[k]} — ${fmt(x.lt, 0)} L`,
-      `  Neto: ${money(x.neto)}`,
-      `  IVA ${fmt(p.iva, 0)}%: ${money(x.iva)}`,
-      `  Percep. IVA ${fmt(p.perc, 0)}%: ${money(x.perc)}`,
-      `  ITC: ${money(x.itc)}`,
-      `  IDC: ${money(x.idc)}`,
-      `  Subtotal: ${money(x.total)}`, '');
+    const x = r[k]; if (!x.lt) return;
+    lin.push(`${NOMBRE[k].toUpperCase()} — ${fmt(x.lt, 0)} L`, `  Neto: ${money(x.neto)}`, `  IVA ${IVA}%: ${money(x.iva)}`,
+      `  Percep. IVA ${PERC}%: ${money(x.perc)}`, `  ITC: ${money(x.itc)}`, `  IDC: ${money(x.idc)}`, `  Subtotal: ${money(x.total)}`, '');
   });
   lin.push(`TOTAL EQUIPO (${fmt(T.lt, 0)} L): ${money(T.total)}`);
   const txt = lin.join('\n');
   const ok = () => { $('btn_copiar').textContent = '¡Copiado!'; setTimeout(() => $('btn_copiar').textContent = 'Copiar detalle', 1500); };
-  if (navigator.clipboard) navigator.clipboard.writeText(txt).then(ok).catch(() => fallback(txt, ok));
-  else fallback(txt, ok);
+  if (navigator.clipboard) navigator.clipboard.writeText(txt).then(ok).catch(() => fallbackCopy(txt, ok)); else fallbackCopy(txt, ok);
 }
-function fallback(txt, ok) {
-  const ta = document.createElement('textarea');
-  ta.value = txt; document.body.appendChild(ta); ta.select();
-  try { document.execCommand('copy'); ok(); } catch (e) {}
-  ta.remove();
+function fallbackCopy(txt, ok) {
+  const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); ok(); } catch (e) {} ta.remove();
 }
 
-// --- eventos ---
-document.querySelectorAll('input').forEach(i => i.addEventListener('input', () => {
-  if (i.id.startsWith('p_')) guardarPrecios();
-  calcular();
-}));
+/* ===================== HISTÓRICO ===================== */
+function filtrados() {
+  const p = $('f_prod').value, t = $('f_tipo').value, d = $('f_desde').value, h = $('f_hasta').value;
+  return HIST.filter(r => (!p || r.producto === p) && (!t || r.tipo === t) && (!d || r.fecha >= d) && (!h || r.fecha <= h))
+             .sort((a, b) => (b.fecha + b.carga).localeCompare(a.fecha + a.carga));
+}
+
+function renderHist() {
+  const hoy = hoyISO();
+  $('h_kpis').innerHTML = PRODS.map(k => {
+    const c = vigente(NOMBRE[k], 'Compra', hoy), v = vigente(NOMBRE[k], 'Venta', hoy);
+    const cf = c ? c.final : null, vf = v ? v.final : null;
+    const mg = (cf != null && vf != null) ? vf - cf : null;
+    return `<div class="kpi ${k}"><h3 class="col-${k}">${NOMBRE[k]}</h3>
+      <div class="l"><span>Costo compra final $/L</span><span>${cf != null ? money(cf) : '—'}</span></div>
+      <div class="l"><span>Precio venta surtidor $/L</span><span>${vf != null ? money(vf) : '—'}</span></div>
+      <div class="l m"><span>Diferencia $/L</span><span>${mg != null ? money(mg) : '—'}</span></div></div>`;
+  }).join('');
+
+  const rows = filtrados();
+  const n = v => v == null ? '' : fmt(v, 4);
+  $('h_tabla').innerHTML = rows.length ? rows.map(r => `<tr>
+      <td class="t">${fFecha(r.fecha)}</td><td class="t col-${KEY[r.producto]}">${r.producto}</td>
+      <td class="t"><span class="chip ${r.tipo}">${r.tipo}</span></td>
+      <td><b>${n(r.final)}</b></td><td>${n(r.neto)}</td><td>${n(r.iva)}</td><td>${n(r.itc)}</td><td>${n(r.idc)}</td>
+      <td class="t">${r.obs || ''}</td></tr>`).join('')
+    : `<tr><td colspan="9" class="empty">Sin registros para el filtro elegido</td></tr>`;
+  renderChart(rows);
+}
+
+// gráfico SVG escalonado (el precio sigue vigente hasta el próximo cambio)
+function renderChart(rows) {
+  const series = [];
+  PRODS.forEach(k => ['Compra', 'Venta'].forEach(t => {
+    const pts = rows.filter(r => r.producto === NOMBRE[k] && r.tipo === t && r.final != null)
+      .sort((a, b) => (a.fecha + a.carga).localeCompare(b.fecha + b.carga));
+    const porDia = {}; pts.forEach(p => porDia[p.fecha] = p.final);   // último del día
+    const arr = Object.entries(porDia).sort();
+    if (arr.length) series.push({ k, t, pts: arr });
+  }));
+  if (!series.length) { $('chart').innerHTML = '<div class="empty">Sin datos para graficar</div>'; $('legend').innerHTML = ''; return; }
+
+  const W = 960, H = 320, L = 80, R = 20, Tp = 15, B = 35;
+  const ms = s => new Date(s + 'T12:00:00').getTime();
+  const hasta = $('f_hasta').value || hoyISO();
+  const xs = series.flatMap(s => s.pts.map(p => ms(p[0]))).concat(ms(hasta));
+  const ys = series.flatMap(s => s.pts.map(p => p[1]));
+  let x0 = Math.min(...xs), x1 = Math.max(...xs); if (x1 === x0) { x0 -= 864e5 * 15; x1 += 864e5 * 15; }
+  let y0 = Math.min(...ys), y1 = Math.max(...ys); const pad = (y1 - y0) * .12 || y1 * .05 || 1; y0 = Math.max(0, y0 - pad); y1 += pad;
+  const X = v => L + (v - x0) / (x1 - x0) * (W - L - R), Y = v => Tp + (1 - (v - y0) / (y1 - y0)) * (H - Tp - B);
+
+  let g = '';
+  for (let i = 0; i <= 4; i++) {
+    const v = y0 + (y1 - y0) * i / 4;
+    g += `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="#DCE2E1"/>
+          <text x="${L - 8}" y="${Y(v) + 4}" text-anchor="end" font-size="11" fill="#5C6B6E" font-family="IBM Plex Mono">${fmt(v, 0)}</text>`;
+  }
+  for (let i = 0; i <= 5; i++) {
+    const v = x0 + (x1 - x0) * i / 5, d = new Date(v);
+    const lbl = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getFullYear()).slice(2)}`;
+    g += `<text x="${X(v)}" y="${H - 12}" text-anchor="middle" font-size="11" fill="#5C6B6E" font-family="Inter">${lbl}</text>`;
+  }
+  series.forEach(s => {
+    let d = '';
+    s.pts.forEach((p, i) => { const x = X(ms(p[0])), y = Y(p[1]); d += i ? ` H${x} V${y}` : `M${x} ${y}`; });
+    d += ` H${X(ms(hasta))}`;
+    g += `<path d="${d}" fill="none" stroke="${COLOR[s.k]}" stroke-width="2.5" ${s.t === 'Compra' ? 'stroke-dasharray="6 4"' : ''}/>`;
+    s.pts.forEach(p => g += `<circle cx="${X(ms(p[0]))}" cy="${Y(p[1])}" r="4" fill="#fff" stroke="${COLOR[s.k]}" stroke-width="2">
+      <title>${NOMBRE[s.k]} ${s.t} · ${fFecha(p[0])}: ${money(p[1])}</title></circle>`);
+  });
+  $('chart').innerHTML = `<svg viewBox="0 0 ${W} ${H}">${g}</svg>`;
+  $('legend').innerHTML = series.map(s =>
+    `<span><i style="border-color:${COLOR[s.k]};${s.t === 'Compra' ? 'border-top-style:dashed' : ''}"></i>${NOMBRE[s.k]} · ${s.t === 'Compra' ? 'costo compra' : 'venta surtidor'}</span>`).join('');
+}
+
+function exportar() {
+  const rows = filtrados().slice().reverse();
+  const aoa = [['Fecha vigencia', 'Producto', 'Tipo', 'Precio final $/L', 'Neto $/L', 'IVA $/L', 'ITC $/L', 'IDC $/L', 'Observación', 'Fecha de carga']];
+  rows.forEach(r => aoa.push([new Date(r.fecha + 'T00:00:00'), r.producto, r.tipo, r.final, r.neto, r.iva, r.itc, r.idc, r.obs, r.carga]));
+  const ws = XLSX.utils.aoa_to_sheet(aoa, { cellDates: true, dateNF: 'dd/mm/yyyy' });
+  ws['!cols'] = [12, 13, 9, 15, 12, 12, 12, 12, 34, 17].map(w => ({ wch: w }));
+  for (let i = 1; i < aoa.length; i++) for (let c = 3; c <= 7; c++) {
+    const ref = XLSX.utils.encode_cell({ r: i, c }); if (ws[ref] && typeof ws[ref].v === 'number') ws[ref].z = '#,##0.0000';
+  }
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Historial precios');
+  XLSX.writeFile(wb, `historial_precios_${hoyISO()}.xlsx`);
+}
+
+/* ===================== ACTUALIZAR PRECIOS ===================== */
+function calcCostoCarga() {
+  PRODS.forEach(k => {
+    const n = parseAR($(`u_${k}_neto`).value);
+    $(`u_${k}_cfinal`).value = n ? fmt(costoFinal(n, parseAR($(`u_${k}_itc`).value), parseAR($(`u_${k}_idc`).value)), 4) : '';
+  });
+}
+
+async function guardar() {
+  const msg = $('u_msg'); msg.className = 'msg';
+  const fecha = $('u_fecha').value;
+  if (!fecha) { msg.className = 'msg err'; msg.textContent = 'Poné la fecha de vigencia.'; return; }
+  if (!$('u_pin').value) { msg.className = 'msg err'; msg.textContent = 'Ingresá el PIN.'; return; }
+  const filas = [], v = id => parseAR($(id).value) || null;
+  for (const k of PRODS) {
+    const neto = v(`u_${k}_neto`), itc = v(`u_${k}_itc`), idc = v(`u_${k}_idc`);
+    if (neto) filas.push({ producto: NOMBRE[k], tipo: 'Compra', neto, itc, idc, iva: neto * IVA / 100, final: costoFinal(neto, itc || 0, idc || 0) });
+    else if (itc || idc) { msg.className = 'msg err'; msg.textContent = `${NOMBRE[k]}: falta el neto de compra.`; return; }
+    const vf = v(`u_${k}_vfinal`);
+    if (vf) filas.push({ producto: NOMBRE[k], tipo: 'Venta', final: vf,
+      neto: v(`u_${k}_vneto`), iva: v(`u_${k}_viva`), itc: v(`u_${k}_vitc`), idc: v(`u_${k}_vidc`) });
+  }
+  if (!filas.length) { msg.className = 'msg err'; msg.textContent = 'No cargaste ningún precio.'; return; }
+  if (!API_URL.startsWith('https://')) { msg.className = 'msg err'; msg.textContent = 'Falta configurar API_URL.'; return; }
+
+  $('btn_guardar').disabled = true; msg.textContent = 'Guardando…';
+  try {
+    const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ pin: $('u_pin').value, fecha, obs: $('u_obs').value.trim(), filas }) });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error);
+    msg.className = 'msg ok'; msg.textContent = `Guardado: ${j.guardadas} precio(s) vigentes desde ${fFecha(fecha)}.`;
+    document.querySelectorAll('#tab_carga input:not([type=date]):not([type=password])').forEach(i => i.value = '');
+    await cargarHist();
+  } catch (e) {
+    msg.className = 'msg err'; msg.textContent = 'No se guardó: ' + (e.message || 'error de conexión');
+  } finally { $('btn_guardar').disabled = false; }
+}
+
+/* ===================== EVENTOS ===================== */
+['lt_euro', 'lt_gasoil', 'p_euro_neto', 'p_euro_itc', 'p_euro_idc', 'p_gasoil_neto', 'p_gasoil_itc', 'p_gasoil_idc']
+  .forEach(id => $(id).addEventListener('input', calcular));
+$('c_fecha').addEventListener('change', aplicarVigentes);
 $('btn_copiar').addEventListener('click', copiar);
 $('btn_limpiar').addEventListener('click', () => { $('lt_euro').value = ''; $('lt_gasoil').value = ''; calcular(); $('lt_euro').focus(); });
-$('btn_restaurar').addEventListener('click', () => { try { localStorage.removeItem(LS_KEY); } catch (e) {} cargarPrecios(); calcular(); });
+['f_prod', 'f_tipo', 'f_desde', 'f_hasta'].forEach(id => $(id).addEventListener('change', renderHist));
+$('btn_excel').addEventListener('click', exportar);
+PRODS.forEach(k => ['neto', 'itc', 'idc'].forEach(c => $(`u_${k}_${c}`).addEventListener('input', calcCostoCarga)));
+document.querySelectorAll('[data-desg]').forEach(b => b.addEventListener('click', () => {
+  const d = $('desg_' + b.dataset.desg); d.classList.toggle('on');
+  b.textContent = d.classList.contains('on') ? 'Ocultar desglose de venta' : 'Cargar desglose de venta';
+}));
+$('btn_guardar').addEventListener('click', guardar);
 
-cargarPrecios();
-if (!leerPrecios().euro.neto && !leerPrecios().gasoil.neto) $('det_precios').open = true;
+$('c_fecha').value = hoyISO();
+$('u_fecha').value = hoyISO();
 calcular();
+cargarHist();
 </script>
 </body>
 </html>
