@@ -107,7 +107,7 @@
 <div class="tab on" id="tab_calc">
   <section class="card">
     <div class="bar">
-      <div><label for="c_fecha">Fecha de la factura</label><input type="date" id="c_fecha"></div>
+      <div><label for="c_fecha">Fecha</label><input type="date" id="c_fecha"></div>
       <div style="flex:1"><p class="note" id="c_vig" style="margin:0 0 10px">Cargando precios…</p></div>
     </div>
   </section>
@@ -405,7 +405,8 @@ function renderHist() {
     return `<div class="kpi ${k}"><h3 class="col-${k}">${NOMBRE[k]}</h3>
       <div class="l"><span>Costo compra final $/L</span><span>${cf != null ? money(cf) : '—'}</span></div>
       <div class="l"><span>Precio venta surtidor $/L</span><span>${vf != null ? money(vf) : '—'}</span></div>
-      <div class="l m"><span>Diferencia $/L</span><span>${mg != null ? money(mg) : '—'}</span></div></div>`;
+      <div class="l m"><span>Diferencia $/L</span><span>${mg != null ? money(mg) : '—'}</span></div>
+      <div class="l"><span>Margen sobre costo</span><span>${mg != null && cf ? fmt(mg / cf * 100, 1) + ' %' : '—'}</span></div></div>`;
   }).join('');
 
   const rows = filtrados();
