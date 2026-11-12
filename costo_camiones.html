@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Costo de camiones · Red Petrosar</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+  :root{
+    --paper:#F1F3F2; --card:#ffffff; --ink:#132226; --ink-soft:#5C6B6E;
+    --line:#DCE2E1; --line-strong:#C3CBC9;
+    --petrol:#0E3F45; --petrol-soft:#E4EEEF;
+    --euro:#2E8E5B; --euro-soft:#E3F2EA;
+    --gasoil:#E07A1F; --gasoil-soft:#FCEEDF;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,system-ui,sans-serif;font-size:14px}
+  header{background:var(--petrol);color:#fff;padding:18px 28px}
+  header h1{margin:0;font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700}
+  header p{margin:4px 0 0;opacity:.75;font-size:13px}
+  main{max-width:1000px;margin:24px auto;padding:0 20px;display:grid;gap:20px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px 22px}
+  .card h2{margin:0 0 14px;font-family:'Space Grotesk',sans-serif;font-size:16px;color:var(--petrol)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .prod{border-radius:8px;padding:14px 16px;border:1px solid var(--line)}
+  .prod.euro{background:var(--euro-soft);border-color:#BFE0CD}
+  .prod.gasoil{background:var(--gasoil-soft);border-color:#F2D2B0}
+  .prod h3{margin:0 0 10px;font-family:'Space Grotesk',sans-serif;font-size:15px}
+  .euro h3{color:var(--euro)} .gasoil h3{color:var(--gasoil)}
+  label{display:block;font-size:12px;color:var(--ink-soft);margin:8px 0 3px;font-weight:600}
+  input{width:100%;padding:9px 11px;border:1px solid var(--line-strong);border-radius:6px;
+        font-family:'IBM Plex Mono',monospace;font-size:15px;text-align:right;background:#fff}
+  input:focus{outline:2px solid var(--petrol);border-color:var(--petrol)}
+  input.big{font-size:22px;padding:12px 14px;font-weight:600}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:right}
+  th:first-child,td:first-child{text-align:left}
+  th{font-size:12px;color:var(--ink-soft);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+  td{font-family:'IBM Plex Mono',monospace}
+  td:first-child{font-family:Inter,sans-serif}
+  tr.sub td{color:var(--ink-soft);font-size:13px}
+  tr.total td{font-weight:700;font-size:16px;border-top:2px solid var(--petrol);border-bottom:none;color:var(--petrol)}
+  .col-euro{color:var(--euro)} .col-gasoil{color:var(--gasoil)}
+  .totalbox{display:flex;justify-content:space-between;align-items:center;background:var(--petrol);color:#fff;
+            border-radius:10px;padding:18px 24px}
+  .totalbox .lbl{font-size:13px;opacity:.8}
+  .totalbox .val{font-family:'IBM Plex Mono',monospace;font-size:30px;font-weight:600}
+  .totalbox .sm{font-size:12px;opacity:.75;margin-top:4px;font-family:'IBM Plex Mono',monospace}
+  .btns{display:flex;gap:10px;flex-wrap:wrap}
+  button{background:var(--card);border:1px solid var(--line-strong);border-radius:6px;padding:8px 14px;
+         font-family:Inter,sans-serif;font-size:13px;font-weight:600;color:var(--petrol);cursor:pointer}
+  button:hover{background:var(--petrol-soft)}
+  button.primary{background:var(--petrol);color:#fff;border-color:var(--petrol)}
+  .note{font-size:12px;color:var(--ink-soft);margin-top:10px}
+  details summary{cursor:pointer;font-family:'Space Grotesk',sans-serif;font-weight:600;color:var(--petrol);font-size:15px}
+  .warn{color:#C0392B;font-size:12px;margin-top:6px;display:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>Costo de compra por camión</h1>
+  <p>Ingresá los litros de cada producto y se calcula el costo total del equipo</p>
+</header>
+
+<main>
+  <!-- CANTIDADES -->
+  <section class="card">
+    <h2>Litros del equipo</h2>
+    <div class="grid2">
+      <div class="prod euro">
+        <h3>Euro Diesel</h3>
+        <label for="lt_euro">Cantidad (litros)</label>
+        <input id="lt_euro" class="big" inputmode="decimal" placeholder="0">
+      </div>
+      <div class="prod gasoil">
+        <h3>Gasoil</h3>
+        <label for="lt_gasoil">Cantidad (litros)</label>
+        <input id="lt_gasoil" class="big" inputmode="decimal" placeholder="0">
+      </div>
+    </div>
+  </section>
+
+  <!-- TOTAL -->
+  <section class="totalbox">
+    <div>
+      <div class="lbl">Costo total del equipo</div>
+      <div class="sm" id="tot_litros">0 litros</div>
+    </div>
+    <div class="val" id="tot_general">$ 0,00</div>
+  </section>
+
+  <!-- DETALLE -->
+  <section class="card">
+    <h2>Detalle</h2>
+    <table>
+      <thead>
+        <tr><th>Concepto</th><th class="col-euro">Euro Diesel</th><th class="col-gasoil">Gasoil</th><th>Total</th></tr>
+      </thead>
+      <tbody id="detalle"></tbody>
+    </table>
+    <div class="btns" style="margin-top:14px">
+      <button class="primary" id="btn_copiar">Copiar detalle</button>
+      <button id="btn_limpiar">Limpiar litros</button>
+    </div>
+    <p class="note">IVA 21% y percepción de IVA 3% se calculan sobre el neto. ITC e IDC son montos fijos por litro, sin IVA.</p>
+  </section>
+
+  <!-- PRECIOS -->
+  <section class="card">
+    <details id="det_precios">
+      <summary>Valores por litro (actualizar cuando cambie la lista de precios)</summary>
+      <div class="grid2" style="margin-top:14px">
+        <div class="prod euro">
+          <h3>Euro Diesel</h3>
+          <div class="row3">
+            <div><label>Neto $/L</label><input id="p_euro_neto" inputmode="decimal"></div>
+            <div><label>ITC $/L</label><input id="p_euro_itc" inputmode="decimal"></div>
+            <div><label>IDC $/L</label><input id="p_euro_idc" inputmode="decimal"></div>
+          </div>
+        </div>
+        <div class="prod gasoil">
+          <h3>Gasoil</h3>
+          <div class="row3">
+            <div><label>Neto $/L</label><input id="p_gasoil_neto" inputmode="decimal"></div>
+            <div><label>ITC $/L</label><input id="p_gasoil_itc" inputmode="decimal"></div>
+            <div><label>IDC $/L</label><input id="p_gasoil_idc" inputmode="decimal"></div>
+          </div>
+        </div>
+      </div>
+      <div class="row3" style="margin-top:14px;max-width:420px">
+        <div><label>IVA %</label><input id="p_iva" inputmode="decimal"></div>
+        <div><label>Percep. IVA %</label><input id="p_perc" inputmode="decimal"></div>
+      </div>
+      <div class="btns" style="margin-top:14px">
+        <button id="btn_restaurar">Volver a los valores fijos del código</button>
+      </div>
+      <p class="note">Los cambios que hagas acá se guardan solo en esta PC. Para que todos vean los mismos valores, actualizá el bloque PRECIOS en el código.</p>
+    </details>
+    <div class="warn" id="warn_precios">Faltan cargar los valores por litro: abrí “Valores por litro”.</div>
+  </section>
+</main>
+
+<script>
+/* ============================================================
+   PRECIOS FIJOS — actualizar acá cuando cambie la lista.
+   Valores por litro, sin IVA. Usar punto como decimal.
+   ============================================================ */
+const PRECIOS = {
+  euro:   { neto: 0, itc: 0, idc: 0 },
+  gasoil: { neto: 0, itc: 0, idc: 0 },
+  iva: 21,
+  perc: 3
+};
+
+const LS_KEY = 'costo_camiones_precios';
+const PRODS = ['euro', 'gasoil'];
+const $ = id => document.getElementById(id);
+
+// --- números formato argentino ---
+function parseAR(v) {
+  if (v == null) return 0;
+  let s = String(v).trim().replace(/\$|\s/g, '');
+  if (!s) return 0;
+  if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+  else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, ''); // 30.000 = treinta mil
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+const fmt = (n, d = 2) => n.toLocaleString('es-AR', { minimumFractionDigits: d, maximumFractionDigits: d });
+const money = n => '$ ' + fmt(n);
+
+// --- precios: código + override local ---
+function cargarPrecios() {
+  let p = JSON.parse(JSON.stringify(PRECIOS));
+  try {
+    const ls = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
+    if (ls) p = ls;
+  } catch (e) {}
+  PRODS.forEach(k => ['neto', 'itc', 'idc'].forEach(c => $(`p_${k}_${c}`).value = p[k][c] ? fmt(p[k][c], 4).replace(/,?0+$/, '') : ''));
+  $('p_iva').value = fmt(p.iva, 2).replace(/,?0+$/, '');
+  $('p_perc').value = fmt(p.perc, 2).replace(/,?0+$/, '');
+}
+function leerPrecios() {
+  const p = { iva: parseAR($('p_iva').value), perc: parseAR($('p_perc').value) };
+  PRODS.forEach(k => p[k] = {
+    neto: parseAR($(`p_${k}_neto`).value),
+    itc:  parseAR($(`p_${k}_itc`).value),
+    idc:  parseAR($(`p_${k}_idc`).value)
+  });
+  return p;
+}
+function guardarPrecios() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(leerPrecios())); } catch (e) {}
+}
+
+// --- cálculo (precisión completa, redondeo solo al mostrar) ---
+function calcular() {
+  const p = leerPrecios();
+  const r = {};
+  PRODS.forEach(k => {
+    const lt = parseAR($(`lt_${k}`).value);
+    const neto = lt * p[k].neto;
+    const iva  = neto * p.iva / 100;
+    const perc = neto * p.perc / 100;
+    const itc  = lt * p[k].itc;
+    const idc  = lt * p[k].idc;
+    const total = neto + iva + perc + itc + idc;
+    r[k] = { lt, neto, iva, perc, itc, idc, total, xl: lt ? total / lt : 0 };
+  });
+  const T = {};
+  ['lt', 'neto', 'iva', 'perc', 'itc', 'idc', 'total'].forEach(c => T[c] = r.euro[c] + r.gasoil[c]);
+  T.xl = T.lt ? T.total / T.lt : 0;
+
+  const filas = [
+    ['Litros', 'lt', v => fmt(v, 0)],
+    ['Neto', 'neto', money],
+    [`IVA ${fmt(p.iva, 0)}%`, 'iva', money],
+    [`Percep. IVA ${fmt(p.perc, 0)}%`, 'perc', money],
+    ['ITC', 'itc', money],
+    ['IDC', 'idc', money],
+    ['Total', 'total', money, 'total'],
+    ['Costo por litro', 'xl', money, 'sub']
+  ];
+  $('detalle').innerHTML = filas.map(([lbl, c, f, cls]) =>
+    `<tr class="${cls || ''}"><td>${lbl}</td><td>${f(r.euro[c])}</td><td>${f(r.gasoil[c])}</td><td>${f(T[c])}</td></tr>`
+  ).join('');
+
+  $('tot_general').textContent = money(T.total);
+  $('tot_litros').textContent = `${fmt(T.lt, 0)} litros · ${money(T.xl)} por litro`;
+
+  const faltan = PRODS.some(k => r[k].lt > 0 && p[k].neto === 0);
+  $('warn_precios').style.display = faltan ? 'block' : 'none';
+  return { r, T, p };
+}
+
+// --- copiar detalle para pegar en WhatsApp / mail ---
+function copiar() {
+  const { r, T, p } = calcular();
+  const lin = [];
+  const nombres = { euro: 'EURO DIESEL', gasoil: 'GASOIL' };
+  PRODS.forEach(k => {
+    if (!r[k].lt) return;
+    const x = r[k];
+    lin.push(`${nombres[k]} — ${fmt(x.lt, 0)} L`,
+      `  Neto: ${money(x.neto)}`,
+      `  IVA ${fmt(p.iva, 0)}%: ${money(x.iva)}`,
+      `  Percep. IVA ${fmt(p.perc, 0)}%: ${money(x.perc)}`,
+      `  ITC: ${money(x.itc)}`,
+      `  IDC: ${money(x.idc)}`,
+      `  Subtotal: ${money(x.total)}`, '');
+  });
+  lin.push(`TOTAL EQUIPO (${fmt(T.lt, 0)} L): ${money(T.total)}`);
+  const txt = lin.join('\n');
+  const ok = () => { $('btn_copiar').textContent = '¡Copiado!'; setTimeout(() => $('btn_copiar').textContent = 'Copiar detalle', 1500); };
+  if (navigator.clipboard) navigator.clipboard.writeText(txt).then(ok).catch(() => fallback(txt, ok));
+  else fallback(txt, ok);
+}
+function fallback(txt, ok) {
+  const ta = document.createElement('textarea');
+  ta.value = txt; document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); ok(); } catch (e) {}
+  ta.remove();
+}
+
+// --- eventos ---
+document.querySelectorAll('input').forEach(i => i.addEventListener('input', () => {
+  if (i.id.startsWith('p_')) guardarPrecios();
+  calcular();
+}));
+$('btn_copiar').addEventListener('click', copiar);
+$('btn_limpiar').addEventListener('click', () => { $('lt_euro').value = ''; $('lt_gasoil').value = ''; calcular(); $('lt_euro').focus(); });
+$('btn_restaurar').addEventListener('click', () => { try { localStorage.removeItem(LS_KEY); } catch (e) {} cargarPrecios(); calcular(); });
+
+cargarPrecios();
+if (!leerPrecios().euro.neto && !leerPrecios().gasoil.neto) $('det_precios').open = true;
+calcular();
+</script>
+</body>
+</html>
