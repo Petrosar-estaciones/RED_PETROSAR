@@ -98,7 +98,7 @@
   <nav>
     <button data-tab="calc" class="on">Calculadora</button>
     <button data-tab="hist">Histórico</button>
-    <button data-tab="carga">Actualizar precios</button>
+    <button data-tab="carga" id="nav_carga" style="display:none">Actualizar precios</button>
   </nav>
 </header>
 
@@ -120,9 +120,9 @@
         <label for="lt_euro">Cantidad (litros)</label>
         <input id="lt_euro" class="big" inputmode="decimal" placeholder="0">
         <div class="row3">
-          <div><label>Neto $/L</label><input id="p_euro_neto" inputmode="decimal" placeholder="0"></div>
-          <div><label>ITC $/L</label><input id="p_euro_itc" inputmode="decimal" placeholder="0"></div>
-          <div><label>IDC $/L</label><input id="p_euro_idc" inputmode="decimal" placeholder="0"></div>
+          <div><label>Neto $/L</label><input id="p_euro_neto" readonly tabindex="-1" placeholder="—"></div>
+          <div><label>ITC $/L</label><input id="p_euro_itc" readonly tabindex="-1" placeholder="—"></div>
+          <div><label>IDC $/L</label><input id="p_euro_idc" readonly tabindex="-1" placeholder="—"></div>
         </div>
       </div>
       <div class="prod gasoil">
@@ -130,14 +130,14 @@
         <label for="lt_gasoil">Cantidad (litros)</label>
         <input id="lt_gasoil" class="big" inputmode="decimal" placeholder="0">
         <div class="row3">
-          <div><label>Neto $/L</label><input id="p_gasoil_neto" inputmode="decimal" placeholder="0"></div>
-          <div><label>ITC $/L</label><input id="p_gasoil_itc" inputmode="decimal" placeholder="0"></div>
-          <div><label>IDC $/L</label><input id="p_gasoil_idc" inputmode="decimal" placeholder="0"></div>
+          <div><label>Neto $/L</label><input id="p_gasoil_neto" readonly tabindex="-1" placeholder="—"></div>
+          <div><label>ITC $/L</label><input id="p_gasoil_itc" readonly tabindex="-1" placeholder="—"></div>
+          <div><label>IDC $/L</label><input id="p_gasoil_idc" readonly tabindex="-1" placeholder="—"></div>
         </div>
       </div>
     </div>
     <div class="msg err" id="warn_precios"></div>
-    <p class="note">Los valores por litro se completan solos con el historial según la fecha. Si los cambiás acá, solo afecta este cálculo.</p>
+    <p class="note">Los valores por litro se toman del historial de precios según la fecha de la factura.</p>
   </section>
 
   <section class="totalbox">
@@ -256,8 +256,8 @@
 
   <section class="card">
     <div class="bar">
-      <div><label for="u_pin">PIN</label><input type="password" id="u_pin" autocomplete="off"></div>
       <div><button class="b primary" id="btn_guardar">Guardar precios</button></div>
+      <div><button class="b" id="btn_salir">Salir</button></div>
     </div>
     <div class="msg" id="u_msg"></div>
   </section>
@@ -305,14 +305,14 @@ document.querySelectorAll('nav button').forEach(b => b.addEventListener('click',
 
 /* ---------- datos ---------- */
 async function cargarHist() {
-  if (!API_URL.startsWith('https://')) { $('c_vig').textContent = 'Falta configurar API_URL: cargá los valores por litro a mano.'; return; }
+  if (!API_URL.startsWith('https://')) { $('c_vig').textContent = 'Falta configurar API_URL.'; return; }
   try {
     const r = await fetch(API_URL, { cache: 'no-store' });
     const j = await r.json();
     if (!j.ok) throw new Error(j.error || 'Error');
     HIST = j.rows.map(x => ({ ...x, carga: x.carga || '' }));
   } catch (e) {
-    $('c_vig').textContent = 'No se pudo leer el historial. Podés cargar los valores por litro a mano.';
+    $('c_vig').textContent = 'No se pudo leer el historial de precios.';
     return;
   }
   aplicarVigentes();
@@ -340,7 +340,7 @@ function aplicarVigentes() {
     $(`p_${k}_idc`).value  = v ? fmtIn(v.idc)  : '';
     info.push(v ? `${NOMBRE[k]}: vigente desde ${fFecha(v.fecha)}` : `${NOMBRE[k]}: sin precio cargado a esa fecha`);
   });
-  $('c_vig').textContent = info.join(' · ');
+  $('c_vig').textContent = info.join(' · ') + (HIST.length ? '' : ' (el historial está vacío)');
   calcular();
 }
 
@@ -367,7 +367,7 @@ function calcular() {
   $('tot_general').textContent = money(T.total);
   $('tot_litros').textContent = `${fmt(T.lt, 0)} litros · ${money(T.xl)} por litro`;
   const falt = PRODS.filter(k => r[k].sinPrecio).map(k => NOMBRE[k]);
-  $('warn_precios').textContent = falt.length ? `Falta el neto por litro de ${falt.join(' y ')}.` : '';
+  $('warn_precios').textContent = falt.length ? `No hay precio de compra de ${falt.join(' y ')} vigente a esa fecha.` : '';
   return { r, T };
 }
 
@@ -490,7 +490,7 @@ async function guardar() {
   const msg = $('u_msg'); msg.className = 'msg';
   const fecha = $('u_fecha').value;
   if (!fecha) { msg.className = 'msg err'; msg.textContent = 'Poné la fecha de vigencia.'; return; }
-  if (!$('u_pin').value) { msg.className = 'msg err'; msg.textContent = 'Ingresá el PIN.'; return; }
+  if (!PIN_OK) return;
   const filas = [], v = id => parseAR($(id).value) || null;
   for (const k of PRODS) {
     const neto = v(`u_${k}_neto`), itc = v(`u_${k}_itc`), idc = v(`u_${k}_idc`);
@@ -505,11 +505,11 @@ async function guardar() {
 
   $('btn_guardar').disabled = true; msg.textContent = 'Guardando…';
   try {
-    const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ pin: $('u_pin').value, fecha, obs: $('u_obs').value.trim(), filas }) });
+    const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ pin: PIN_OK, fecha, obs: $('u_obs').value.trim(), filas }) });
     const j = await r.json();
     if (!j.ok) throw new Error(j.error);
     msg.className = 'msg ok'; msg.textContent = `Guardado: ${j.guardadas} precio(s) vigentes desde ${fFecha(fecha)}.`;
-    document.querySelectorAll('#tab_carga input:not([type=date]):not([type=password])').forEach(i => i.value = '');
+    document.querySelectorAll('#tab_carga input:not([type=date])').forEach(i => i.value = '');
     await cargarHist();
   } catch (e) {
     msg.className = 'msg err'; msg.textContent = 'No se guardó: ' + (e.message || 'error de conexión');
@@ -517,7 +517,7 @@ async function guardar() {
 }
 
 /* ===================== EVENTOS ===================== */
-['lt_euro', 'lt_gasoil', 'p_euro_neto', 'p_euro_itc', 'p_euro_idc', 'p_gasoil_neto', 'p_gasoil_itc', 'p_gasoil_idc']
+['lt_euro', 'lt_gasoil']
   .forEach(id => $(id).addEventListener('input', calcular));
 $('c_fecha').addEventListener('change', aplicarVigentes);
 $('btn_copiar').addEventListener('click', copiar);
@@ -530,6 +530,33 @@ document.querySelectorAll('[data-desg]').forEach(b => b.addEventListener('click'
   b.textContent = d.classList.contains('on') ? 'Ocultar desglose de venta' : 'Cargar desglose de venta';
 }));
 $('btn_guardar').addEventListener('click', guardar);
+
+/* ---------- acceso oculto a la carga ----------
+   Escribir la clave en cualquier parte de la página (sin estar en un campo) y apretar Enter.
+   La clave la valida el Apps Script; no está escrita en esta página. */
+let PIN_OK = null, buf = '';
+function mostrarTab(t) { document.querySelector(`nav button[data-tab="${t}"]`).click(); }
+function bloquear() {
+  PIN_OK = null; $('nav_carga').style.display = 'none';
+  if ($('tab_carga').classList.contains('on')) mostrarTab('calc');
+}
+document.addEventListener('keydown', async e => {
+  const tag = (e.target.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
+  if (e.key === 'Escape') { buf = ''; return; }
+  if (e.key === 'Enter') {
+    const intento = buf; buf = '';
+    if (intento.length < 4 || PIN_OK) return;
+    try {
+      const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: 'check', pin: intento }) });
+      const j = await r.json();
+      if (j.ok) { PIN_OK = intento; $('nav_carga').style.display = ''; mostrarTab('carga'); }
+    } catch (err) {}
+    return;
+  }
+  if (e.key.length === 1) buf = (buf + e.key).slice(-30);
+});
+$('btn_salir').addEventListener('click', bloquear);
 
 $('c_fecha').value = hoyISO();
 $('u_fecha').value = hoyISO();
