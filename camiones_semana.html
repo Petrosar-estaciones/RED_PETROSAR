@@ -426,6 +426,66 @@ function flResumenHTML(){
     </div>`;
 }
 
+/* ═══ Cobertura y stock de seguridad (misma lógica que la planilla de CD) ═══
+   Semanas lunes a domingo · últimas 13 semanas completas · diseño = semana pico ÷ 7 */
+let flPlazo = 3, flSeg = 2;
+const FL_SEMANAS = 13;
+function flTiposStock(p){ return p==='PLANTA' ? ['venta','consumo','traspaso'] : FL_RES_TIPOS[p]; }
+function flSemanasPunto(p){
+  const porDia = {};
+  for(const m of flMovs){
+    if(p!=='RED' && m.punto!==p) continue;
+    const tipos = p==='RED' ? FL_RES_TIPOS[m.punto] : flTiposStock(p);
+    if(!tipos.includes(m.tipo)) continue;
+    const [y,mo] = m.mes.split('-').map(Number);
+    const k = new Date(y,mo-1,m.dia).getTime();
+    porDia[k] = (porDia[k]||0) + m.lts;
+  }
+  // semanas completas: de lunes a domingo, terminadas antes de la semana actual y desde el 01/03
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const lunesActual = new Date(hoy); lunesActual.setDate(hoy.getDate() - ((hoy.getDay()+6)%7));
+  const semanas = [];
+  for(let k=1; k<=FL_SEMANAS; k++){
+    const ini = new Date(lunesActual); ini.setDate(lunesActual.getDate() - 7*k);
+    if(ini < FL_DESDE) break;
+    let s = 0; for(let d=0; d<7; d++){ const f = new Date(ini); f.setDate(ini.getDate()+d); s += porDia[f.getTime()]||0; }
+    semanas.push({ ini, lts:s });
+  }
+  return semanas;
+}
+function flStockPunto(p){
+  const sem = flSemanasPunto(p);
+  if(!sem.length) return null;
+  const prom = sem.reduce((a,s)=>a+s.lts,0)/sem.length;
+  const pico = Math.max(...sem.map(s=>s.lts));
+  const diseno = pico/7;
+  return { n:sem.length, desde:sem[sem.length-1].ini, hasta:new Date(sem[0].ini.getTime()+6*864e5), prom, pico, diseno,
+    diasCamion: diseno ? FL_LTS_CAMION/diseno : 0, seguridad: diseno*flSeg, pedido: diseno*(flPlazo+flSeg), pedidoCam: diseno*(flPlazo+flSeg)/FL_LTS_CAMION };
+}
+function flStockHTML(){
+  const red = flStockPunto('RED');
+  if(!red) return '';
+  const fila = (lbl, r, fuerte) => !r ? '' : `<tr${fuerte?' style="background:#FAFBFA;font-weight:600;"':''}><td>${lbl}</td><td>${fmtL(r.prom)}</td><td>${fmtL(r.pico)}</td><td class="sep-l">${fmtL(r.diseno)}</td><td class="sep-l"><b>${r.diasCamion>=100?'+99':r.diasCamion.toLocaleString('es-AR',{minimumFractionDigits:1,maximumFractionDigits:1})}</b></td><td><b>${fmtL(r.seguridad)}</b></td><td>${fmtL(r.pedido)}</td><td>${fmt2(r.pedidoCam)}</td></tr>`;
+  const inp = (v,on) => `<input type="number" min="0" step="1" value="${v}" onchange="${on}=Math.max(0,+this.value||0);flRender()" style="width:52px;font-family:var(--mono);font-size:12.5px;padding:4px 6px;border:1px solid #EFC885;background:#FFF8E6;border-radius:5px;text-align:right;">`;
+  return `
+    <div class="panel">
+      <div class="panel-head"><h2>Cobertura y stock de seguridad</h2>
+        <div class="filters" style="margin:0;font-size:12px;color:var(--ink-soft);gap:12px;">
+          <span>Plazo de reposición ${inp(flPlazo,'flPlazo')} días</span><span>Días de seguridad ${inp(flSeg,'flSeg')}</span><span>Camión ${FL_LTS_CAMION.toLocaleString('es-AR')} L</span>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="notes" style="margin-bottom:10px;">Últimas ${red.n} semanas completas (lunes a domingo), del ${fmtFecha(red.desde)} al ${fmtFecha(red.hasta)}. Consumo diario de diseño = semana pico ÷ 7.</div>
+        <table class="compact">
+          <thead><tr><th>Punto</th><th>Promedio semanal (L)</th><th>Semana pico (L)</th><th class="sep-l">Consumo diario de diseño (L/día)</th><th class="sep-l">Días de venta que cubre 1 camión</th><th>Stock de seguridad (L)</th><th>Punto de pedido (L)</th><th>Punto de pedido (camiones)</th></tr></thead>
+          <tbody>${FL_PUNTOS.map(p=>fila(FL_PUNTO_LBL[p]+(p==='PLANTA'?' <span class="muted" style="font-size:11px;">(todas las salidas)</span>':''), flStockPunto(p))).join('')}</tbody>
+          <tfoot>${fila('Toda la red', red, true).replace('<tr style="background:#FAFBFA;font-weight:600;">','<tr>')}</tfoot>
+        </table>
+        <div class="notes" style="margin-top:10px;"><b>Stock de seguridad:</b> nivel mínimo para cubrir demoras. <b>Punto de pedido:</b> nivel de tanque al que hay que pedir el próximo camión; verificar que punto de pedido + 1 camión entre en la capacidad del tanque. En Planta se toman todas sus salidas (clientes, internos y envíos a los puntos). La fila "Toda la red" usa la semana pico del total, no la suma de los puntos.</div>
+      </div>
+    </div>`;
+}
+
 /* ═══ Detalle diario ═══ */
 let flMesDia = null;
 function flDiario(mes){
@@ -550,6 +610,7 @@ function flRender(){
   document.getElementById('app').innerHTML = `
     ${flFallas.length ? `<div class="warn">No se pudieron leer: <b>${flFallas.join(', ')}</b>. Esos puntos quedan en cero. Verificá que las planillas estén compartidas con "cualquier persona con el enlace".</div>` : ''}
     ${flResumenHTML()}
+    ${flStockHTML()}
     ${flDiarioHTML()}`;
   flChartCamiones();
   flChartDia();
@@ -593,6 +654,11 @@ function descargarExcel(){
   const wb = XLSX.utils.book_new(), ws = XLSX.utils.aoa_to_sheet(aoa);
   ws['!cols']=[{wch:20},{wch:11},{wch:11},{wch:9},{wch:14},{wch:18},{wch:13},{wch:10},{wch:17},{wch:17},{wch:22},{wch:15}];
   XLSX.utils.book_append_sheet(wb, ws, 'Mensual');
+  const st = [['Punto','Promedio semanal (L)','Semana pico (L)','Consumo diario de diseño (L/día)','Días que cubre 1 camión','Stock de seguridad (L)','Punto de pedido (L)','Punto de pedido (camiones)']];
+  [...FL_PUNTOS,'RED'].forEach(p=>{ const r=flStockPunto(p); if(r) st.push([p==='RED'?'Toda la red':FL_PUNTO_LBL[p],r2(r.prom),r2(r.pico),r2(r.diseno),r2(r.diasCamion),r2(r.seguridad),r2(r.pedido),r2(r.pedidoCam)]); });
+  st.push([]); st.push(['Plazo de reposición (días)',flPlazo]); st.push(['Días de seguridad',flSeg]); st.push(['Capacidad camión (L)',FL_LTS_CAMION]);
+  const wss = XLSX.utils.aoa_to_sheet(st); wss['!cols']=[{wch:26},{wch:16},{wch:14},{wch:18},{wch:14},{wch:16},{wch:16},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, wss, 'Stock y cobertura');
   const dd = [['Fecha','Día','Clientes (L)','Consumo propio (L)','Total (L)']];
   flMesesList.forEach(m=>flDiario(m).forEach(f=>dd.push([fmtFecha(f.fecha),FL_DOW[f.fecha.getDay()],r2(f.cli),r2(f.con),r2(f.total)])));
   const wsd = XLSX.utils.aoa_to_sheet(dd); wsd['!cols']=[{wch:12},{wch:6},{wch:14},{wch:18},{wch:12}];
