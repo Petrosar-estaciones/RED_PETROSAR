@@ -88,6 +88,7 @@
   #chart svg{width:100%;height:auto;display:block}
   .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--ink-soft);margin-top:8px}
   .legend i{display:inline-block;width:22px;height:0;border-top:3px solid;vertical-align:middle;margin-right:6px}
+  .up{color:#C0392B} .down{color:#2E8E5B}
   .empty{color:var(--ink-soft);font-size:13px;padding:20px 0;text-align:center}
 </style>
 </head>
@@ -98,6 +99,7 @@
   <nav>
     <button data-tab="calc" class="on">Calculadora</button>
     <button data-tab="hist">Histórico</button>
+    <button data-tab="res">Resumen</button>
     <button data-tab="carga" id="nav_carga" style="display:none">Actualizar precios</button>
   </nav>
 </header>
@@ -194,6 +196,35 @@
       </table>
     </div>
   </section>
+</div>
+
+<!-- ===================== RESUMEN ===================== -->
+<div class="tab" id="tab_res">
+  <section class="card">
+    <div class="bar">
+      <div><label>Desde</label><input type="date" id="rs_desde"></div>
+      <div><label>Hasta</label><input type="date" id="rs_hasta"></div>
+      <div><button class="b primary" id="btn_excel_res">Exportar a Excel</button></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Resumen por actualización</h2>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th rowspan="2">Vigencia</th>
+              <th colspan="4" class="col-gasoil" style="text-align:center">Gasoil</th>
+              <th colspan="4" class="col-euro" style="text-align:center">Euro Diesel</th></tr>
+          <tr><th>Costo $/L</th><th>Venta $/L</th><th>Margen</th><th>Var. costo</th>
+              <th>Costo $/L</th><th>Venta $/L</th><th>Margen</th><th>Var. costo</th></tr>
+        </thead>
+        <tbody id="r_tabla"></tbody>
+      </table>
+    </div>
+    <p class="note" id="r_periodo"></p>
+  </section>
+
 </div>
 
 <!-- ===================== ACTUALIZAR PRECIOS ===================== -->
@@ -301,6 +332,7 @@ document.querySelectorAll('nav button').forEach(b => b.addEventListener('click',
   document.querySelectorAll('nav button').forEach(x => x.classList.toggle('on', x === b));
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.id === 'tab_' + b.dataset.tab));
   if (b.dataset.tab === 'hist') renderHist();
+  if (b.dataset.tab === 'res') renderResumen();
 }));
 
 /* ---------- datos ---------- */
@@ -317,6 +349,7 @@ async function cargarHist() {
   }
   aplicarVigentes();
   renderHist();
+  renderResumen();
 }
 
 // último registro con vigencia <= fecha (si hay dos el mismo día, gana el último cargado)
@@ -396,6 +429,42 @@ function filtrados() {
              .sort((a, b) => (b.fecha + b.carga).localeCompare(a.fecha + a.carga));
 }
 
+// una fila por fecha de actualización, con los precios vigentes ese día
+function resumen() {
+  const d = $('rs_desde').value, h = $('rs_hasta').value;
+  const fechas = [...new Set(HIST.map(r => r.fecha))].filter(f => (!d || f >= d) && (!h || f <= h)).sort();
+  const out = [];
+  fechas.forEach((f, i) => {
+    const fila = { fecha: f };
+    PRODS.forEach(k => {
+      const c = vigente(NOMBRE[k], 'Compra', f), v = vigente(NOMBRE[k], 'Venta', f);
+      const costo = c ? c.final : null, venta = v ? v.final : null;
+      const prev = i ? out[i - 1][k].costo : null;
+      fila[k] = { costo, venta,
+        margen: costo && venta != null ? (venta - costo) / costo : null,
+        varc: costo && prev ? costo / prev - 1 : null };
+    });
+    out.push(fila);
+  });
+  return out;
+}
+
+function renderResumen() {
+  const R = resumen();
+  const pct = (v, color) => v == null ? '—' :
+    `<span class="${color && v ? (v > 0 ? 'up' : 'down') : ''}">${v > 0 && color ? '+' : ''}${fmt(v * 100, 1)} %</span>`;
+  const m = v => v == null ? '—' : money(v);
+  $('r_tabla').innerHTML = R.length ? R.slice().reverse().map(r => `<tr><td class="t">${fFecha(r.fecha)}</td>` +
+      ['gasoil', 'euro'].map(k => `<td>${m(r[k].costo)}</td><td>${m(r[k].venta)}</td><td>${pct(r[k].margen)}</td><td>${pct(r[k].varc, true)}</td>`).join('') +
+      '</tr>').join('')
+    : '<tr><td colspan="9" class="empty">Sin registros para el filtro elegido</td></tr>';
+  if (R.length > 1) {
+    const a = R[0], b = R[R.length - 1];
+    $('r_periodo').innerHTML = `Variación del costo del ${fFecha(a.fecha)} al ${fFecha(b.fecha)}: ` +
+      ['gasoil', 'euro'].map(k => `${NOMBRE[k]} ${a[k].costo && b[k].costo ? pct(b[k].costo / a[k].costo - 1, true) : '—'}`).join(' · ');
+  } else $('r_periodo').textContent = '';
+}
+
 function renderHist() {
   const hoy = hoyISO();
   $('h_kpis').innerHTML = PRODS.map(k => {
@@ -418,6 +487,7 @@ function renderHist() {
       <td class="t">${r.obs || ''}</td></tr>`).join('')
     : `<tr><td colspan="9" class="empty">Sin registros para el filtro elegido</td></tr>`;
   renderChart(rows);
+
 }
 
 // gráfico SVG escalonado (el precio sigue vigente hasta el próximo cambio)
@@ -463,6 +533,23 @@ function renderChart(rows) {
   $('chart').innerHTML = `<svg viewBox="0 0 ${W} ${H}">${g}</svg>`;
   $('legend').innerHTML = series.map(s =>
     `<span><i style="border-color:${COLOR[s.k]};${s.t === 'Compra' ? 'border-top-style:dashed' : ''}"></i>${NOMBRE[s.k]} · ${s.t === 'Compra' ? 'costo compra' : 'venta surtidor'}</span>`).join('');
+}
+
+function exportarResumen() {
+  const wb = XLSX.utils.book_new();
+  const R = resumen();
+  const ar = [['Fecha vigencia', 'Gasoil costo $/L', 'Gasoil venta $/L', 'Gasoil margen', 'Gasoil var. costo',
+               'Euro costo $/L', 'Euro venta $/L', 'Euro margen', 'Euro var. costo']];
+  R.forEach(r => ar.push([new Date(r.fecha + 'T00:00:00'),
+    ...['gasoil', 'euro'].flatMap(k => [r[k].costo, r[k].venta, r[k].margen, r[k].varc])]));
+  const wr = XLSX.utils.aoa_to_sheet(ar, { cellDates: true, dateNF: 'dd/mm/yyyy' });
+  wr['!cols'] = [12, 15, 15, 12, 13, 15, 15, 12, 13].map(w => ({ wch: w }));
+  for (let i = 1; i < ar.length; i++) [1, 2, 5, 6].concat([3, 4, 7, 8]).forEach(c => {
+    const ref = XLSX.utils.encode_cell({ r: i, c });
+    if (wr[ref] && typeof wr[ref].v === 'number') wr[ref].z = [3, 4, 7, 8].includes(c) ? '0.0%' : '#,##0.00';
+  });
+  XLSX.utils.book_append_sheet(wb, wr, 'Resumen');
+  XLSX.writeFile(wb, `resumen_precios_${hoyISO()}.xlsx`);
 }
 
 function exportar() {
@@ -525,6 +612,8 @@ $('btn_copiar').addEventListener('click', copiar);
 $('btn_limpiar').addEventListener('click', () => { $('lt_euro').value = ''; $('lt_gasoil').value = ''; calcular(); $('lt_euro').focus(); });
 ['f_prod', 'f_tipo', 'f_desde', 'f_hasta'].forEach(id => $(id).addEventListener('change', renderHist));
 $('btn_excel').addEventListener('click', exportar);
+['rs_desde', 'rs_hasta'].forEach(id => $(id).addEventListener('change', renderResumen));
+$('btn_excel_res').addEventListener('click', exportarResumen);
 PRODS.forEach(k => ['neto', 'itc', 'idc'].forEach(c => $(`u_${k}_${c}`).addEventListener('input', calcCostoCarga)));
 document.querySelectorAll('[data-desg]').forEach(b => b.addEventListener('click', () => {
   const d = $('desg_' + b.dataset.desg); d.classList.toggle('on');
