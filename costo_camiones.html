@@ -89,6 +89,11 @@
   .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--ink-soft);margin-top:8px}
   .legend i{display:inline-block;width:22px;height:0;border-top:3px solid;vertical-align:middle;margin-right:6px}
   .up{color:#C0392B} .down{color:#2E8E5B}
+  .var-box{border-radius:8px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center}
+  .var-box.euro{background:var(--euro-soft)} .var-box.gasoil{background:var(--gasoil-soft)}
+  .var-box h3{margin:0;font-family:'Space Grotesk',sans-serif;font-size:16px}
+  .var-box .sm{font-size:12px;color:var(--ink-soft);margin-top:4px;font-family:'IBM Plex Mono',monospace}
+  .var-box .big{font-family:'IBM Plex Mono',monospace;font-size:32px;font-weight:600}
   .empty{color:var(--ink-soft);font-size:13px;padding:20px 0;text-align:center}
 </style>
 </head>
@@ -97,16 +102,16 @@
   <h1>Precios de combustible</h1>
   <p>Costo de camiones, historial de precios de compra y venta</p>
   <nav>
-    <button data-tab="calc" class="on">Calculadora</button>
+    <button data-tab="res" class="on">Resumen</button>
     <button data-tab="hist">Histórico</button>
-    <button data-tab="res">Resumen</button>
+    <button data-tab="calc">Calculadora</button>
     <button data-tab="carga" id="nav_carga" style="display:none">Actualizar precios</button>
   </nav>
 </header>
 
 <main>
 <!-- ===================== CALCULADORA ===================== -->
-<div class="tab on" id="tab_calc">
+<div class="tab" id="tab_calc">
   <section class="card">
     <div class="bar">
       <div><label for="c_fecha">Fecha</label><input type="date" id="c_fecha"></div>
@@ -199,13 +204,18 @@
 </div>
 
 <!-- ===================== RESUMEN ===================== -->
-<div class="tab" id="tab_res">
+<div class="tab on" id="tab_res">
   <section class="card">
     <div class="bar">
       <div><label>Desde</label><input type="date" id="rs_desde"></div>
       <div><label>Hasta</label><input type="date" id="rs_hasta"></div>
       <div><button class="b primary" id="btn_excel_res">Exportar a Excel</button></div>
     </div>
+  </section>
+
+  <section class="card" id="r_var_card">
+    <h2 id="r_var_tit">Variación del costo</h2>
+    <div class="kpis" id="r_var"></div>
   </section>
 
   <section class="card">
@@ -222,7 +232,6 @@
         <tbody id="r_tabla"></tbody>
       </table>
     </div>
-    <p class="note" id="r_periodo"></p>
   </section>
 
 </div>
@@ -460,9 +469,15 @@ function renderResumen() {
     : '<tr><td colspan="9" class="empty">Sin registros para el filtro elegido</td></tr>';
   if (R.length > 1) {
     const a = R[0], b = R[R.length - 1];
-    $('r_periodo').innerHTML = `Variación del costo del ${fFecha(a.fecha)} al ${fFecha(b.fecha)}: ` +
-      ['gasoil', 'euro'].map(k => `${NOMBRE[k]} ${a[k].costo && b[k].costo ? pct(b[k].costo / a[k].costo - 1, true) : '—'}`).join(' · ');
-  } else $('r_periodo').textContent = '';
+    $('r_var_tit').textContent = `Variación del costo del ${fFecha(a.fecha)} al ${fFecha(b.fecha)}`;
+    $('r_var').innerHTML = ['gasoil', 'euro'].map(k => {
+      const v = a[k].costo && b[k].costo ? b[k].costo / a[k].costo - 1 : null;
+      return `<div class="var-box ${k}"><div><h3 class="col-${k}">${NOMBRE[k]}</h3>
+        <div class="sm">${m(a[k].costo)} → ${m(b[k].costo)} por litro</div></div>
+        <div class="big">${pct(v, true)}</div></div>`;
+    }).join('');
+    $('r_var_card').style.display = '';
+  } else $('r_var_card').style.display = 'none';
 }
 
 function renderHist() {
@@ -628,7 +643,7 @@ let PIN_OK = null, buf = '';
 function mostrarTab(t) { document.querySelector(`nav button[data-tab="${t}"]`).click(); }
 function bloquear() {
   PIN_OK = null; $('nav_carga').style.display = 'none';
-  if ($('tab_carga').classList.contains('on')) mostrarTab('calc');
+  if ($('tab_carga').classList.contains('on')) mostrarTab('res');
 }
 document.addEventListener('keydown', async e => {
   const tag = (e.target.tagName || '').toLowerCase();
