@@ -172,11 +172,6 @@
 <!-- ===================== HISTÓRICO ===================== -->
 <div class="tab" id="tab_hist">
   <section class="card">
-    <h2 id="h_vig_tit">Precios vigentes hoy</h2>
-    <div class="kpis" id="h_kpis"></div>
-  </section>
-
-  <section class="card">
     <div class="bar">
       <div><label>Producto</label><select id="f_prod"><option value="">Todos</option><option>Euro Diesel</option><option>Gasoil</option></select></div>
       <div><label>Tipo</label><select id="f_tipo"><option value="">Compra y venta</option><option>Compra</option><option>Venta</option></select></div>
@@ -206,11 +201,8 @@
 <!-- ===================== RESUMEN ===================== -->
 <div class="tab on" id="tab_res">
   <section class="card">
-    <div class="bar">
-      <div><label>Desde</label><input type="date" id="rs_desde"></div>
-      <div><label>Hasta</label><input type="date" id="rs_hasta"></div>
-      <div><button class="b primary" id="btn_excel_res">Exportar a Excel</button></div>
-    </div>
+    <h2 id="h_vig_tit">Precios vigentes hoy</h2>
+    <div class="kpis" id="h_kpis"></div>
   </section>
 
   <section class="card" id="r_var_card">
@@ -219,13 +211,21 @@
   </section>
 
   <section class="card">
+    <div class="bar">
+      <div><label>Desde</label><input type="date" id="rs_desde"></div>
+      <div><label>Hasta</label><input type="date" id="rs_hasta"></div>
+      <div><button class="b primary" id="btn_excel_res">Exportar a Excel</button></div>
+    </div>
+  </section>
+
+  <section class="card">
     <h2>Resumen por actualización</h2>
     <div class="scroll">
       <table>
         <thead>
           <tr><th rowspan="2">Vigencia</th>
-              <th colspan="4" class="col-gasoil" style="text-align:center">Gasoil</th>
-              <th colspan="4" class="col-euro" style="text-align:center">Euro Diesel</th></tr>
+              <th colspan="4" class="col-euro" style="text-align:center">Euro Diesel</th>
+              <th colspan="4" class="col-gasoil" style="text-align:center">Gasoil</th></tr>
           <tr><th>Costo $/L</th><th>Venta $/L</th><th>Margen</th><th>Var. costo</th>
               <th>Costo $/L</th><th>Venta $/L</th><th>Margen</th><th>Var. costo</th></tr>
         </thead>
@@ -459,28 +459,6 @@ function resumen() {
 }
 
 function renderResumen() {
-  const R = resumen();
-  const pct = (v, color) => v == null ? '—' :
-    `<span class="${color && v ? (v > 0 ? 'up' : 'down') : ''}">${v > 0 && color ? '+' : ''}${fmt(v * 100, 1)} %</span>`;
-  const m = v => v == null ? '—' : money(v);
-  $('r_tabla').innerHTML = R.length ? R.slice().reverse().map(r => `<tr><td class="t">${fFecha(r.fecha)}</td>` +
-      ['gasoil', 'euro'].map(k => `<td>${m(r[k].costo)}</td><td>${m(r[k].venta)}</td><td>${pct(r[k].margen)}</td><td>${pct(r[k].varc, true)}</td>`).join('') +
-      '</tr>').join('')
-    : '<tr><td colspan="9" class="empty">Sin registros para el filtro elegido</td></tr>';
-  if (R.length > 1) {
-    const a = R[0], b = R[R.length - 1];
-    $('r_var_tit').textContent = `Variación del costo del ${fFecha(a.fecha)} al ${fFecha(b.fecha)}`;
-    $('r_var').innerHTML = ['gasoil', 'euro'].map(k => {
-      const v = a[k].costo && b[k].costo ? b[k].costo / a[k].costo - 1 : null;
-      return `<div class="var-box ${k}"><div><h3 class="col-${k}">${NOMBRE[k]}</h3>
-        <div class="sm">${m(a[k].costo)} → ${m(b[k].costo)} por litro</div></div>
-        <div class="big">${pct(v, true)}</div></div>`;
-    }).join('');
-    $('r_var_card').style.display = '';
-  } else $('r_var_card').style.display = 'none';
-}
-
-function renderHist() {
   const hoy = hoyISO();
   $('h_kpis').innerHTML = PRODS.map(k => {
     const c = vigente(NOMBRE[k], 'Compra', hoy), v = vigente(NOMBRE[k], 'Venta', hoy);
@@ -492,6 +470,29 @@ function renderHist() {
       <div class="l m"><span>Diferencia $/L</span><span>${mg != null ? money(mg) : '—'}</span></div>
       <div class="l"><span>Margen sobre costo</span><span>${mg != null && cf ? fmt(mg / cf * 100, 1) + ' %' : '—'}</span></div></div>`;
   }).join('');
+
+  const R = resumen();
+  const pct = (v, color) => v == null ? '—' :
+    `<span class="${color && v ? (v > 0 ? 'up' : 'down') : ''}">${v > 0 && color ? '+' : ''}${fmt(v * 100, 1)} %</span>`;
+  const m = v => v == null ? '—' : money(v);
+  $('r_tabla').innerHTML = R.length ? R.slice().reverse().map(r => `<tr><td class="t">${fFecha(r.fecha)}</td>` +
+      PRODS.map(k => `<td>${m(r[k].costo)}</td><td>${m(r[k].venta)}</td><td>${pct(r[k].margen)}</td><td>${pct(r[k].varc, true)}</td>`).join('') +
+      '</tr>').join('')
+    : '<tr><td colspan="9" class="empty">Sin registros para el filtro elegido</td></tr>';
+  if (R.length > 1) {
+    const a = R[0], b = R[R.length - 1];
+    $('r_var_tit').textContent = `Variación del costo del ${fFecha(a.fecha)} al ${fFecha(b.fecha)}`;
+    $('r_var').innerHTML = PRODS.map(k => {
+      const v = a[k].costo && b[k].costo ? b[k].costo / a[k].costo - 1 : null;
+      return `<div class="var-box ${k}"><div><h3 class="col-${k}">${NOMBRE[k]}</h3>
+        <div class="sm">${m(a[k].costo)} → ${m(b[k].costo)} por litro</div></div>
+        <div class="big">${pct(v, true)}</div></div>`;
+    }).join('');
+    $('r_var_card').style.display = '';
+  } else $('r_var_card').style.display = 'none';
+}
+
+function renderHist() {
 
   const rows = filtrados();
   const n = v => v == null ? '' : fmt(v, 4);
@@ -553,10 +554,10 @@ function renderChart(rows) {
 function exportarResumen() {
   const wb = XLSX.utils.book_new();
   const R = resumen();
-  const ar = [['Fecha vigencia', 'Gasoil costo $/L', 'Gasoil venta $/L', 'Gasoil margen', 'Gasoil var. costo',
-               'Euro costo $/L', 'Euro venta $/L', 'Euro margen', 'Euro var. costo']];
+  const ar = [['Fecha vigencia', 'Euro costo $/L', 'Euro venta $/L', 'Euro margen', 'Euro var. costo',
+               'Gasoil costo $/L', 'Gasoil venta $/L', 'Gasoil margen', 'Gasoil var. costo']];
   R.forEach(r => ar.push([new Date(r.fecha + 'T00:00:00'),
-    ...['gasoil', 'euro'].flatMap(k => [r[k].costo, r[k].venta, r[k].margen, r[k].varc])]));
+    ...PRODS.flatMap(k => [r[k].costo, r[k].venta, r[k].margen, r[k].varc])]));
   const wr = XLSX.utils.aoa_to_sheet(ar, { cellDates: true, dateNF: 'dd/mm/yyyy' });
   wr['!cols'] = [12, 15, 15, 12, 13, 15, 15, 12, 13].map(w => ({ wch: w }));
   for (let i = 1; i < ar.length; i++) [1, 2, 5, 6].concat([3, 4, 7, 8]).forEach(c => {
