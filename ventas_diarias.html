@@ -208,7 +208,7 @@ function flAdd(fecha, punto, tipo, prod, lts){
 function flEnRango(fecha){ return fecha && fecha >= FL_DESDE && fecha <= flHoy; }
 
 function procPlanta(t){
-  // B=Fecha(1) C=Ref(2) G=Receptor/Proveedor(6) K=Factura(10) L=Gasoil Tk1(11) M=Euro Tk2(12) N=Euro Tk3(13)
+  // B=Fecha(1) C=Ref(2) D=Comprobante(3) F=Proveedor(5) G=Receptor(6) K=Factura(10) L=Gasoil Tk1(11) M=Euro Tk2(12) N=Euro Tk3(13)
   for(const row of t.rows||[]){
     const ref = gs(row,2).toUpperCase();
     if(ref!=='PS' && ref!=='RTO') continue;
@@ -216,7 +216,7 @@ function procPlanta(t){
     const g = flLitros(row,11), e = flLitros(row,12) + flLitros(row,13);
     if(ref==='RTO'){
       flAdd(fecha,'PLANTA','compra','GASOIL',g); flAdd(fecha,'PLANTA','compra','EURO',e);
-      if(g || e) flCompras.push({ fk:flFk(fecha), mes:flMesKey(fecha), fecha, prov:gs(row,6), comp:gs(row,10), GASOIL:g, EURO:e });
+      if(g || e) flCompras.push({ fk:flFk(fecha), mes:flMesKey(fecha), fecha, prov:gs(row,5)||gs(row,6), comp:gs(row,10)||gs(row,3), GASOIL:g, EURO:e });
       continue;
     }
     const rec = gs(row,6).toUpperCase().replace(/\s+/g,' ');
